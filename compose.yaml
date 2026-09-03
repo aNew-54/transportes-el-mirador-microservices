@@ -1,0 +1,35 @@
+name: transportes-el-mirador
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: el-mirador-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-mirador_root_dev}
+      COMERCIAL_DB_PASSWORD: ${COMERCIAL_DB_PASSWORD:-comercial_dev_password}
+      PROGRAMACION_DB_PASSWORD: ${PROGRAMACION_DB_PASSWORD:-programacion_dev_password}
+      EJECUCION_DB_PASSWORD: ${EJECUCION_DB_PASSWORD:-ejecucion_dev_password}
+      UNIDADES_DB_PASSWORD: ${UNIDADES_DB_PASSWORD:-unidades_dev_password}
+      CONDUCTORES_DB_PASSWORD: ${CONDUCTORES_DB_PASSWORD:-conductores_dev_password}
+      FACTURACION_DB_PASSWORD: ${FACTURACION_DB_PASSWORD:-facturacion_dev_password}
+      COBRANZA_DB_PASSWORD: ${COBRANZA_DB_PASSWORD:-cobranza_dev_password}
+      TZ: America/Lima
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infra/mysql/init/01-create-databases.sh:/docker-entrypoint-initdb.d/01-create-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  mysql_data:
+    name: el-mirador-mysql-data
