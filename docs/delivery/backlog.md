@@ -137,9 +137,9 @@ Ejecución no tiene `S4`: no publica endpoints de integración.
 
 | Hito | Criterio | Estado |
 |---|---|---|
-| Reactor verde | `./mvnw clean verify` | pendiente |
+| Reactor verde | `./mvnw clean verify` | **done** |
 | Los siete arrancan | `./scripts/smoke-test.sh` | pendiente |
-| 48 invariantes cubiertas | Todas con prueba en verde | pendiente |
+| 48 invariantes cubiertas | Todas con prueba en verde | **done** |
 | 11 contratos implementados | Con prueba de cliente y de proveedor | pendiente |
 | Flujo vertical | Orden → viaje → ejecución → factura → cobranza, de extremo a extremo | pendiente |
 
@@ -151,7 +151,7 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total |
 |---|---:|---:|
-| Slices | 8 | 33 |
+| Slices | 8 | 32 |
 | Invariantes cubiertas | **48** | 48 |
 | Contratos implementados | 0 | 11 |
 | Servicios terminados | 0 | 7 |
