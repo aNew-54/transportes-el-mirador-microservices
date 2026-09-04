@@ -296,3 +296,25 @@ Pasó sin correcciones de código: es el primer slice delegado que llega limpio.
 Los dos `x != null &&` de `AsignacionDeRecursos` no son evasiones: `esCompleta()` es un predicado positivo
 que falla cerrado, y el constructor normaliza el identificador en blanco a nulo. Que se pueda representar
 una asignación incompleta es deliberado: es lo que permite a `confirmarProgramacion` lanzar por **VIA-01**.
+
+### Cierre de `S1b-consolidacion`
+
+Implementado por Claude. `ConsolidacionTest` añade doce casos y **diez de ellos fallan contra el commit de
+`S1a`**, que es la prueba de que las invariantes no estaban: con los huecos devolviendo `true`, consolidar
+una carga que excede la capacidad, que va por otro corredor o que el contrato prohíbe no lanzaba nada.
+
+Los otros dos casos —la matriz de compatibilidad en las nueve combinaciones y la secuencia de estiba— usan
+API que `S1a` no tenía (`TipoDeCarga.esCompatibleCon`, `Parada.CARGA`/`DESCARGA`), así que contra ese commit
+ni siquiera compilan. No cuentan como demostración.
+
+Dos decisiones de diseño:
+
+- **`secuenciaDeEstiba()` filtra las paradas de tipo `DESCARGA`.** Una parada de carga no tiene orden de
+  descarga contra el que estibar. El vocabulario `CARGA`/`DESCARGA` lo fija el contrato 4, no esta clase:
+  es la diferencia entre leer el contrato e inventarse un protocolo de texto, que es justo lo que hubo que
+  corregir en `msvc-comercial`.
+- **La compatibilidad vive en `TipoDeCarga`, no en `Carga`.** `Carga.esCompatibleCon` delega. La regla es
+  del tipo de carga, no de una carga concreta, y así la matriz se prueba sin construir cargas.
+
+`consolidarOrden` evalúa VIA-07 → VIA-04 → VIA-03 → VIA-05 → VIA-02 y **muta al final**. La prueba
+`elRechazoNoMutaNada` comprueba que un rechazo por capacidad no deja la orden a medio registrar.

@@ -3,6 +3,10 @@ package pe.edu.unc.elmirador.programacion.models.entity;
 import java.util.ArrayList;
 import java.util.List;
 import pe.edu.unc.elmirador.programacion.exceptions.AsignacionIncompletaException;
+import pe.edu.unc.elmirador.programacion.exceptions.CapacidadExcedidaException;
+import pe.edu.unc.elmirador.programacion.exceptions.CargaIncompatibleException;
+import pe.edu.unc.elmirador.programacion.exceptions.ConsolidacionProhibidaException;
+import pe.edu.unc.elmirador.programacion.exceptions.CorredorIncompatibleException;
 import pe.edu.unc.elmirador.programacion.exceptions.DominioProgramacionException;
 import pe.edu.unc.elmirador.programacion.exceptions.TransicionDeViajeInvalidaException;
 import pe.edu.unc.elmirador.programacion.exceptions.ViajeDespachadoException;
@@ -195,9 +199,58 @@ public class Viaje {
             throw new IllegalArgumentException("La capacidad de la unidad es obligatoria");
         }
 
-        // TODO S1b: VIA-04 - verificar clausulaDelContrato.permitida()
-        // TODO S1b: VIA-03 - verificar ruta.mismoCorredorQue(rutaDeLaOrden) y ventana.seSolapaCon(ventanaDeLaOrden)
-        // TODO S1b: VIA-05 - verificar compatibilidad fisica con todas las cargas ya consolidadas
-        // TODO S1b: VIA-02 - verificar que la nueva carga consolidada cabeEn(capacidadDeLaUnidad)
+        // Se comprueba TODO antes de mutar NADA (regla D6): una consolidacion rechazada no puede
+        // dejar el viaje con la carga a medio agregar. El orden va de lo barato a lo caro, y la
+        // capacidad queda al final porque obliga a recorrer la lista entera dos veces.
+
+        // VIA-04: el contrato marco de la orden manda sobre la decision del planificador.
+        if (!clausulaDelContrato.permitida()) {
+            throw new ConsolidacionProhibidaException(
+                "VIA-04: el contrato marco de la orden " + carga.ordenDeServicioId()
+                    + " prohibe consolidarla con otras: " + id
+            );
+        }
+
+        // VIA-03: mismo corredor y ventanas compatibles. Son dos condiciones, no una.
+        if (!this.ruta.mismoCorredorQue(rutaDeLaOrden)) {
+            throw new CorredorIncompatibleException(
+                "VIA-03: la orden " + carga.ordenDeServicioId() + " va por el corredor "
+                    + rutaDeLaOrden.corredor() + " y el viaje por " + this.ruta.corredor()
+            );
+        }
+        if (!this.ventana.seSolapaCon(ventanaDeLaOrden)) {
+            throw new CorredorIncompatibleException(
+                "VIA-03: la ventana de la orden " + carga.ordenDeServicioId()
+                    + " no se solapa con la del viaje " + id
+            );
+        }
+
+        // VIA-05: contra TODAS las cargas ya consolidadas, no solo contra la ultima. Una tercera
+        // carga puede ser compatible con la segunda e incompatible con la primera.
+        for (Carga yaConsolidada : this.cargaConsolidada.cargas()) {
+            if (!yaConsolidada.esCompatibleCon(carga)) {
+                throw new CargaIncompatibleException(
+                    "VIA-05: la carga " + carga.tipo() + " de la orden " + carga.ordenDeServicioId()
+                        + " no es fisicamente compatible con la carga " + yaConsolidada.tipo()
+                        + " de la orden " + yaConsolidada.ordenDeServicioId()
+                );
+            }
+        }
+
+        // VIA-02: se evalua sobre la consolidacion resultante, no sobre la actual.
+        CargaConsolidada resultante = this.cargaConsolidada.agregar(carga);
+        if (!resultante.cabeEn(capacidadDeLaUnidad)) {
+            throw new CapacidadExcedidaException(
+                "VIA-02: consolidar la orden " + carga.ordenDeServicioId() + " daria "
+                    + resultante.pesoTotal() + " kg y " + resultante.volumenTotal()
+                    + " m3, y la unidad admite " + capacidadDeLaUnidad.pesoMaximoKg() + " kg y "
+                    + capacidadDeLaUnidad.volumenMaximoM3() + " m3"
+            );
+        }
+
+        this.cargaConsolidada = resultante;
+        if (!this.ordenIds.contains(carga.ordenDeServicioId())) {
+            this.ordenIds.add(carga.ordenDeServicioId());
+        }
     }
 }

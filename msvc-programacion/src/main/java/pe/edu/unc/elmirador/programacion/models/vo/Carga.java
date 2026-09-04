@@ -37,7 +37,6 @@ public record Carga(
         if (otra == null) {
             throw new IllegalArgumentException("La otra carga es obligatoria");
         }
-        // TODO S1b: VIA-05 - compatibilidad fisica por pares segun matriz de compatibilidad
-        return true;
+        return this.tipo.esCompatibleCon(otra.tipo);
     }
 }
