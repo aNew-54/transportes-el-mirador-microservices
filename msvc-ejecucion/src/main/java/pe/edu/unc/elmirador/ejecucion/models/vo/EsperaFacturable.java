@@ -24,18 +24,26 @@ public record EsperaFacturable(OffsetDateTime inicio, OffsetDateTime fin, int ti
         }
     }
 
-    public double tiempoRealHoras() {
-        BigDecimal segundos = BigDecimal.valueOf(Duration.between(inicio, fin).toSeconds());
-        return segundos.divide(BigDecimal.valueOf(3600), 2, RoundingMode.HALF_UP).doubleValue();
+    private static final BigDecimal SEGUNDOS_POR_HORA = BigDecimal.valueOf(3600);
+
+    public BigDecimal tiempoRealHoras() {
+        return BigDecimal.valueOf(Duration.between(inicio, fin).toSeconds())
+                .divide(SEGUNDOS_POR_HORA, 2, RoundingMode.HALF_UP);
     }
 
-    public double excedente() {
-        double real = tiempoRealHoras();
-        if (real <= tiempoLibreHoras) {
-            return 0.0;
+    /**
+     * Horas que exceden el tiempo libre pactado, o cero.
+     *
+     * <p>Devuelve {@link BigDecimal} y no {@code double} a proposito: este valor viaja en los
+     * contratos 7 y 8 y alli se multiplica por una tarifa horaria, asi que es un importe en
+     * potencia. En coma flotante binaria, 0.1 hora facturada mil veces no suma 100.
+     */
+    public BigDecimal excedente() {
+        BigDecimal real = tiempoRealHoras();
+        BigDecimal libre = BigDecimal.valueOf(tiempoLibreHoras).setScale(2);
+        if (real.compareTo(libre) <= 0) {
+            return BigDecimal.ZERO.setScale(2);
         }
-        return BigDecimal.valueOf(real - tiempoLibreHoras)
-                .setScale(2, RoundingMode.HALF_UP)
-                .doubleValue();
+        return real.subtract(libre);
     }
 }

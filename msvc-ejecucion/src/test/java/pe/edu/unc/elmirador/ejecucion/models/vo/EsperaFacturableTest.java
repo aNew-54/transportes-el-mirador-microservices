@@ -3,6 +3,7 @@ package pe.edu.unc.elmirador.ejecucion.models.vo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -20,8 +21,8 @@ class EsperaFacturableTest {
         OffsetDateTime fin1Hora = T10_00.plusHours(1);
         EsperaFacturable espera = new EsperaFacturable(T10_00, fin1Hora, 2);
 
-        assertThat(espera.tiempoRealHoras()).isEqualTo(1.0);
-        assertThat(espera.excedente()).isEqualTo(0.0);
+        assertThat(espera.tiempoRealHoras()).isEqualByComparingTo(new BigDecimal("1.00"));
+        assertThat(espera.excedente()).isEqualByComparingTo(new BigDecimal("0.00"));
     }
 
     @Test
@@ -30,8 +31,8 @@ class EsperaFacturableTest {
         OffsetDateTime fin2Horas = T10_00.plusHours(2);
         EsperaFacturable espera = new EsperaFacturable(T10_00, fin2Horas, 2);
 
-        assertThat(espera.tiempoRealHoras()).isEqualTo(2.0);
-        assertThat(espera.excedente()).isEqualTo(0.0);
+        assertThat(espera.tiempoRealHoras()).isEqualByComparingTo(new BigDecimal("2.00"));
+        assertThat(espera.excedente()).isEqualByComparingTo(new BigDecimal("0.00"));
     }
 
     @Test
@@ -40,8 +41,8 @@ class EsperaFacturableTest {
         OffsetDateTime fin5Horas = T10_00.plusHours(5);
         EsperaFacturable espera = new EsperaFacturable(T10_00, fin5Horas, 2);
 
-        assertThat(espera.tiempoRealHoras()).isEqualTo(5.0);
-        assertThat(espera.excedente()).isEqualTo(3.0);
+        assertThat(espera.tiempoRealHoras()).isEqualByComparingTo(new BigDecimal("5.00"));
+        assertThat(espera.excedente()).isEqualByComparingTo(new BigDecimal("3.00"));
     }
 
     @Test
@@ -51,8 +52,8 @@ class EsperaFacturableTest {
         OffsetDateTime fin5HorasMedia = T10_00.plusHours(5).plusMinutes(30);
         EsperaFacturable espera = new EsperaFacturable(T10_00, fin5HorasMedia, 2);
 
-        assertThat(espera.tiempoRealHoras()).isEqualTo(5.5);
-        assertThat(espera.excedente()).isEqualTo(3.5);
+        assertThat(espera.tiempoRealHoras()).isEqualByComparingTo(new BigDecimal("5.50"));
+        assertThat(espera.excedente()).isEqualByComparingTo(new BigDecimal("3.50"));
     }
 
     @Test
