@@ -57,7 +57,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 
 | Slice | Invariantes | Estado |
 |---|---|---|
-| `S1-dominio` | CON-01, CON-02, CON-03 | pendiente |
+| `S1-dominio` | CON-01, CON-02, CON-03 | **done** |
 | `S2-persistencia` | — | pendiente |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contratos 3 y 6 | pendiente |
@@ -144,6 +144,10 @@ Ejecución no tiene `S4`: no publica endpoints de integración.
 | Flujo vertical | Orden → viaje → ejecución → factura → cobranza, de extremo a extremo | pendiente |
 
 ## Progreso
+
+Los contadores se actualizan **sólo en `main`**, al integrar cada rama. Una rama de slice marca `done`
+su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, el merge choca siempre.
+
 
 | | Hecho | Total |
 |---|---:|---:|

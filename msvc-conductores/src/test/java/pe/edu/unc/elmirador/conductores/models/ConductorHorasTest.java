@@ -126,8 +126,8 @@ class ConductorHorasTest {
         // En la ventana actual tiene 4.00 horas acumuladas
         assertThat(conductor.getHorasAcumuladas().horas()).isEqualByComparingTo("4.00");
 
-        // Fecha fuera de la ventana de computo (dos dias despues)
-        LocalDate fechaNueva = hoy.plusDays(2);
+        // La ventana es de un dia: el dia siguiente ya esta fuera
+        LocalDate fechaNueva = hoy.plusDays(1);
         conductor.acumularHoras(new BigDecimal("5.00"), fechaNueva);
 
         // La ventana se renovo y el acumulado parte de 0 + 5.00 = 5.00

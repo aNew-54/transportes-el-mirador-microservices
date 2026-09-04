@@ -260,7 +260,7 @@ class ConductorTest {
         Induccion induccionVencida = new Induccion("IND-VENCIDA", clienteMinero, vencida);
 
         // Registrar induccion ya vencida evaluada contra hoy
-        conductor.registrarInduccion(induccionVencida, hoy);
+        conductor.registrarInduccion(induccionVencida);
 
         boolean habilitado = conductor.estaHabilitadoPara(hoy, TipoDeUnidad.FURGON, new BigDecimal("2.00"), clienteMinero);
         List<String> motivos = conductor.motivosDeNoElegibilidad(hoy, TipoDeUnidad.FURGON, new BigDecimal("2.00"), clienteMinero);
@@ -289,10 +289,10 @@ class ConductorTest {
         );
 
         Induccion ind2 = new Induccion("IND-002", clienteMinero, nueva);
-        conductor.registrarInduccion(ind2, hoy);
+        conductor.registrarInduccion(ind2);
 
         assertThat(conductor.getInducciones()).hasSize(1);
-        assertThat(conductor.buscarInduccion(clienteMinero)).contains(ind2);
+        assertThat(conductor.getInducciones()).containsExactly(ind2);
         assertThat(conductor.estaHabilitadoPara(hoy, TipoDeUnidad.FURGON, new BigDecimal("2.00"), clienteMinero)).isTrue();
     }
 
@@ -404,8 +404,7 @@ class ConductorTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> conductor.rehabilitar(null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> conductor.registrarInduccion(
-                new Induccion("IND-1", "CLI-1", vigenciaValida), null))
+        assertThatThrownBy(() -> conductor.acumularHoras(new BigDecimal("1.00"), null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

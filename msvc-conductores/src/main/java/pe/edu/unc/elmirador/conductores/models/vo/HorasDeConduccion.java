@@ -5,6 +5,7 @@ import pe.edu.unc.elmirador.conductores.exceptions.HorasExcedidasException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 
 @Embeddable
 public record HorasDeConduccion(
@@ -36,6 +37,30 @@ public record HorasDeConduccion(
         return new HorasDeConduccion(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP), ventanaDeComputo);
     }
 
+    /**
+     * Indica si la ventana de computo vigente cubre esa fecha.
+     *
+     * <p>El maximo normado es de diez horas en veinticuatro (DS 017-2009-MTC). El dominio trabaja
+     * en dias calendario, asi que la ventana es exactamente un dia: se compara contra {@code desde}
+     * y no con {@link PeriodoDeVigencia#estaVigenteEn}, que es inclusivo en los dos extremos y
+     * convertiria una ventana de veinticuatro horas en una de cuarenta y ocho. Un conductor que
+     * agoto sus horas el lunes debe volver a tenerlas el martes.
+     */
+    public boolean cubre(LocalDate fecha) {
+        if (fecha == null) {
+            throw new IllegalArgumentException("La fecha no puede ser nula");
+        }
+        return ventanaDeComputo.desde().isEqual(fecha);
+    }
+
+    /** Abre la ventana de computo del dia indicado, con el acumulado en cero. */
+    public static HorasDeConduccion ventanaDe(LocalDate fecha) {
+        if (fecha == null) {
+            throw new IllegalArgumentException("La fecha no puede ser nula");
+        }
+        return cero(new PeriodoDeVigencia(fecha, fecha.plusDays(1)));
+    }
+
     public boolean tieneDisponibles(BigDecimal requeridas) {
         if (requeridas == null) {
             throw new IllegalArgumentException("Las horas requeridas no pueden ser nulas");
@@ -47,11 +72,8 @@ public record HorasDeConduccion(
     }
 
     public BigDecimal disponibles() {
-        BigDecimal disp = MAXIMO_HORAS.subtract(this.horas);
-        if (disp.compareTo(BigDecimal.ZERO) < 0) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        }
-        return disp.setScale(2, RoundingMode.HALF_UP);
+        // El constructor ya impide horas > MAXIMO_HORAS, asi que la resta nunca es negativa.
+        return MAXIMO_HORAS.subtract(this.horas).setScale(2, RoundingMode.HALF_UP);
     }
 
     public HorasDeConduccion acumular(BigDecimal adicionales) {

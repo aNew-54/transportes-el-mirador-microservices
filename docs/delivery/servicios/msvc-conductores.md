@@ -204,3 +204,29 @@ Bordes obligatorios:
 - `motivosDeNoElegibilidad` acumulando dos motivos, y lista vacía en el caso elegible.
 - Toda operación con fecha nula lanza `IllegalArgumentException` (el dominio no lee el reloj).
 - `NumeroDeLicencia` rechaza formato inválido y normaliza minúsculas.
+
+### Correcciones tras la revisión de `S1-dominio`
+
+**La ventana de cómputo dura veinticuatro horas, no cuarenta y ocho.** `PeriodoDeVigencia.estaVigenteEn`
+es inclusivo en los dos extremos, así que aplicarlo sobre `[fecha, fecha+1]` hacía que el día siguiente
+siguiera contando como el mismo periodo. Un conductor que agotaba sus diez horas el lunes seguía sin horas
+el martes, y en el contrato 3 aparecía como no elegible con motivo `HORAS_INSUFICIENTES` sin que nadie
+pudiera explicar por qué.
+
+La ventana la decide ahora el objeto de valor: `HorasDeConduccion.cubre(LocalDate)` compara contra
+`desde`, y `HorasDeConduccion.ventanaDe(LocalDate)` abre la del día. El agregado ya no construye periodos
+a mano.
+
+La prueba que lo detecta —`ConductorHorasTest`, caso de fecha fuera de la ventana— falla contra la versión
+anterior con `expected: 5.00 but was: 9.00`. `VentanaDeConduccionTest` añade tres casos más.
+
+Otras dos correcciones menores:
+
+| Antes | Ahora | Por qué |
+|---|---|---|
+| `registrarInduccion(induccion, fecha)` | `registrarInduccion(induccion)` | La fecha se validaba y no se usaba. Un parámetro muerto miente sobre lo que hace el método, y S3 lo habría copiado al controlador. CON-03 no es estado almacenado: se evalúa por cliente al consultar la elegibilidad |
+| `buscarInduccion` público | privado | El agregado decide; no expone su búsqueda interna. La prueba pasa a comprobar el efecto observable |
+
+**Decisión de agy que se acepta:** inducción ausente e inducción vencida emiten el mismo motivo
+`INDUCCION_VENCIDA:<clienteId>`. El contrato 3 no define `INDUCCION_AUSENTE` y el enum de motivos es
+normativo; inventar un código habría roto al consumidor.

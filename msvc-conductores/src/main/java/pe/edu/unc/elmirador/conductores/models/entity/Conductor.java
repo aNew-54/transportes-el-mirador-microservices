@@ -144,27 +144,17 @@ public class Conductor {
             throw new IllegalArgumentException("Las horas a acumular no pueden ser negativas");
         }
 
-        if (!this.horasAcumuladas.ventanaDeComputo().estaVigenteEn(fecha)) {
-            PeriodoDeVigencia nuevaVentana = new PeriodoDeVigencia(fecha, fecha.plusDays(1));
-            HorasDeConduccion base = new HorasDeConduccion(
-                    BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
-                    nuevaVentana
-            );
-            this.horasAcumuladas = base.acumular(horas);
-        } else {
-            this.horasAcumuladas = this.horasAcumuladas.acumular(horas);
-        }
+        HorasDeConduccion base = this.horasAcumuladas.cubre(fecha)
+                ? this.horasAcumuladas
+                : HorasDeConduccion.ventanaDe(fecha);
+        this.horasAcumuladas = base.acumular(horas);
     }
 
     public void registrarDescanso(LocalDate fecha) {
         if (fecha == null) {
             throw new IllegalArgumentException("La fecha no puede ser nula");
         }
-        PeriodoDeVigencia nuevaVentana = new PeriodoDeVigencia(fecha, fecha.plusDays(1));
-        this.horasAcumuladas = new HorasDeConduccion(
-                BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP),
-                nuevaVentana
-        );
+        this.horasAcumuladas = HorasDeConduccion.ventanaDe(fecha);
     }
 
     public void renovarLicencia(
@@ -186,12 +176,14 @@ public class Conductor {
         this.vigenciaLicencia = nuevaVigencia;
     }
 
-    public void registrarInduccion(Induccion induccion, LocalDate fecha) {
+    /**
+     * Registra o renueva la induccion de un cliente. No recibe fecha a proposito: CON-03 no es un
+     * estado almacenado sino una evaluacion por cliente, y se resuelve al consultar la elegibilidad.
+     * Registrar una induccion ya vencida no habilita a nadie.
+     */
+    public void registrarInduccion(Induccion induccion) {
         if (induccion == null) {
             throw new IllegalArgumentException("La induccion no puede ser nula");
-        }
-        if (fecha == null) {
-            throw new IllegalArgumentException("La fecha no puede ser nula");
         }
         this.inducciones.removeIf(i -> i.getClienteId().equalsIgnoreCase(induccion.getClienteId()));
         this.inducciones.add(induccion);
@@ -216,7 +208,7 @@ public class Conductor {
         this.estado = EstadoDeHabilitacion.habilitado();
     }
 
-    public Optional<Induccion> buscarInduccion(String clienteId) {
+    private Optional<Induccion> buscarInduccion(String clienteId) {
         if (clienteId == null || clienteId.isBlank()) {
             return Optional.empty();
         }
