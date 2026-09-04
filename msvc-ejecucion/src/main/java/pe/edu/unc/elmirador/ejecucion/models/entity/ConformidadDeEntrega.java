@@ -1,16 +1,42 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.OffsetDateTime;
 import pe.edu.unc.elmirador.ejecucion.models.vo.EstadoConformidad;
 
+@Entity
+@Table(name = "conformidades")
 public class ConformidadDeEntrega {
 
-    private final String id;
-    private final String ordenDeServicioId;
-    private final EstadoConformidad estado;
-    private final String recibidoPor;
-    private final OffsetDateTime fechaDeFirma;
-    private final String observaciones;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "orden_de_servicio_id", length = 40, nullable = false)
+    private String ordenDeServicioId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
+    private EstadoConformidad estado;
+
+    @Column(name = "recibido_por", length = 200)
+    private String recibidoPor;
+
+    @Column(name = "fecha_de_firma")
+    private OffsetDateTime fechaDeFirma;
+
+    @Column(name = "observaciones", length = 500)
+    private String observaciones;
+
+    /** Exigido por JPA. No usar: no valida nada. */
+    protected ConformidadDeEntrega() {
+    }
 
     public ConformidadDeEntrega(
             String id,

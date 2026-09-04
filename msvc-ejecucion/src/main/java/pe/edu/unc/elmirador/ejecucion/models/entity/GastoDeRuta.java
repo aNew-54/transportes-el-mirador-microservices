@@ -1,17 +1,54 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Embedded;
+
 import pe.edu.unc.elmirador.ejecucion.exceptions.GastoSinComprobanteException;
 import pe.edu.unc.elmirador.ejecucion.models.vo.ConceptoDeGasto;
 import pe.edu.unc.elmirador.ejecucion.models.vo.Comprobante;
 import pe.edu.unc.elmirador.ejecucion.models.vo.Dinero;
 
+@Entity
+@Table(name = "gastos_de_ruta")
 public class GastoDeRuta {
 
-    private final String id;
-    private final ConceptoDeGasto concepto;
-    private final Dinero importe;
-    private final Comprobante comprobante;
-    private final String descripcion;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "concepto", length = 20, nullable = false)
+    private ConceptoDeGasto concepto;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "importe_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "importe_moneda", length = 3, nullable = false))
+    })
+    private Dinero importe;
+
+    /** LIQ-01: sin comprobante no hay gasto. Obligatorio tambien en la columna. */
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "tipo", column = @Column(name = "comprobante_tipo", length = 30, nullable = false)),
+        @AttributeOverride(name = "numero", column = @Column(name = "comprobante_numero", length = 40, nullable = false)),
+        @AttributeOverride(name = "fecha", column = @Column(name = "comprobante_fecha", nullable = false))
+    })
+    private Comprobante comprobante;
+
+    @Column(name = "descripcion", length = 300)
+    private String descripcion;
+
+    /** Exigido por JPA. No usar: no valida nada. */
+    protected GastoDeRuta() {
+    }
 
     public GastoDeRuta(
             String id,

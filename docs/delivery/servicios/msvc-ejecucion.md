@@ -273,3 +273,22 @@ se puede violar tampoco se puede probar. Queda incorporado a la spec.
 
 `Parada.estaConforme()` usa `conformidad != null && conformidad.estaFirmada()`, que parece un D2 pero no lo
 es: es un predicado positivo, y la ausencia de conformidad da `false`. Falla cerrado.
+
+### Notas de `S2-persistencia`
+
+Es el contexto con los mapeos más incómodos, y de aquí salieron tres piezas de la receta:
+
+- **`Evidencia` y `ResultadoDeCheckList` dejan de ser `record`.** Los dos poseen una colección, y un
+  `record` no puede recibirla: Hibernate lo construye entero por el constructor canónico y sólo después
+  rellena las colecciones. Pasan a clase inmutable, con la misma API hacia fuera.
+- **`Parada` gana una clave sustituta.** Su identidad de negocio es la secuencia dentro de la ejecución,
+  que no es única en la tabla. El `Long` generado es una concesión al mapeo y el dominio no lo ve: no
+  hay accesor.
+- **`LiquidacionDeViaje` lleva clave compuesta** `viajeId` + `conductorId` con `@IdClass`. No es un
+  capricho del mapeo: en un viaje con relevo hay dos liquidaciones sobre el mismo viaje, y la prueba de
+  integración las guarda las dos y comprueba que aprobar una no aprueba la otra.
+
+**LIQ-02 se comprueba ahora en dos niveles.** La prueba de dominio recorre `getDeclaredFields()` y exige
+que no exista un campo `saldo`; la de integración lee los metadatos de la tabla `liquidaciones` y exige
+que no exista una columna `saldo`. Una invariante que dice «nunca se almacena» tiene que verificarse
+también donde se almacena.

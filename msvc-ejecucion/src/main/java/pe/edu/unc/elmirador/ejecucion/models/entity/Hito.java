@@ -1,14 +1,36 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.OffsetDateTime;
 import pe.edu.unc.elmirador.ejecucion.models.vo.TipoDeHito;
 
+@Entity
+@Table(name = "hitos")
 public class Hito {
 
-    private final String id;
-    private final TipoDeHito tipo;
-    private final OffsetDateTime momento;
-    private final String ubicacion;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", length = 30, nullable = false)
+    private TipoDeHito tipo;
+
+    @Column(name = "momento", nullable = false)
+    private OffsetDateTime momento;
+
+    @Column(name = "ubicacion", length = 300)
+    private String ubicacion;
+
+    /** Exigido por JPA. No usar: no valida nada. */
+    protected Hito() {
+    }
 
     public Hito(String id, TipoDeHito tipo, OffsetDateTime momento, String ubicacion) {
         if (id == null || id.isBlank()) {

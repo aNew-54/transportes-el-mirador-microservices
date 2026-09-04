@@ -1,17 +1,67 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+
 import pe.edu.unc.elmirador.ejecucion.exceptions.DominioEjecucionException;
 import pe.edu.unc.elmirador.ejecucion.models.vo.EsperaFacturable;
 import pe.edu.unc.elmirador.ejecucion.models.vo.EstadoDeParada;
 
+@Entity
+@Table(name = "paradas")
 public class Parada {
 
-    private final int secuencia;
-    private final String ordenDeServicioId;
-    private final String direccion;
+    /**
+     * Clave sustituta, exigida por JPA. La identidad de negocio de una parada es su secuencia
+     * dentro de la ejecucion, que no es unica por si sola en la tabla: el dominio no la ve.
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "secuencia", nullable = false)
+    private int secuencia;
+
+    @Column(name = "orden_de_servicio_id", length = 40, nullable = false)
+    private String ordenDeServicioId;
+
+    @Column(name = "direccion", length = 300)
+    private String direccion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeParada estado;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "conformidad_id")
     private ConformidadDeEntrega conformidad;
+
+    // Nula mientras no haya espera. Sus componentes se renombran para no chocar con nada mas.
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "inicio", column = @Column(name = "espera_inicio")),
+        @AttributeOverride(name = "fin", column = @Column(name = "espera_fin")),
+        @AttributeOverride(name = "tiempoLibreHoras", column = @Column(name = "espera_tiempo_libre"))
+    })
     private EsperaFacturable esperaFacturable;
+
+    /** Exigido por JPA. No usar: no valida nada. */
+    protected Parada() {
+    }
 
     public Parada(int secuencia, String ordenDeServicioId, String direccion) {
         if (secuencia <= 0) {

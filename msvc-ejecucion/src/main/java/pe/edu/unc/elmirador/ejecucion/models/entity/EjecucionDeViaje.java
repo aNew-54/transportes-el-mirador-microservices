@@ -1,5 +1,24 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
+
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,18 +37,54 @@ import pe.edu.unc.elmirador.ejecucion.models.vo.ResultadoDeCheckList;
  * Comparte identidad con el viaje planificado (viajeId).
  * Sostiene las invariantes EJV-01 a EJV-05 y LIQ-04.
  */
+@Entity
+@Table(name = "ejecuciones")
 public class EjecucionDeViaje {
 
-    private final String viajeId;
+    /** La identidad la comparte con el viaje planificado: no hay id propio. */
+    @Id
+    @Column(name = "viaje_id", length = 40, nullable = false)
+    private String viajeId;
+
+    @Column(name = "unidad_ejecutora_id", length = 40, nullable = false)
     private String unidadEjecutoraId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeEjecucion estado;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "checklist_id")
     private CheckListDeSalida checkList;
-    private final List<Parada> paradas;
-    private final List<Hito> hitos;
-    private final List<Incidencia> incidencias;
-    private final List<String> unidadesAnteriores;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "ejecucion_id", nullable = false)
+    @OrderBy("secuencia ASC")
+    private List<Parada> paradas = new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "ejecucion_id", nullable = false)
+    private List<Hito> hitos = new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "ejecucion_id", nullable = false)
+    private List<Incidencia> incidencias = new ArrayList<>();
+
+    /** EJV-05: el transbordo apila aqui la unidad anterior y conserva el viajeId. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "ejecucion_unidades_anteriores", joinColumns = @JoinColumn(name = "ejecucion_id"))
+    @Column(name = "unidad_id", length = 40, nullable = false)
+    private List<String> unidadesAnteriores = new ArrayList<>();
+
+    @Column(name = "fecha_inicio")
     private OffsetDateTime fechaInicio;
+
+    @Column(name = "fecha_entrega")
     private OffsetDateTime fechaEntrega;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected EjecucionDeViaje() {
+    }
 
     public static EjecucionDeViaje crear(String viajeId, String unidadEjecutoraId, List<Parada> paradas) {
         return new EjecucionDeViaje(viajeId, unidadEjecutoraId, paradas);
@@ -49,10 +104,10 @@ public class EjecucionDeViaje {
         this.unidadEjecutoraId = unidadEjecutoraId.trim();
         this.estado = EstadoDeEjecucion.PENDIENTE;
         this.checkList = null;
-        this.paradas = new ArrayList<>(paradas);
-        this.hitos = new ArrayList<>();
-        this.incidencias = new ArrayList<>();
-        this.unidadesAnteriores = new ArrayList<>();
+        this.paradas.addAll(paradas);
+        
+        
+        
         this.fechaInicio = null;
         this.fechaEntrega = null;
     }

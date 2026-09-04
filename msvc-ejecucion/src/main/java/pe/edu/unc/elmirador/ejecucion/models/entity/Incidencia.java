@@ -1,18 +1,46 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Embedded;
+
 import java.time.OffsetDateTime;
 import pe.edu.unc.elmirador.ejecucion.exceptions.EvidenciaRequeridaException;
 import pe.edu.unc.elmirador.ejecucion.models.vo.Evidencia;
 import pe.edu.unc.elmirador.ejecucion.models.vo.TipoDeIncidencia;
 
+@Entity
+@Table(name = "incidencias")
 public class Incidencia {
 
-    private final String id;
-    private final TipoDeIncidencia tipo;
-    private final String descripcion;
-    private final Evidencia evidencia;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", length = 30, nullable = false)
+    private TipoDeIncidencia tipo;
+
+    @Column(name = "descripcion", length = 500, nullable = false)
+    private String descripcion;
+
+    // Nula cuando el tipo no la exige. Evidencia declara sus propias columnas y su coleccion.
+    @Embedded
+    private Evidencia evidencia;
+
+    @Column(name = "resuelta", nullable = false)
     private boolean resuelta;
-    private final OffsetDateTime momento;
+
+    @Column(name = "momento", nullable = false)
+    private OffsetDateTime momento;
+
+    /** Exigido por JPA. No usar: no valida nada. */
+    protected Incidencia() {
+    }
 
     public Incidencia(
             String id,
