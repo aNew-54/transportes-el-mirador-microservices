@@ -26,6 +26,15 @@ public record Parada(
         ubicacion = (ubicacion != null) ? ubicacion.trim() : "";
     }
 
+    /** Tipos que publica el contrato 4. No se inventan otros aqui. */
+    public static final String CARGA = "CARGA";
+
+    public static final String DESCARGA = "DESCARGA";
+
+    public boolean esDescarga() {
+        return DESCARGA.equals(this.tipo);
+    }
+
     public static Parada de(int secuencia, String tipo, String ordenDeServicioId) {
         return new Parada(secuencia, tipo, ordenDeServicioId, "", null);
     }

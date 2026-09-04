@@ -24,7 +24,6 @@ public record Ruta(String origen, String destino, String corredor) {
         if (otra == null) {
             throw new IllegalArgumentException("La otra ruta es obligatoria");
         }
-        // TODO S1b: VIA-03 - comparar corredores de ambas rutas
-        return true;
+        return this.corredor.equalsIgnoreCase(otra.corredor);
     }
 }

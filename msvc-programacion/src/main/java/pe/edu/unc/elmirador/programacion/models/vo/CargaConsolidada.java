@@ -51,7 +51,7 @@ public record CargaConsolidada(List<Carga> cargas) {
         if (capacidad == null) {
             throw new IllegalArgumentException("La capacidad es obligatoria");
         }
-        // TODO S1b: VIA-02 - verificar pesoTotal() <= capacidad.pesoMaximoKg() y volumenTotal().compareTo(capacidad.volumenMaximoM3()) <= 0
-        return true;
+        return pesoTotal() <= capacidad.pesoMaximoKg()
+                && volumenTotal().compareTo(capacidad.volumenMaximoM3()) <= 0;
     }
 }
