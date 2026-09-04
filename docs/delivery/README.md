@@ -171,7 +171,68 @@ ENTREGABLE
 Digest: archivos creados, invariantes cubiertas, pruebas añadidas. Sin volcados de código.
 ```
 
-## 6. Medición
+## 6. Reglas de dominio
+
+Salieron de revisar los slices de la Ola 1. **Cada una corresponde a un defecto real que llegó con todas
+las pruebas en verde.** Son normativas para los siete contextos y toda spec de slice las da por incluidas.
+
+### D1 · El dominio no lee el reloj
+
+Ni un `LocalDate.now()` ni un `Instant.now()` en `src/main`. Toda operación que dependa de «hoy» recibe la
+fecha y la exige no nula. Prohibida la sobrecarga sin fecha que la deduzca por dentro.
+
+*Origen:* `Unidad.estaHabilitada()` tenía una sobrecarga con reloj implícito — una prueba no determinista
+esperando a romper el CI.
+
+### D2 · Ninguna invariante se evade pasando `null`
+
+Prohibido `if (x != null && !cumple) { fallar; }`: deja pasar el caso nulo. Si un dato hace falta para
+evaluar una invariante, es obligatorio y su ausencia lanza.
+
+*Origen:* `OrdenDeMantenimiento.abrir()` aceptaba `kmUltimoMantenimiento` nulo y se saltaba OMT-02 entera.
+
+### D3 · Ningún constructor de escape
+
+Si una invariante compara importes o cantidades que llegan de fuera, **se reciben todos**. Deducir uno de
+los otros hace que la igualdad se cumpla por construcción y la comprobación no pueda fallar jamás.
+
+*Origen:* `CuentaPorCobrar` deducía `montoNeto = total − detraccion`, así que FAC-04 era indemostrable por
+esa vía. La usaban 34 de 35 llamadas.
+
+### D4 · Nada de valores por defecto silenciosos
+
+La moneda de un importe es obligatoria. Ni `"PEN"` por defecto, ni deducirla del primer elemento de una
+lista, ni reventar cuando la lista está vacía.
+
+*Origen:* `deudaTotal()` adivinaba la moneda y lanzaba `IllegalStateException` con la cartera vacía — que
+es el primer caso que responde el contrato 11.
+
+### D5 · Cuidado con los rangos inclusivos
+
+Un periodo `[desde, hasta]` inclusivo en ambos extremos convierte una ventana de un día en una de dos.
+Los bordes se prueban uno a uno contra la tabla, nunca se dan por hechos.
+
+*Origen:* la ventana de conducción duraba cuarenta y ocho horas en vez de veinticuatro, y la prueba estaba
+escrita contra el defecto: usaba `plusDays(2)` para «salir de la ventana».
+
+### D6 · Se valida todo antes de mutar nada
+
+Una operación que toca dos agregados comprueba todas sus condiciones primero y sólo entonces muta. Ninguna
+de las dos partes puede quedar a medias.
+
+### D7 · Ningún parámetro muerto
+
+Un argumento que se valida y no se usa miente sobre lo que hace el método, y el slice siguiente lo copia
+al controlador.
+
+*Origen:* `Conductor.registrarInduccion(induccion, fecha)`.
+
+### D8 · Lo derivado se calcula
+
+`saldo()`, `total()`, `montoNeto()`, `deudaTotal()` y compañía se calculan en el momento. Un campo
+persistido que duplica un cálculo es un defecto, y en `LiquidacionDeViaje` lo dice la propia LIQ-02.
+
+## 7. Medición
 
 Cada delegación deja su consumo en `~/.claude/agy-usage.log` (`AGY_USAGE`). Sirve para saber si delegar
 un tipo de slice compensa. Si un slice necesita más de dos rondas de corrección, deja de compensar: la

@@ -59,3 +59,6 @@ coverage/
 
 # Local database volumes
 .data/
+
+# Worktrees de delegación paralela
+.worktrees/

@@ -116,3 +116,146 @@ se registra y se reintenta; no se descarta en silencio.
 - [ ] Idempotencia probada: dos `POST` con la misma clave producen un solo efecto
 - [ ] 0 imports de otro contexto
 - [ ] Sano en `./scripts/smoke-test.sh`
+
+---
+
+## Slice `S1-dominio` — decisiones de diseño
+
+Sólo dominio y pruebas. Sin `@Entity`, sin repositorios, sin controladores, sin Feign, sin migraciones.
+Rigen las ocho **reglas de dominio** de [`../README.md`](../README.md#6-reglas-de-dominio).
+
+Es el slice con más invariantes después del Core: nueve, repartidas en dos agregados que no se tocan entre sí.
+
+### Correspondencia con el diseño táctico (regla 13)
+
+| Diseño táctico | Código |
+|---|---|
+| `EjecuciónDeViaje` | `EjecucionDeViaje` |
+| `LiquidaciónDeViaje` | `LiquidacionDeViaje` |
+| `EstadoDeEjecución` | `EstadoDeEjecucion` |
+| `ConformidadDeEntrega` | igual |
+| `EstadoDeLiquidación` | `EstadoDeLiquidacion` |
+
+El tiempo se modela con `OffsetDateTime`: hitos, esperas y conformidades son instantes, no días.
+
+### Objetos de valor — `models/vo`
+
+| Tipo | Forma | Comportamiento |
+|---|---|---|
+| `Dinero` | `record Dinero(BigDecimal monto, String codigoMoneda)` | No negativo, escala 2, ISO-4217. `sumar`, `restar`, `esMayorQue`. Monedas distintas lanzan |
+| `Saldo` | `record Saldo(Dinero importe, SignoDeSaldo signo)` | **Nunca se persiste** (**LIQ-02**). Fábrica `Saldo.entre(Dinero anticipo, Dinero gastos)`: `A_FAVOR_DEL_CONDUCTOR` si los gastos superan el anticipo, `A_FAVOR_DE_LA_EMPRESA` si sobra anticipo, `SALDADO` si coinciden |
+| `Evidencia` | `record Evidencia(List<String> fotografias, String descripcion, OffsetDateTime momento)` | Al menos una fotografía y descripción no vacía. Lista inmutable |
+| `EsperaFacturable` | `record EsperaFacturable(OffsetDateTime inicio, OffsetDateTime fin, int tiempoLibreHoras)` | `fin` posterior a `inicio`. **`excedente()`** devuelve sólo las horas que superan el tiempo libre pactado, o cero. Es lo que viaja en los contratos 7 y 8 |
+| `Comprobante` | `record Comprobante(String tipo, String numero, OffsetDateTime fecha)` | Los tres obligatorios y no vacíos. Es lo que exige **LIQ-01** |
+| `ResultadoDeCheckList` | `record ResultadoDeCheckList(boolean aprobado, List<String> observaciones, OffsetDateTime momento)` | No aprobado exige observaciones no vacías |
+
+Enumeraciones: `EstadoDeEjecucion` (`PENDIENTE` · `EN_RUTA` · `SUSPENDIDA` · `ENTREGADA` · `CERRADA`),
+`EstadoDeParada` (`PENDIENTE` · `EN_SITIO` · `ATENDIDA`), `TipoDeHito` (`SALIDA` · `PASO_DE_CONTROL` ·
+`LLEGADA_A_PARADA` · `INICIO_DE_DESCARGA` · `FIN_DE_DESCARGA` · `LLEGADA_A_DESTINO`), `TipoDeIncidencia`
+(`DANIO` · `FALTANTE` · `RECHAZO_DE_CARGA` · `AVERIA` · `DEMORA` · `CLIMA` · `BLOQUEO_DE_VIA`),
+`EstadoConformidad` (`PENDIENTE` · `FIRMADA` · `OBSERVADA`), `ConceptoDeGasto` (`COMBUSTIBLE` · `PEAJE` ·
+`VIATICO` · `COCHERA` · `IMPREVISTO`), `EstadoDeLiquidacion` (`ABIERTA` · `OBSERVADA` · `APROBADA`),
+`SignoDeSaldo` (`A_FAVOR_DEL_CONDUCTOR` · `A_FAVOR_DE_LA_EMPRESA` · `SALDADO`).
+
+`DANIO` en vez de `DAÑO` por la regla 13.
+
+**Las tres incidencias que exigen evidencia** son `DANIO`, `FALTANTE` y `RECHAZO_DE_CARGA`.
+`TipoDeIncidencia.exigeEvidencia()` lo decide, y es la misma lista que bloquea la emisión en Facturación
+(FAC-05).
+
+**Transiciones permitidas de `EstadoDeEjecucion`:**
+
+| Desde | Hacia |
+|---|---|
+| `PENDIENTE` | `EN_RUTA` |
+| `EN_RUTA` | `SUSPENDIDA` · `ENTREGADA` |
+| `SUSPENDIDA` | `EN_RUTA` |
+| `ENTREGADA` | `CERRADA` |
+| `CERRADA` | — (terminal) |
+
+### Agregado `EjecucionDeViaje` — `models/entity`
+
+Raíz `EjecucionDeViaje`, **con la identidad del viaje**: el campo `id` es el `viajeId`. Entidades hijas
+`CheckListDeSalida`, `Parada`, `ConformidadDeEntrega`, `Hito`, `Incidencia`.
+
+Campos: `viajeId`, `unidadEjecutoraId`, `EstadoDeEjecucion`, `CheckListDeSalida` (nulo hasta registrarlo),
+`List<Parada>`, `List<Hito>`, `List<Incidencia>`, `List<String> unidadesAnteriores`.
+
+| Método | Contrato |
+|---|---|
+| `crear(String viajeId, String unidadEjecutoraId, List<Parada>)` | Nace `PENDIENTE`. Las paradas vienen de la hoja de ruta (contrato 4); Ejecución es `Conformist` y no las decide |
+| `registrarCheckList(ResultadoDeCheckList)` | Sólo en `PENDIENTE` |
+| `iniciar(OffsetDateTime)` | **EJV-01**: sin check-list registrado **o** con check-list no aprobado, lanza `CheckListNoAprobadoException`. Pasa a `EN_RUTA` |
+| `reportarHito(Hito)` | **EJV-04**: sobre una ejecución `ENTREGADA` o `CERRADA` lanza `EjecucionEntregadaException` |
+| `registrarIncidencia(Incidencia)` | Si `tipo.exigeEvidencia()` y la evidencia falta, lanza `EvidenciaRequeridaException` |
+| `registrarConformidad(int secuenciaDeParada, ConformidadDeEntrega)` | **EJV-02**: la conformidad pertenece a la **parada**, y cada parada corresponde a una orden de servicio. Registrar dos conformidades en la misma parada lanza. Reabrir una parada `ATENDIDA` lanza (**EJV-04**) |
+| `marcarEntregada(OffsetDateTime)` | **EJV-03**: si alguna parada no tiene conformidad `FIRMADA`, lanza `ConformidadesPendientesException`. Sólo entonces pasa a `ENTREGADA` |
+| `transbordar(String nuevaUnidadId)` | **EJV-05**: cambia `unidadEjecutoraId` y apila la anterior en `unidadesAnteriores`. **Conserva el `viajeId`**: no se crea una ejecución nueva. Sobre `ENTREGADA` o `CERRADA` lanza |
+| `cerrar(boolean hayLiquidacionesPendientes)` | **LIQ-04**: con liquidaciones pendientes lanza `LiquidacionPendienteException`. El parámetro es **obligatorio** (regla D2): la liquidación vive en otro agregado y no se asume que esté aprobada |
+| `incidenciasSinResolver()` | Las que exigen evidencia y siguen abiertas. Alimenta el contrato 8 y FAC-05 |
+
+Entidades hijas:
+
+- `Parada`: `secuencia`, `ordenDeServicioId`, `direccion`, `EstadoDeParada`, `ConformidadDeEntrega` (nula
+  hasta firmarse), `EsperaFacturable` (nula). **Inmutable en su itinerario**: no hay método que cambie
+  secuencia, dirección ni orden. Si el itinerario cambia, Programación emite una hoja de ruta nueva.
+- `ConformidadDeEntrega`: `id`, `ordenDeServicioId`, `EstadoConformidad`, `recibidoPor`, `OffsetDateTime`,
+  `observaciones`.
+- `Hito`: `id`, `TipoDeHito`, `OffsetDateTime`, `ubicacion`.
+- `Incidencia`: `id`, `TipoDeIncidencia`, `descripcion`, `Evidencia` (nula si el tipo no la exige),
+  `boolean resuelta`, `OffsetDateTime`.
+- `CheckListDeSalida`: `id`, `ResultadoDeCheckList`.
+
+### Agregado `LiquidacionDeViaje` — `models/entity`
+
+Raíz `LiquidacionDeViaje`, entidad hija `GastoDeRuta`. **Identidad compuesta `viajeId` + `conductorId`**:
+en un viaje con relevo hay dos liquidaciones independientes.
+
+Campos: `viajeId`, `conductorId`, `Dinero anticipo`, `List<GastoDeRuta>`, `EstadoDeLiquidacion`,
+`OffsetDateTime fechaDeAprobacion`.
+
+| Método | Contrato |
+|---|---|
+| `abrir(String viajeId, String conductorId, Dinero anticipo)` | Nace `ABIERTA` |
+| `rendirGasto(GastoDeRuta)` | **LIQ-01**: sin comprobante lanza `GastoSinComprobanteException`. **LIQ-03**: sobre una `APROBADA` lanza `LiquidacionAprobadaException` |
+| `totalDeGastos()` | Suma de los gastos. **D8: se calcula** |
+| `saldo()` | **LIQ-02**: `Saldo.entre(anticipo, totalDeGastos())`. **Se calcula siempre y no se persiste.** No existe campo `saldo` ni setter |
+| `aprobar(OffsetDateTime)` | **LIQ-03**: aprobar una ya `APROBADA` lanza. Pasa a `APROBADA` |
+| `observar(String motivo)` | De `ABIERTA` a `OBSERVADA`. Sobre `APROBADA` lanza |
+| `estaPendiente()` | `true` mientras no esté `APROBADA`. Es lo que consulta **LIQ-04** |
+
+`GastoDeRuta` — entidad hija: `id`, `ConceptoDeGasto`, `Dinero importe`, `Comprobante` **obligatorio**,
+`descripcion`. El comprobante obligatorio en el constructor hace **LIQ-01** inexpresable de otro modo.
+
+### Excepciones — `exceptions`
+
+Raíz `DominioEjecucionException`; herederas `MonedaIncompatibleException`, `CheckListNoAprobadoException`,
+`EjecucionEntregadaException`, `ConformidadesPendientesException`, `EvidenciaRequeridaException`,
+`GastoSinComprobanteException`, `LiquidacionAprobadaException`, `LiquidacionPendienteException`,
+`TransicionDeEjecucionInvalidaException`.
+
+### Pruebas exigidas por este slice
+
+| Invariante | Prueba mínima |
+|---|---|
+| **EJV-01** | `iniciar` sin check-list lanza. Con check-list **no aprobado** lanza. Con check-list aprobado pasa a `EN_RUTA`. Son tres casos, no uno |
+| **EJV-02** | Viaje con tres paradas de tres órdenes distintas: se registran tres conformidades, una por parada. Dos conformidades en la misma parada lanzan |
+| **EJV-03** | Con dos de tres conformidades firmadas, `marcarEntregada` lanza y el estado sigue `EN_RUTA`. Con las tres, pasa a `ENTREGADA` |
+| **EJV-04** | Sobre una ejecución `ENTREGADA`: `reportarHito` lanza y reabrir una parada `ATENDIDA` lanza |
+| **EJV-05** | Transbordo: `unidadEjecutoraId` cambia, `viajeId` **no**, y la unidad anterior queda registrada |
+| **LIQ-01** | `GastoDeRuta` sin comprobante no se puede construir; `rendirGasto` con comprobante incompleto lanza |
+| **LIQ-02** | `saldo()` se recalcula tras rendir un gasto nuevo. No existe campo ni setter de saldo — se comprueba por reflexión que la clase no declara un campo llamado `saldo` |
+| **LIQ-03** | Sobre una liquidación `APROBADA`: `rendirGasto`, `aprobar` y `observar` lanzan |
+| **LIQ-04** | `cerrar(true)` lanza; `cerrar(false)` sobre una ejecución `ENTREGADA` pasa a `CERRADA` |
+
+Bordes obligatorios:
+
+- Viaje con relevo: dos liquidaciones con el mismo `viajeId` y distinto `conductorId`, independientes; aprobar
+  una no aprueba la otra.
+- Incidencia de `DANIO`, `FALTANTE` y `RECHAZO_DE_CARGA` sin evidencia: las tres lanzan. `DEMORA` sin
+  evidencia no lanza.
+- `EsperaFacturable.excedente()` con espera menor, igual y mayor que el tiempo libre: cero, cero y la
+  diferencia. El borde exacto se prueba (regla D5).
+- `Saldo.entre` en los tres signos, incluido el caso exacto `SALDADO`.
+- Las transiciones prohibidas de `EstadoDeEjecucion`, una a una.
+- Toda operación con fecha nula lanza `IllegalArgumentException`.

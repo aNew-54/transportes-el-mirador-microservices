@@ -114,3 +114,171 @@ elegibilidad no verificable **no** se trata como elegible.
 - [ ] `GET /internal/v1/viajes/{id}/hoja-de-ruta` devuelve `409` para un viaje en `PLANIFICADO`
 - [ ] 0 imports de otro contexto
 - [ ] Sano en `./scripts/smoke-test.sh`
+
+---
+
+## Slices `S1a-dominio-base` y `S1b-consolidacion` — decisiones de diseño
+
+Sólo dominio y pruebas. Sin `@Entity`, sin repositorios, sin controladores, sin Feign, sin migraciones.
+Rigen las ocho **reglas de dominio** de [`../README.md`](../README.md#6-reglas-de-dominio).
+
+El slice está partido porque el reparto de trabajo lo exige: `S1a` es mecánico y se delega; `S1b` es el
+«20 % duro» —consolidación y estiba— y lo implementa Claude. **`S1a` deja los huecos declarados**, con la
+firma exacta que `S1b` rellenará, para que las dos mitades encajen sin renegociar nada.
+
+### Correspondencia con el diseño táctico (regla 13)
+
+| Diseño táctico | Código |
+|---|---|
+| `AsignaciónDeRecursos` | `AsignacionDeRecursos` |
+| `secuenciaDeEstiba()` | igual |
+| `tramoDeGestión()` | no aplica aquí |
+| `Programación` | `Programacion` |
+
+### El tiempo se modela con `OffsetDateTime`
+
+Las ventanas de reserva son instantes, no días. El contrato 2 y el 3 mandan `desde`/`hasta` en ISO 8601 con
+offset (regla 6), y la regla D5 ya costó un defecto por usar fechas donde hacían falta instantes. Aquí
+`VentanaDeTiempo` usa `OffsetDateTime` desde el principio.
+
+---
+
+## `S1a-dominio-base` — AGU-01, AGU-02, AGC-01, AGC-02, VIA-01, VIA-07
+
+### Objetos de valor — `models/vo`
+
+| Tipo | Forma | Comportamiento |
+|---|---|---|
+| `VentanaDeTiempo` | `record VentanaDeTiempo(OffsetDateTime desde, OffsetDateTime hasta)` | `hasta` posterior a `desde`. **`seSolapaCon(otra)`: `desde < otra.hasta && otra.desde < hasta`.** Dos ventanas que sólo se tocan en el borde **no** se solapan (regla D5) |
+| `Capacidad` | `record Capacidad(int pesoMaximoKg, BigDecimal volumenMaximoM3)` | Ambos positivos |
+| `Carga` | `record Carga(String ordenDeServicioId, int pesoKg, BigDecimal volumenM3, TipoDeCarga tipo, int secuenciaDeDescarga)` | Peso y volumen positivos. `esCompatibleCon(otra)` la implementa `S1b` |
+| `Ruta` | `record Ruta(String origen, String destino, String corredor)` | `mismoCorredorQue(otra)` la implementa `S1b` |
+| `ElegibilidadDeRecurso` | `record ElegibilidadDeRecurso(boolean elegible, List<String> motivos)` | La respuesta de los contratos 2 y 3, tal como llegó. Lista inmutable, nunca nula. `elegible == false` exige motivos no vacíos |
+| `AsignacionDeRecursos` | `record AsignacionDeRecursos(String unidadId, List<String> conductorIds, boolean conRelevo)` | `esCompleta()`: unidad no vacía y al menos un conductor. **Un segundo conductor sólo con `conRelevo`**; tres o más lanza siempre |
+| `EstadoDeViaje` | enum | `PLANIFICADO` · `PROGRAMADO` · `DESPACHADO` · `CANCELADO`, con `puedeTransicionarA(EstadoDeViaje)` |
+| `EstadoDeReserva` | enum | `TENTATIVA` · `CONFIRMADA` · `LIBERADA`. `bloqueaElRecurso()` es `true` en las dos primeras |
+| `TipoDeCarga` | enum | `PALETIZADA` · `GENERAL` · `MAQUINARIA_PESADA` |
+
+**Transiciones permitidas de `EstadoDeViaje`**, y ninguna otra:
+
+| Desde | Hacia |
+|---|---|
+| `PLANIFICADO` | `PROGRAMADO` · `CANCELADO` |
+| `PROGRAMADO` | `DESPACHADO` · `CANCELADO` |
+| `DESPACHADO` | — (terminal) |
+| `CANCELADO` | — (terminal) |
+
+No se salta de `PLANIFICADO` a `DESPACHADO`.
+
+### Agregados `AgendaDeUnidad` y `AgendaDeConductor`
+
+Simétricos. La identidad es el recurso: `unidadId` y `conductorId`.
+
+Campos: el id del recurso y `List<ReservaDeUnidad>` / `List<ReservaDeConductor>`.
+
+| Método | Contrato |
+|---|---|
+| `reservar(String reservaId, VentanaDeTiempo, ElegibilidadDeRecurso, String viajeId)` | **AGU-01 / AGC-01**: si se solapa con una reserva que bloquea el recurso, lanza `ReservaSolapadaException`. **AGU-02 / AGC-02**: si `elegibilidad.elegible()` es `false`, lanza `RecursoNoElegibleException` con los motivos. La elegibilidad es **obligatoria** (regla D2): no verificarla no equivale a ser elegible |
+| `confirmar(String reservaId)` · `liberar(String reservaId)` | Cambian el estado de la reserva. Una liberada no se reconfirma |
+| `reservasQueBloquean()` | Las `TENTATIVA` y `CONFIRMADA` |
+
+Una reserva `LIBERADA` **no** bloquea: se puede reservar sobre su ventana.
+
+`ReservaDeUnidad` / `ReservaDeConductor` — entidades hijas: `id`, `viajeId`, `VentanaDeTiempo`, `EstadoDeReserva`.
+
+### Agregado `Viaje` — parte de `S1a`
+
+Campos: `id`, `Ruta`, `VentanaDeTiempo`, `CargaConsolidada`, `AsignacionDeRecursos` (nulo hasta asignar),
+`EstadoDeViaje`, `HojaDeRuta` (nula hasta programar), `List<String> ordenIds`.
+
+| Método | Slice | Contrato |
+|---|---|---|
+| `planificar(...)` (fábrica) | `S1a` | Nace `PLANIFICADO` con la primera orden consolidada |
+| `asignarRecursos(AsignacionDeRecursos)` | `S1a` | Sobre un viaje `DESPACHADO` o `CANCELADO` lanza |
+| `confirmarProgramacion(HojaDeRuta)` | `S1a` | **VIA-01**: sin `AsignacionDeRecursos.esCompleta()` lanza `AsignacionIncompletaException`. Pasa a `PROGRAMADO` |
+| `autorizarDespacho()` | `S1a` | De `PROGRAMADO` a `DESPACHADO` |
+| `cancelar()` | `S1a` | Desde `PLANIFICADO` o `PROGRAMADO` |
+| `consolidarOrden(...)` | **`S1b`** | **VIA-07** es la primera comprobación y sí es de `S1a`: sobre un viaje `DESPACHADO` lanza `ViajeDespachadoException`. El resto de VIA-02…05 es de `S1b` |
+
+**`S1a` deja `consolidarOrden` con esta firma exacta y sólo la comprobación de VIA-07 implementada:**
+
+```java
+public void consolidarOrden(
+        Carga carga,
+        Ruta rutaDeLaOrden,
+        VentanaDeTiempo ventanaDeLaOrden,
+        ClausulaDeConsolidacion clausulaDelContrato,
+        Capacidad capacidadDeLaUnidad)
+```
+
+Y `CargaConsolidada` con estos métodos declarados, devolviendo por ahora lo mínimo para compilar y con la
+prueba de `S1b` marcada `@Disabled("S1b")`:
+
+```java
+public int pesoTotal()
+public BigDecimal volumenTotal()
+public boolean cabeEn(Capacidad capacidad)
+```
+
+`ClausulaDeConsolidacion` es un `record(boolean permitida, List<String> restricciones)`, copia de lo que
+devuelve el contrato 1.
+
+### Pruebas de `S1a`
+
+| Invariante | Prueba mínima |
+|---|---|
+| **AGU-01** | Dos reservas solapadas de la misma unidad: la segunda lanza. Con la primera `LIBERADA`, no lanza. Ventanas que sólo se tocan en el borde **no** se consideran solapadas |
+| **AGU-02** | `reservar` con `elegible = false` lanza y el mensaje incluye los motivos. Con `ElegibilidadDeRecurso` nula lanza: no se asume elegible |
+| **AGC-01** | Igual que AGU-01 sobre el conductor |
+| **AGC-02** | Igual que AGU-02 sobre el conductor |
+| **VIA-01** | `confirmarProgramacion` sin unidad lanza; sin conductores lanza; con ambos pasa a `PROGRAMADO` |
+| **VIA-07** | `consolidarOrden` sobre un viaje `DESPACHADO` lanza |
+
+Bordes obligatorios de `S1a`:
+
+- `seSolapaCon` con solape parcial, contención total, bordes que se tocan y disjuntas: los cuatro casos.
+- Las transiciones prohibidas de `EstadoDeViaje`, una a una, incluido `PLANIFICADO → DESPACHADO`.
+- `AsignacionDeRecursos` con dos conductores y `conRelevo = false` lanza; con `conRelevo = true` no; con tres lanza siempre.
+- Toda operación con fecha o ventana nula lanza `IllegalArgumentException`.
+
+---
+
+## `S1b-consolidacion` — VIA-02, VIA-03, VIA-04, VIA-05, VIA-06
+
+**Lo implementa Claude.** Es la regla que más valor agrega del sistema y la que peor tolera una
+interpretación libre: cuatro invariantes acopladas que se evalúan en la misma operación.
+
+| Invariante | Dónde vive | Regla |
+|---|---|---|
+| **VIA-02** | `CargaConsolidada.cabeEn(Capacidad)` | Peso **y** volumen de la carga ya consolidada más la nueva no pueden exceder la capacidad. Se prueba en el límite exacto, no sólo por encima y por debajo |
+| **VIA-03** | `Ruta.mismoCorredorQue(otra)` y `VentanaDeTiempo.seSolapaCon(otra)` | Mismo corredor **y** ventanas compatibles. Corredor distinto o ventanas disjuntas: no se consolida |
+| **VIA-04** | `ClausulaDeConsolidacion.permitida` | Si el contrato marco de la orden lo prohíbe, no se consolida. La cláusula es **obligatoria** en la firma: sin ella no se asume permitido |
+| **VIA-05** | `Carga.esCompatibleCon(otra)` | Compatibilidad física por pares contra **todas** las cargas ya consolidadas, no sólo contra la última |
+| **VIA-06** | `HojaDeRuta.secuenciaDeEstiba()` | La carga que se descarga primero se estiba al final: la secuencia de estiba es el **orden inverso** de la secuencia de descarga |
+
+**Tabla de compatibilidad de `Carga.esCompatibleCon`:**
+
+| | `PALETIZADA` | `GENERAL` | `MAQUINARIA_PESADA` |
+|---|:---:|:---:|:---:|
+| `PALETIZADA` | sí | sí | **no** |
+| `GENERAL` | sí | sí | **no** |
+| `MAQUINARIA_PESADA` | **no** | **no** | sí |
+
+Simétrica por construcción, y la prueba lo comprueba en las nueve celdas en los dos sentidos.
+
+`consolidarOrden` evalúa en este orden y **no muta nada hasta haber pasado las cinco** (regla D6):
+VIA-07 → VIA-04 → VIA-03 → VIA-05 → VIA-02. La capacidad va la última porque es la más cara de calcular.
+
+Pruebas exigidas de `S1b`, además de una por invariante que la viole:
+
+- `cabeEn` en el límite exacto de peso, en el límite exacto de volumen, y excediendo sólo uno de los dos.
+- `secuenciaDeEstiba()` con tres paradas: descarga 1-2-3 devuelve estiba 3-2-1.
+- Una consolidación que falla no altera la carga consolidada ni la lista de órdenes del viaje.
+- Consolidar una tercera carga incompatible con la **primera** —no con la segunda— se rechaza.
+
+### Excepciones — `exceptions`
+
+Raíz `DominioProgramacionException`; herederas `ReservaSolapadaException`, `RecursoNoElegibleException`,
+`AsignacionIncompletaException`, `ViajeDespachadoException`, `TransicionDeViajeInvalidaException`,
+`ConsolidacionProhibidaException` (VIA-04), `CorredorIncompatibleException` (VIA-03),
+`CargaIncompatibleException` (VIA-05), `CapacidadExcedidaException` (VIA-02).

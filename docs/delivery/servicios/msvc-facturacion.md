@@ -111,3 +111,102 @@ la factura emitida pero sin cuenta por cobrar; debe reintentarse, no ignorarse.
 - [ ] Los 2 clientes Feign con timeout, traducción de error y prueba con stub que cubre el `503`
 - [ ] 0 imports de otro contexto
 - [ ] Sano en `./scripts/smoke-test.sh`
+
+---
+
+## Slice `S1-dominio` — decisiones de diseño
+
+Sólo dominio y pruebas. Sin `@Entity`, sin repositorios, sin controladores, sin Feign, sin migraciones.
+Los objetos de valor llevan `@Embeddable`.
+
+Rigen las ocho **reglas de dominio** de [`../README.md`](../README.md#6-reglas-de-dominio).
+
+### Correspondencia con el diseño táctico (regla 13)
+
+| Diseño táctico | Código |
+|---|---|
+| `NúmeroDeComprobante` | `NumeroDeComprobante` |
+| `Detracción` | `Detraccion` |
+| `LíneaDeFactura` | `LineaDeFactura` |
+| `NotaDeCrédito` | `NotaDeCredito` |
+| `montoNeto()` | igual |
+
+### Objetos de valor — `models/vo`
+
+| Tipo | Forma | Comportamiento |
+|---|---|---|
+| `Dinero` | `record Dinero(BigDecimal monto, String codigoMoneda)` | No negativo, escala 2, ISO-4217. `sumar`, `restar`, `porcentaje(BigDecimal)`, `esCero()`, `esMayorQue`. Monedas distintas lanzan |
+| `NumeroDeComprobante` | `record NumeroDeComprobante(String serie, int correlativo)` | Serie `F` o `B` más tres dígitos (`F001`). Correlativo positivo. `siguiente()` devuelve el correlativo + 1 en la misma serie. `formateado()` da `F001-00000310` |
+| `Detraccion` | `record Detraccion(BigDecimal porcentaje, Dinero monto, String cuentaBancaria)` | Porcentaje en `[0, 100)`. Si el porcentaje es cero, el monto es cero y la cuenta puede faltar; si es mayor que cero, la cuenta bancaria es obligatoria. `montoNeto(Dinero total)` devuelve `total − monto` |
+| `ConceptoFacturable` | enum | `FLETE` · `ESTIBA` · `CUSTODIA` · `SEGURO` · `ESPERA` · `REAJUSTE` · `FALSO_FLETE` |
+| `EstadoDeFactura` | enum | `BLOQUEADA` · `EMITIDA` · `ANULADA` |
+| `MotivoDeAjuste` | enum | `DANIO` · `FALTANTE` · `RECHAZO` · `ERROR_DE_FACTURACION` |
+| `SnapshotComercial` | `record SnapshotComercial(String ordenDeServicioId, String clienteId, Dinero tarifa, String codigoMoneda, OffsetDateTime obtenidoEn)` | La respuesta del contrato 9 tal como llegó. **Inmutable y local**: un cambio posterior de tarifa en Comercial no altera una factura emitida |
+| `Conformidad` | `record Conformidad(boolean registrada, List<String> incidenciasSinResolver, OffsetDateTime recibidaEn)` | Lo que llega por el contrato 8. Lista inmutable, nunca nula. `bloqueaEmision()` ⇔ no registrada **o** incidencias no vacías |
+
+`DANIO` en vez de `DAÑO` por la regla 13: la eñe no es ASCII.
+
+### Agregado `Factura` — `models/entity`
+
+Raíz `Factura`, entidad hija `LineaDeFactura`.
+
+Campos: `id`, `ordenDeServicioId`, `clienteId`, `NumeroDeComprobante` (nulo mientras esté `BLOQUEADA`),
+`SnapshotComercial`, `Detraccion`, `Conformidad`, `EstadoDeFactura`, `List<LineaDeFactura>`,
+`OffsetDateTime fechaDeEmision`, `boolean falsoFlete`.
+
+| Método | Contrato |
+|---|---|
+| `abrir(...)` (fábrica) | Nace `BLOQUEADA`, sin número de comprobante y con `Conformidad` no registrada. `ordenDeServicioId` obligatorio y **final** (**FAC-02**) |
+| `agregarLinea(LineaDeFactura)` | **FAC-03**: sobre una factura `EMITIDA` o `ANULADA` lanza `FacturaInmutableException` |
+| `registrarConformidad(Conformidad)` | Lo que empuja Ejecución por el contrato 8. **FAC-03**: sobre una emitida lanza |
+| `total()` | Suma de las líneas. **D8: se calcula** |
+| `montoNeto()` | `detraccion.montoNeto(total())` |
+| `emitir(NumeroDeComprobante, OffsetDateTime)` | **FAC-01**: sin conformidad registrada y sin falso flete lanza `EmisionSinConformidadException`. **FAC-05**: con `incidenciasSinResolver` no vacía lanza `IncidenciaSinResolverException` y la factura **sigue** `BLOQUEADA`. **FAC-04**: si `montoNeto + detraccion.monto ≠ total`, lanza `ImportesInconsistentesException`. **FAC-03**: emitir una ya emitida lanza |
+| `emitirFalsoFlete(NumeroDeComprobante, OffsetDateTime)` | **FAC-01**, segunda mitad: la cancelación posterior al despacho se factura **sin** conformidad. Exige una única línea de concepto `FALSO_FLETE` |
+| `anular(OffsetDateTime)` | De `EMITIDA` a `ANULADA` |
+| `correspondeA(String ordenDeServicioId)` | **FAC-02** |
+| `saldoAjustable()` | Total menos las notas de crédito ya aplicadas. Alimenta **NCR-01** |
+
+`LineaDeFactura` — entidad hija: `id`, `ConceptoFacturable`, `descripcion`, `Dinero importe`.
+
+**FAC-02, alcance honesto.** El dominio garantiza que una factura referencia **una sola** orden, obligatoria
+e inmutable, y que una línea de otra orden se rechaza. La unicidad global —que no existan dos facturas para
+la misma orden— es un índice único más la comprobación del repositorio, y se cierra en `S2`. Aquí se prueba
+la parte que el agregado puede sostener; el `409` del endpoint es de `S3`.
+
+**El número de comprobante no se autoasigna.** `emitir` lo recibe. La ausencia de saltos en la numeración
+exige una secuencia transaccional, que es `S2`, y `NumeroDeComprobante.siguiente()` deja el cálculo listo.
+
+### Agregado `NotaDeCredito` — `models/entity`
+
+Campos: `id`, `facturaId`, `MotivoDeAjuste`, `Dinero monto`, `OffsetDateTime fechaDeEmision`, `motivoDetalle`.
+
+| Método | Contrato |
+|---|---|
+| `emitir(String facturaId, MotivoDeAjuste, Dinero monto, Dinero saldoAjustableDeLaFactura, OffsetDateTime)` | **NCR-01**: si el monto excede el saldo ajustable, lanza `MontoExcedeElSaldoException`. `saldoAjustableDeLaFactura` es **obligatorio** (regla D2): sin él no hay contra qué comparar y no se asume que quepa |
+
+### Excepciones — `exceptions`
+
+Raíz `DominioFacturacionException`; herederas `MonedaIncompatibleException`, `FacturaInmutableException`,
+`EmisionSinConformidadException`, `IncidenciaSinResolverException`, `ImportesInconsistentesException`,
+`MontoExcedeElSaldoException`, `NumeroDeComprobanteInvalidoException`.
+
+### Pruebas exigidas por este slice
+
+| Invariante | Prueba mínima |
+|---|---|
+| **FAC-01** | Emitir sin conformidad registrada lanza. Con conformidad registrada y sin incidencias, emite. `emitirFalsoFlete` sin conformidad **sí** emite: es la otra mitad de la invariante |
+| **FAC-02** | `ordenDeServicioId` es obligatorio en la fábrica y no existe método que lo cambie. `correspondeA` distingue. Una línea con otro `ordenDeServicioId` se rechaza |
+| **FAC-03** | Sobre una factura `EMITIDA`: `agregarLinea`, `registrarConformidad` y `emitir` lanzan `FacturaInmutableException`. La corrección exige nota de crédito |
+| **FAC-04** | Con `detraccion.monto` que no cuadra con `total − montoNeto`, `emitir` lanza. Con importes exactos —total 1821.60, detracción 4 % de 72.86, neto 1748.74— emite |
+| **FAC-05** | Con `incidenciasSinResolver` de un elemento, `emitir` lanza y el estado **sigue** `BLOQUEADA`. Con la lista vacía, emite |
+| **NCR-01** | Nota de crédito por encima del saldo ajustable lanza. Por el saldo exacto no lanza. Con `saldoAjustable` nulo lanza |
+
+Bordes obligatorios:
+
+- Tres órdenes, tres facturas: cada una con su `ordenDeServicioId`, ninguna comparte número de comprobante.
+- `NumeroDeComprobante` con serie `F01`, `FF001` o correlativo 0 lanza; `formateado()` rellena a ocho dígitos.
+- `Detraccion` con porcentaje mayor que cero y sin cuenta bancaria lanza; con porcentaje cero y monto cero no.
+- Dos notas de crédito sucesivas: la segunda se compara contra el saldo ya reducido por la primera.
+- El snapshot comercial no cambia tras emitir: no hay método que lo sustituya.
+- Toda operación con fecha nula lanza `IllegalArgumentException`.
