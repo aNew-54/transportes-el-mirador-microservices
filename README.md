@@ -101,8 +101,10 @@ Un viaje puede transportar varias órdenes de servicio. Cada orden mantiene su p
 - Spring Web MVC.
 - Spring Data JPA.
 - Bean Validation.
-- OpenFeign.
+- OpenFeign (sólo en los cuatro contextos que consumen a otro).
+- Flyway 12.4.
 - MySQL 8.4.
+- Testcontainers 2.0.
 - Spring Boot Actuator.
 - JUnit.
 
@@ -141,13 +143,18 @@ src/main/java/pe/edu/unc/elmirador/<contexto>/
 ├── controllers/
 ├── services/
 ├── repositories/
-├── models/entity/
+├── models/
+│   ├── entity/          raíces de agregado y entidades hijas (JPA rico)
+│   └── vo/              objetos de valor @Embeddable, con su lógica
 ├── dto/request/
 ├── dto/response/
-├── clients/
+├── clients/             sólo si el mapa de contexto da una flecha saliente
 ├── mappers/
 ├── exceptions/
 └── config/
+
+src/main/resources/
+└── db/migration/        migraciones Flyway del esquema propio
 ```
 
 El flujo interno será:
@@ -167,6 +174,8 @@ HTTP → Controller → Service → Repository → MySQL
 - Las direcciones de los clientes Feign se configuran mediante variables de entorno.
 - Las credenciales reales no se almacenan en el repositorio; los valores versionados son únicamente valores de desarrollo local.
 - Los objetos de dominio compartidos conceptualmente conservan una implementación propia dentro de cada contexto.
+- El esquema lo versiona Flyway dentro de cada módulo; Hibernate valida, nunca genera.
+- Un microservicio sin flecha saliente en el mapa de contexto no incluye OpenFeign.
 
 ## Configuración local
 
@@ -297,9 +306,12 @@ test(ejecucion): agrega pruebas del checklist de salida
 - [x] Configurar las siete bases de datos.
 - [x] Incorporar `compose.yaml` y `.env.example`.
 - [x] Añadir Actuator a todos los servicios.
-- [ ] Definir los DTO y contratos entre microservicios.
+- [x] Definir los contratos entre microservicios ([docs/api/contracts.md](docs/api/contracts.md)).
 - [x] Configurar integración continua en GitHub Actions.
-- [x] Verificar que los siete servicios compilen y arranquen.
+- [x] Verificar que los siete servicios compilen.
+- [x] Verificar el mapeo JPA contra MySQL real en CI (Testcontainers).
+- [x] Versionar el esquema con Flyway (`ddl-auto=validate`).
+- [ ] Verificar en CI que los siete arrancan (`smoke-test.sh` todavía es manual).
 
 ### Primer flujo vertical
 
