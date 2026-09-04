@@ -94,7 +94,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | Slice | Invariantes | Estado |
 |---|---|---|
 | `S1-dominio` | FAC-01, FAC-02, FAC-03, FAC-04, FAC-05, NCR-01 | **done** |
-| `S2-persistencia` | — | pendiente |
+| `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contrato 8 | pendiente |
 | `S5-clientes` | contratos 9 → Comercial, 10 → Cobranza | pendiente |
@@ -151,7 +151,7 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total |
 |---|---:|---:|
-| Slices | 9 | 32 |
+| Slices | 10 | 32 |
 | Invariantes cubiertas | **48** | 48 |
 | Contratos implementados | 0 | 11 |
 | Servicios terminados | 0 | 7 |

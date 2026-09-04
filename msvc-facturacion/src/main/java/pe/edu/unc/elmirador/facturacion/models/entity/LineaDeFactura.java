@@ -1,18 +1,48 @@
 package pe.edu.unc.elmirador.facturacion.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import pe.edu.unc.elmirador.facturacion.models.vo.ConceptoFacturable;
 import pe.edu.unc.elmirador.facturacion.models.vo.Dinero;
 
 /**
  * Entidad hija del agregado Factura. Representa un item o concepto facturado.
  */
+@Entity
+@Table(name = "lineas_de_factura")
 public class LineaDeFactura {
 
-    private final String id;
-    private final String ordenDeServicioId;
-    private final ConceptoFacturable concepto;
-    private final String descripcion;
-    private final Dinero importe;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "orden_de_servicio_id", length = 40, nullable = false)
+    private String ordenDeServicioId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "concepto", length = 20, nullable = false)
+    private ConceptoFacturable concepto;
+
+    @Column(name = "descripcion", length = 300, nullable = false)
+    private String descripcion;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "importe_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "importe_moneda", length = 3, nullable = false))
+    })
+    private Dinero importe;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected LineaDeFactura() {
+    }
 
     public LineaDeFactura(
         String id,

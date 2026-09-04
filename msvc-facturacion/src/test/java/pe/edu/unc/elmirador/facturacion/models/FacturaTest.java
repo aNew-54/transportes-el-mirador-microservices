@@ -131,7 +131,7 @@ class FacturaTest {
 
         factura.aplicarNotaDeCredito(nc);
         assertThat(factura.saldoAjustable()).isEqualTo(Dinero.de("1621.60", "PEN"));
-        assertThat(factura.notasDeCredito()).hasSize(1);
+        assertThat(factura.ajustesAplicados()).hasSize(1);
     }
 
     @Test
