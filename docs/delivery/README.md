@@ -232,7 +232,80 @@ al controlador.
 `saldo()`, `total()`, `montoNeto()`, `deudaTotal()` y compañía se calculan en el momento. Un campo
 persistido que duplica un cálculo es un defecto, y en `LiquidacionDeViaje` lo dice la propia LIQ-02.
 
-## 7. Medición
+## 7. Receta de `S2-persistencia`
+
+Probada de extremo a extremo en `msvc-conductores` contra MySQL 8.4 real antes de delegarse. Con
+`ddl-auto=validate` no hay margen: una entidad sin su migración, o con una columna que no cuadra, rompe
+el build. Es lo buscado.
+
+### El agregado sigue siendo rico
+
+Se conserva el constructor que valida las invariantes y se **añade** uno `protected` sin argumentos para
+JPA, documentado como no utilizable. Los campos persistidos **dejan de ser `final`**: Hibernate sustituye
+la colección por su propia implementación y en Java 26 escribir un campo final por reflexión es frágil.
+
+```java
+/** Exigido por JPA. No usar: no valida ninguna invariante. */
+protected Conductor() {
+}
+```
+
+### Los objetos de valor son `record` y se mapean tal cual
+
+Hibernate 7 admite `record` como `@Embeddable` sin envoltorio. No se convierten a clase.
+
+### Un mismo tipo de VO dos veces en la misma entidad exige renombrar columnas
+
+Tres `PeriodoDeVigencia` en un agregado piden los tres las columnas `desde` y `hasta`, y el mapeo choca:
+
+```java
+@Embedded
+@AttributeOverrides({
+    @AttributeOverride(name = "desde", column = @Column(name = "licencia_desde", nullable = false)),
+    @AttributeOverride(name = "hasta", column = @Column(name = "licencia_hasta", nullable = false))
+})
+private PeriodoDeVigencia vigenciaLicencia;
+```
+
+### Un embebido anidado se direcciona con la ruta con punto
+
+`HorasDeConduccion` contiene a su vez un `PeriodoDeVigencia`:
+
+```java
+@AttributeOverride(name = "ventanaDeComputo.desde", column = @Column(name = "ventana_desde"))
+```
+
+### La entidad hija pertenece al agregado
+
+`cascade = ALL` y `orphanRemoval = true` traducen esa pertenencia. **No lleva repositorio propio**: se
+alcanza por la raíz, que es lo que significa ser entidad hija.
+
+```java
+@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+@JoinColumn(name = "conductor_id", nullable = false)
+private List<Induccion> inducciones = new ArrayList<>();
+```
+
+### Claves foráneas sólo dentro del contexto
+
+Una FK entre `inducciones` y `conductores` es correcta: mismo esquema, mismo agregado. Un `clienteId`
+es un identificador escalar **sin FK**: el cliente vive en otro contexto y otro esquema (regla 3).
+
+### La migración
+
+`src/main/resources/db/migration/V1__crear_esquema_<contexto>.sql`, en el módulo dueño. `ENGINE = InnoDB`,
+`CHARSET = utf8mb4`, restricciones nombradas (`pk_`, `fk_`, `uq_`, `ix_`). Los tipos tienen que casar con
+lo que Hibernate espera: `VARCHAR` para `String` y enums `STRING`, `DECIMAL(p,s)` para `BigDecimal`,
+`DATE` para `LocalDate`, `DATETIME(6)` para `OffsetDateTime`.
+
+### La prueba de integración deja de ser un trámite
+
+`Persistencia<Ctx>IT` ya no comprueba sólo que exista `flyway_schema_history`. **Guarda el agregado
+completo, limpia el contexto de persistencia y lo relee**, y verifica que los objetos de valor, el
+embebido anidado y las entidades hijas sobreviven al viaje de ida y vuelta. Sin el `entityManager.clear()`
+la prueba lee de la caché de primer nivel y no demuestra nada.
+
+## 8. Medición
 
 Cada delegación deja su consumo en `~/.claude/agy-usage.log` (`AGY_USAGE`). Sirve para saber si delegar
 un tipo de slice compensa. Si un slice necesita más de dos rondas de corrección, deja de compensar: la

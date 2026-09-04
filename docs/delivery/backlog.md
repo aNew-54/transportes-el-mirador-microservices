@@ -58,7 +58,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | Slice | Invariantes | Estado |
 |---|---|---|
 | `S1-dominio` | CON-01, CON-02, CON-03 | **done** |
-| `S2-persistencia` | — | pendiente |
+| `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contratos 3 y 6 | pendiente |
 
@@ -151,7 +151,7 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total |
 |---|---:|---:|
-| Slices | 8 | 32 |
+| Slices | 9 | 32 |
 | Invariantes cubiertas | **48** | 48 |
 | Contratos implementados | 0 | 11 |
 | Servicios terminados | 0 | 7 |

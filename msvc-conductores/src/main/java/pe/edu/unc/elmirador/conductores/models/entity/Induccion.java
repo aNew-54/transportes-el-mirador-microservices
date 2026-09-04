@@ -1,15 +1,38 @@
 package pe.edu.unc.elmirador.conductores.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import pe.edu.unc.elmirador.conductores.models.vo.PeriodoDeVigencia;
 
 import java.time.LocalDate;
 import java.util.Objects;
 
+@Entity
+@Table(name = "inducciones")
 public class Induccion {
 
-    private final String id;
-    private final String clienteId;
-    private final PeriodoDeVigencia vigencia;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "cliente_id", length = 40, nullable = false)
+    private String clienteId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "desde", column = @Column(name = "vigente_desde", nullable = false)),
+        @AttributeOverride(name = "hasta", column = @Column(name = "vigente_hasta", nullable = false))
+    })
+    private PeriodoDeVigencia vigencia;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Induccion() {
+    }
 
     public Induccion(String id, String clienteId, PeriodoDeVigencia vigencia) {
         if (id == null || id.isBlank()) {

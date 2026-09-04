@@ -1,5 +1,18 @@
 package pe.edu.unc.elmirador.conductores.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import pe.edu.unc.elmirador.conductores.exceptions.RehabilitacionInvalidaException;
 import pe.edu.unc.elmirador.conductores.models.vo.CategoriaDeLicencia;
 import pe.edu.unc.elmirador.conductores.models.vo.EstadoDeHabilitacion;
@@ -18,16 +31,59 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+@Entity
+@Table(name = "conductores")
 public class Conductor {
 
-    private final String id;
-    private final String nombreCompleto;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "nombre_completo", length = 200, nullable = false)
+    private String nombreCompleto;
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "numero_licencia", length = 9, nullable = false))
     private NumeroDeLicencia numeroDeLicencia;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "categoria_licencia", length = 10, nullable = false)
     private CategoriaDeLicencia categoriaDeLicencia;
+
+    // Tres periodos de vigencia distintos conviven en este agregado. Sin renombrar sus columnas,
+    // los tres piden "desde" y "hasta" y el mapeo choca.
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "desde", column = @Column(name = "licencia_desde", nullable = false)),
+        @AttributeOverride(name = "hasta", column = @Column(name = "licencia_hasta", nullable = false))
+    })
     private PeriodoDeVigencia vigenciaLicencia;
+
+    // Embebido anidado: HorasDeConduccion contiene a su vez un PeriodoDeVigencia.
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "horas", column = @Column(name = "horas_acumuladas", precision = 5, scale = 2, nullable = false)),
+        @AttributeOverride(name = "ventanaDeComputo.desde", column = @Column(name = "ventana_desde", nullable = false)),
+        @AttributeOverride(name = "ventanaDeComputo.hasta", column = @Column(name = "ventana_hasta", nullable = false))
+    })
     private HorasDeConduccion horasAcumuladas;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "situacion", column = @Column(name = "situacion", length = 20, nullable = false)),
+        @AttributeOverride(name = "motivo", column = @Column(name = "motivo_habilitacion", length = 300))
+    })
     private EstadoDeHabilitacion estado;
-    private final List<Induccion> inducciones;
+
+    // La induccion es entidad hija del agregado: se guarda y se borra con el conductor, y no
+    // tiene repositorio propio. orphanRemoval traduce esa pertenencia al mapeo.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "conductor_id", nullable = false)
+    private List<Induccion> inducciones = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Conductor() {
+    }
 
     public Conductor(
             String id,
@@ -71,7 +127,7 @@ public class Conductor {
         this.vigenciaLicencia = vigenciaLicencia;
         this.horasAcumuladas = horasAcumuladas;
         this.estado = estado;
-        this.inducciones = new ArrayList<>(inducciones);
+        this.inducciones.addAll(inducciones);
     }
 
     public boolean estaHabilitadoPara(
