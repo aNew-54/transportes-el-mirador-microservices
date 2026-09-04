@@ -275,3 +275,21 @@ con la moneda exigida.
 sobrecarga que adivinaba— y se ven en el diff. A diferencia del defecto de `msvc-conductores`, no hay una
 prueba en rojo que las demuestre: el atajo no producía un resultado incorrecto, permitía saltarse la
 comprobación.
+
+### Notas de `S2-persistencia`
+
+Pasó el gate a la primera pese a que el agente no pudo compilar: 71 pruebas de dominio más 5 de
+persistencia contra MySQL real.
+
+**El punto delicado del mapeo, y por qué se acepta.** `CuentaPorCobrar.clienteId` existe como campo de
+dominio —lo necesita **PAG-02** para rechazar un pago de otro cliente— y a la vez es la columna que
+gobierna el `@JoinColumn` de la cuenta corriente. Está mapeado
+`insertable = false, updatable = false`: lo escribe el padre, no el hijo.
+
+Es correcto **porque `CuentaPorCobrar` es entidad hija y no tiene repositorio**: sólo se puede guardar a
+través de su raíz, que es justo lo que rellena la columna. Si alguna vez apareciera un repositorio para
+ella, esta columna quedaría a nulo contra un `NOT NULL`. Queda anotado como la razón por la que no debe
+aparecer.
+
+Ningún derivado tiene columna: no hay `saldo`, ni `monto_neto`, ni `monto_aplicado`, ni `deuda_total`.
+**CCC-02** y la regla D8 se sostienen también en el esquema.

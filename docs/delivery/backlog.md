@@ -67,7 +67,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | Slice | Invariantes | Estado |
 |---|---|---|
 | `S1-dominio` | CCC-01, CCC-02, CCC-03, PAG-01, PAG-02 | **done** |
-| `S2-persistencia` | — | pendiente |
+| `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contratos 10 y 11 | pendiente |
 
