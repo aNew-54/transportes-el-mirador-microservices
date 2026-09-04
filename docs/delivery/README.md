@@ -286,6 +286,43 @@ alcanza por la raíz, que es lo que significa ser entidad hija.
 private List<Induccion> inducciones = new ArrayList<>();
 ```
 
+### Un objeto de valor que posee una colección NO puede ser un `record`
+
+Es la regla que más cuesta descubrir y la que rompe el build de forma más confusa. Hibernate construye
+un `record` entero por su constructor canónico y **sólo después** rellena las colecciones. Al leer le
+pasa `null` a la lista, y el constructor compacto lanza:
+
+```
+Caused by: java.lang.IllegalArgumentException:
+  La lista de incidencias sin resolver es obligatoria y no puede ser nula
+```
+
+Y no se arregla tolerando el nulo: los componentes de un `record` son `final`, así que Hibernate no
+podría rellenar la lista nunca. Quedaría vacía en silencio, que es peor que fallar.
+
+**Ese objeto de valor pasa a ser clase inmutable**, que es la otra forma que admite la regla 12: campos
+privados no `final`, constructor `protected` sin argumentos para JPA, accesores con el mismo nombre que
+tendrían los componentes del record, la colección expuesta como copia y `equals`/`hashCode` por valor.
+Hacia fuera se comporta igual; hacia dentro Hibernate ya puede poblarla.
+
+Afecta a todo VO con una `List` dentro: `Conformidad`, `Evidencia`, `Tarifa`, `CargaConsolidada`,
+`HojaDeRuta`, `ClausulaDeConsolidacion` y `ElegibilidadDeRecurso`.
+
+### Un embebido puede ser nulo, y con un `record` funciona
+
+`NumeroDeComprobante(String serie, int correlativo)` no existe mientras la factura está `BLOQUEADA`.
+Con las dos columnas nulas Hibernate deja el embebido en `null` y **no llama al constructor**, así que
+la validación del record no estorba. Se comprobó leyendo una factura bloqueada de vuelta, porque
+`ddl-auto=validate` sólo dice que las columnas cuadran, no que el objeto se pueda construir.
+
+### Una raíz de agregado no contiene a otra
+
+`Factura` tenía una `List<NotaDeCredito>`, y la nota de crédito es una raíz de agregado con su propio
+ciclo de vida. Una `@OneToMany` ahí acopla los dos agregados en una transacción. La factura guarda sólo
+el **importe ajustado**, que es lo único que necesita para `saldoAjustable()`, en una
+`@ElementCollection` de `Dinero`; la nota persiste por su cuenta con su repositorio y su `facturaId`
+escalar **sin FK**.
+
 ### Claves foráneas sólo dentro del contexto
 
 Una FK entre `inducciones` y `conductores` es correcta: mismo esquema, mismo agregado. Un `clienteId`

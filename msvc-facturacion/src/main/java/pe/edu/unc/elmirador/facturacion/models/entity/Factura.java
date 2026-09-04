@@ -4,6 +4,21 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import pe.edu.unc.elmirador.facturacion.exceptions.DominioFacturacionException;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import pe.edu.unc.elmirador.facturacion.exceptions.EmisionSinConformidadException;
 import pe.edu.unc.elmirador.facturacion.exceptions.FacturaInmutableException;
 import pe.edu.unc.elmirador.facturacion.exceptions.ImportesInconsistentesException;
@@ -23,20 +38,84 @@ import pe.edu.unc.elmirador.facturacion.models.vo.Dinero;
  * Controla el ciclo de vida de la factura electronica, la consistencia de importes,
  * las detracciones y la aplicacion de notas de credito.
  */
+@Entity
+@Table(name = "facturas")
 public class Factura {
 
-    private final String id;
-    private final String ordenDeServicioId;
-    private final String clienteId;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "orden_de_servicio_id", length = 40, nullable = false, updatable = false)
+    private String ordenDeServicioId;
+
+    @Column(name = "cliente_id", length = 40, nullable = false)
+    private String clienteId;
+
+    // Nulo mientras la factura esta BLOQUEADA: el numero se asigna al emitir.
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "serie", column = @Column(name = "comprobante_serie", length = 4)),
+        @AttributeOverride(name = "correlativo", column = @Column(name = "comprobante_correlativo"))
+    })
     private NumeroDeComprobante numeroDeComprobante;
-    private final SnapshotComercial snapshotComercial;
-    private final Detraccion detraccion;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "ordenDeServicioId", column = @Column(name = "snapshot_orden_id", length = 40, nullable = false)),
+        @AttributeOverride(name = "clienteId", column = @Column(name = "snapshot_cliente_id", length = 40, nullable = false)),
+        @AttributeOverride(name = "tarifa.monto", column = @Column(name = "snapshot_tarifa_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "tarifa.codigoMoneda", column = @Column(name = "snapshot_tarifa_moneda", length = 3, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "snapshot_moneda", length = 3, nullable = false)),
+        @AttributeOverride(name = "obtenidoEn", column = @Column(name = "snapshot_obtenido_en", nullable = false))
+    })
+    private SnapshotComercial snapshotComercial;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "porcentaje", column = @Column(name = "detraccion_porcentaje", precision = 5, scale = 2, nullable = false)),
+        @AttributeOverride(name = "monto.monto", column = @Column(name = "detraccion_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "monto.codigoMoneda", column = @Column(name = "detraccion_moneda", length = 3, nullable = false)),
+        @AttributeOverride(name = "cuentaBancaria", column = @Column(name = "detraccion_cuenta", length = 40))
+    })
+    private Detraccion detraccion;
+
+    // Conformidad lleva dentro una @ElementCollection: sus incidencias viven en factura_incidencias.
+    @Embedded
     private Conformidad conformidad;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeFactura estado;
-    private final List<LineaDeFactura> lineas;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "factura_id", nullable = false)
+    private List<LineaDeFactura> lineas = new ArrayList<>();
+
+    @Column(name = "fecha_de_emision")
     private OffsetDateTime fechaDeEmision;
+
+    @Column(name = "falso_flete", nullable = false)
     private boolean falsoFlete;
-    private final List<NotaDeCredito> notasDeCredito;
+
+    /**
+     * Importes ya ajustados por notas de credito.
+     *
+     * <p>NotaDeCredito es una raiz de agregado con su propio ciclo de vida, asi que la factura NO la
+     * contiene: guarda solo el importe aplicado, que es lo unico que necesita para calcular
+     * {@code saldoAjustable()}. Una @OneToMany aqui acoplaria dos agregados en una transaccion.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "factura_ajustes", joinColumns = @JoinColumn(name = "factura_id"))
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "codigo_moneda", length = 3, nullable = false))
+    })
+    private List<Dinero> ajustesAplicados = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Factura() {
+    }
 
     private Factura(
         String id,
@@ -89,8 +168,6 @@ public class Factura {
         this.detraccion = detraccion;
         this.conformidad = Conformidad.noRegistrada();
         this.estado = EstadoDeFactura.BLOQUEADA;
-        this.lineas = new ArrayList<>();
-        this.notasDeCredito = new ArrayList<>();
         this.numeroDeComprobante = null;
         this.fechaDeEmision = null;
         this.falsoFlete = falsoFlete;
@@ -191,8 +268,8 @@ public class Factura {
 
     public Dinero saldoAjustable() {
         Dinero saldo = total();
-        for (NotaDeCredito nc : this.notasDeCredito) {
-            saldo = saldo.restar(nc.monto());
+        for (Dinero ajuste : this.ajustesAplicados) {
+            saldo = saldo.restar(ajuste);
         }
         return saldo;
     }
@@ -223,7 +300,7 @@ public class Factura {
                 + ") excede el saldo ajustable restante de la factura (" + saldoAjustable().monto() + ")"
             );
         }
-        this.notasDeCredito.add(notaDeCredito);
+        this.ajustesAplicados.add(notaDeCredito.monto());
     }
 
     public void emitir(NumeroDeComprobante numeroDeComprobante, OffsetDateTime fechaDeEmision) {
@@ -365,8 +442,9 @@ public class Factura {
         return List.copyOf(lineas);
     }
 
-    public List<NotaDeCredito> notasDeCredito() {
-        return List.copyOf(notasDeCredito);
+    /** Importes ya ajustados por notas de credito. La factura no contiene las notas: son otro agregado. */
+    public List<Dinero> ajustesAplicados() {
+        return List.copyOf(ajustesAplicados);
     }
 
     public OffsetDateTime fechaDeEmision() {

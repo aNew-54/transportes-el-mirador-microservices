@@ -3,6 +3,15 @@ package pe.edu.unc.elmirador.facturacion.models.entity;
 import java.time.OffsetDateTime;
 import pe.edu.unc.elmirador.facturacion.exceptions.MonedaIncompatibleException;
 import pe.edu.unc.elmirador.facturacion.exceptions.MontoExcedeElSaldoException;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import pe.edu.unc.elmirador.facturacion.models.vo.Dinero;
 import pe.edu.unc.elmirador.facturacion.models.vo.MotivoDeAjuste;
 
@@ -10,14 +19,39 @@ import pe.edu.unc.elmirador.facturacion.models.vo.MotivoDeAjuste;
  * Raiz del agregado NotaDeCredito.
  * Unico mecanismo de correccion de una factura emitida.
  */
+@Entity
+@Table(name = "notas_de_credito")
 public class NotaDeCredito {
 
-    private final String id;
-    private final String facturaId;
-    private final MotivoDeAjuste motivo;
-    private final Dinero monto;
-    private final OffsetDateTime fechaDeEmision;
-    private final String motivoDetalle;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    // Referencia a otra raiz de agregado del MISMO contexto. Es un escalar y no lleva FK: dos
+    // agregados no se acoplan con una clave foranea.
+    @Column(name = "factura_id", length = 40, nullable = false)
+    private String facturaId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "motivo", length = 30, nullable = false)
+    private MotivoDeAjuste motivo;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "codigo_moneda", length = 3, nullable = false))
+    })
+    private Dinero monto;
+
+    @Column(name = "fecha_de_emision", nullable = false)
+    private OffsetDateTime fechaDeEmision;
+
+    @Column(name = "motivo_detalle", length = 300)
+    private String motivoDetalle;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected NotaDeCredito() {
+    }
 
     public NotaDeCredito(
         String id,
