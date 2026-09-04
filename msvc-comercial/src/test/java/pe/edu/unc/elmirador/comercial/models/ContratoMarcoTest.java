@@ -106,7 +106,7 @@ class ContratoMarcoTest {
     void debeRechazarConsolidacionDeRutaExcluida() {
         ContratoMarco contrato = new ContratoMarco(
             contratoId, clienteId, vigenciaAnual, tiempoLibre,
-            ClausulaDeConsolidacion.permitida(List.of("NO_COSTA_NORTE")),
+            ClausulaDeConsolidacion.permitida(List.of("COSTA_NORTE")),
             List.of(tarifaPactada)
         );
 

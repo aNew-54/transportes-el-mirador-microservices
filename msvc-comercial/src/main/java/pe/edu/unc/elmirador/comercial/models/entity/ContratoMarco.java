@@ -123,9 +123,11 @@ public class ContratoMarco {
         if (!this.clausulaDeConsolidacion.permitida()) {
             return false;
         }
-        for (String restriccion : this.clausulaDeConsolidacion.restricciones()) {
-            String r = restriccion.toUpperCase();
-            if (r.contains("NO_" + ruta.corredor()) || r.contains("EXCLUYE_" + ruta.corredor())) {
+        // Cada restriccion nombra un corredor excluido, sin mas. La version anterior buscaba los
+        // prefijos "NO_" y "EXCLUYE_" dentro del texto: un protocolo inventado, no documentado en
+        // ningun contrato, que codificaba una regla de negocio en cadenas de texto libre.
+        for (String corredorExcluido : this.clausulaDeConsolidacion.restricciones()) {
+            if (corredorExcluido.equalsIgnoreCase(ruta.corredor())) {
                 return false;
             }
         }
