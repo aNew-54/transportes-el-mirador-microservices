@@ -125,7 +125,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | Slice | Invariantes | Estado |
 |---|---|---|
 | `S1-dominio` | EJV-01…05, LIQ-01…04 | **done** |
-| `S2-persistencia` | — | pendiente |
+| `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | pendiente |
 | `S5-clientes` | contratos 4, 5, 6, 7, 8 | pendiente |
 

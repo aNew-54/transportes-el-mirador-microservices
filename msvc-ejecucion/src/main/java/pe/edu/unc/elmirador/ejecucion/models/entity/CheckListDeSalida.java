@@ -1,11 +1,29 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Embedded;
+
 import pe.edu.unc.elmirador.ejecucion.models.vo.ResultadoDeCheckList;
 
+@Entity
+@Table(name = "checklists")
 public class CheckListDeSalida {
 
-    private final String id;
-    private final ResultadoDeCheckList resultado;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Embedded
+    private ResultadoDeCheckList resultado;
+
+    /** Exigido por JPA. No usar: no valida nada. */
+    protected CheckListDeSalida() {
+    }
 
     public CheckListDeSalida(String id, ResultadoDeCheckList resultado) {
         if (id == null || id.isBlank()) {

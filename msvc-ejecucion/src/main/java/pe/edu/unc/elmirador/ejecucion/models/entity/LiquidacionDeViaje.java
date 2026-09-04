@@ -1,5 +1,20 @@
 package pe.edu.unc.elmirador.ejecucion.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,15 +29,47 @@ import pe.edu.unc.elmirador.ejecucion.models.vo.Saldo;
  * En viajes con relevo coexisten dos liquidaciones independientes.
  * El saldo se calcula dinamicamente y NUNCA se almacena (LIQ-02, D8).
  */
+@Entity
+@Table(name = "liquidaciones")
+@IdClass(LiquidacionDeViajeId.class)
 public class LiquidacionDeViaje {
 
-    private final String viajeId;
-    private final String conductorId;
-    private final Dinero anticipo;
-    private final List<GastoDeRuta> gastos;
+    @Id
+    @Column(name = "viaje_id", length = 40, nullable = false)
+    private String viajeId;
+
+    @Id
+    @Column(name = "conductor_id", length = 40, nullable = false)
+    private String conductorId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "anticipo_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "anticipo_moneda", length = 3, nullable = false))
+    })
+    private Dinero anticipo;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "liquidacion_viaje_id", referencedColumnName = "viaje_id", nullable = false)
+    @JoinColumn(name = "liquidacion_conductor_id", referencedColumnName = "conductor_id", nullable = false)
+    private List<GastoDeRuta> gastos = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeLiquidacion estado;
+
+    @Column(name = "fecha_de_aprobacion")
     private OffsetDateTime fechaDeAprobacion;
+
+    @Column(name = "motivo_observacion", length = 300)
     private String motivoObservacion;
+
+    // LIQ-02: no hay campo saldo. saldo() se calcula desde anticipo y gastos, y la prueba de
+    // dominio comprueba por reflexion que este campo no exista. Tampoco hay columna.
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected LiquidacionDeViaje() {
+    }
 
     public static LiquidacionDeViaje abrir(String viajeId, String conductorId, Dinero anticipo) {
         return new LiquidacionDeViaje(viajeId, conductorId, anticipo);
@@ -41,7 +88,7 @@ public class LiquidacionDeViaje {
         this.viajeId = viajeId.trim();
         this.conductorId = conductorId.trim();
         this.anticipo = anticipo;
-        this.gastos = new ArrayList<>();
+        
         this.estado = EstadoDeLiquidacion.ABIERTA;
         this.fechaDeAprobacion = null;
         this.motivoObservacion = null;
