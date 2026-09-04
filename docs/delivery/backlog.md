@@ -49,7 +49,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | Slice | Invariantes | Estado |
 |---|---|---|
 | `S1-dominio` | UNI-01, UNI-02, UNI-03, OMT-01, OMT-02, REP-01 | **done** |
-| `S2-persistencia` | — | pendiente |
+| `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contratos 2 y 5 | pendiente |
 
