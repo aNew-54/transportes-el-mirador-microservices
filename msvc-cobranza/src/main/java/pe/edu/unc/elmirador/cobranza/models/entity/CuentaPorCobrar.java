@@ -1,6 +1,14 @@
 package pe.edu.unc.elmirador.cobranza.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.Objects;
 import pe.edu.unc.elmirador.cobranza.exceptions.DominioCobranzaException;
 import pe.edu.unc.elmirador.cobranza.exceptions.ImportesInconsistentesException;
 import pe.edu.unc.elmirador.cobranza.exceptions.MonedaIncompatibleException;
@@ -13,17 +21,53 @@ import pe.edu.unc.elmirador.cobranza.models.vo.EstadoDeDocumento;
  * Entidad hija de CuentaCorrienteDelCliente.
  * Representa una cuenta por cobrar originada por una factura a credito.
  */
+@Entity
+@Table(name = "cuentas_por_cobrar")
 public class CuentaPorCobrar {
 
-    private final String id;
-    private final String clienteId;
-    private final String facturaId;
-    private final String documentoId;
-    private final Dinero total;
-    private final Dinero detraccion;
-    private final LocalDate fechaDeVencimiento;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "cliente_id", length = 40, nullable = false, insertable = false, updatable = false)
+    private String clienteId;
+
+    @Column(name = "factura_id", length = 40, nullable = false)
+    private String facturaId;
+
+    @Column(name = "documento_id", length = 40, nullable = false)
+    private String documentoId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "total_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "total_moneda", length = 3, nullable = false))
+    })
+    private Dinero total;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "detraccion_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "detraccion_moneda", length = 3, nullable = false))
+    })
+    private Dinero detraccion;
+
+    @Column(name = "fecha_de_vencimiento", nullable = false)
+    private LocalDate fechaDeVencimiento;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "aplicado_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "aplicado_moneda", length = 3, nullable = false))
+    })
     private Dinero aplicado;
+
+    @Column(name = "detraccion_depositada", nullable = false)
     private boolean detraccionDepositada;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected CuentaPorCobrar() {
+    }
 
     public CuentaPorCobrar(
         String id,
@@ -141,7 +185,15 @@ public class CuentaPorCobrar {
         return id;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public String clienteId() {
+        return clienteId;
+    }
+
+    public String getClienteId() {
         return clienteId;
     }
 
@@ -149,7 +201,15 @@ public class CuentaPorCobrar {
         return facturaId;
     }
 
+    public String getFacturaId() {
+        return facturaId;
+    }
+
     public String documentoId() {
+        return documentoId;
+    }
+
+    public String getDocumentoId() {
         return documentoId;
     }
 
@@ -157,7 +217,15 @@ public class CuentaPorCobrar {
         return total;
     }
 
+    public Dinero getTotal() {
+        return total;
+    }
+
     public Dinero detraccion() {
+        return detraccion;
+    }
+
+    public Dinero getDetraccion() {
         return detraccion;
     }
 
@@ -165,11 +233,23 @@ public class CuentaPorCobrar {
         return fechaDeVencimiento;
     }
 
+    public LocalDate getFechaDeVencimiento() {
+        return fechaDeVencimiento;
+    }
+
     public Dinero aplicado() {
         return aplicado;
     }
 
+    public Dinero getAplicado() {
+        return aplicado;
+    }
+
     public boolean detraccionDepositada() {
+        return detraccionDepositada;
+    }
+
+    public boolean isDetraccionDepositada() {
         return detraccionDepositada;
     }
 
@@ -231,5 +311,18 @@ public class CuentaPorCobrar {
             throw new IllegalArgumentException("La fecha es obligatoria");
         }
         return DiasDeAtraso.entre(this.fechaDeVencimiento, fecha);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CuentaPorCobrar that = (CuentaPorCobrar) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
