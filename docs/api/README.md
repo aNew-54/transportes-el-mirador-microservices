@@ -34,6 +34,10 @@ Los contratos OpenAPI se añadirán en `docs/api/openapi/msvc-<contexto>.yaml` j
 | Facturación | Cobranza | Crear cuenta por cobrar desde una factura |
 | Comercial | Cobranza | Consultar estado crediticio |
 
+El detalle de estos once contratos —rutas, esquemas de petición y respuesta, códigos HTTP, idempotencia y
+comportamiento ante indisponibilidad— está en [`contracts.md`](contracts.md). Los `.yaml` de OpenAPI se
+derivan de ahí al implementar cada endpoint.
+
 ## Criterio de aceptación de un contrato
 
 Un contrato está listo cuando tiene esquema OpenAPI, ejemplos válidos, estados HTTP documentados, validaciones, tratamiento de indisponibilidad y una prueba del consumidor o del cliente Feign.

@@ -7,5 +7,10 @@ Este directorio conserva las decisiones y contratos que deben mantenerse coordin
 - [Despliegue local](architecture/deployment.md): topología y configuración de desarrollo.
 - [Decisiones arquitectónicas](adr/README.md): ADR aceptados por el equipo.
 - [Contratos de API](api/README.md): convenciones y matriz inicial de integraciones.
+- [Contratos de integración](api/contracts.md): los once contratos con rutas, esquemas y códigos HTTP.
+- [Método de trabajo](delivery/README.md): reparto de roles, ciclo por slice y Definition of Done.
+- [Registro de invariantes](delivery/invariantes.md): las 48 invariantes del diseño táctico, con código.
+- [Especificación de cada servicio](delivery/servicios/): agregados, endpoints y criterios de éxito.
+- [Backlog](delivery/backlog.md): orden de construcción y estado.
 
 La documentación de cada cambio arquitectónico o contractual debe actualizarse en el mismo pull request que modifica el código.

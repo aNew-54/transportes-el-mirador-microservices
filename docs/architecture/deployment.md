@@ -26,7 +26,14 @@ El script `infra/mysql/init/01-create-databases.sh` se ejecuta solamente al inic
 ./mvnw clean verify
 ```
 
-Las pruebas básicas excluyen la autoconfiguración de base de datos para que el reactor pueda verificarse sin depender de Docker. Las futuras pruebas de persistencia deberán ejecutarse contra una base controlada para pruebas.
+`verify` ejecuta dos capas de pruebas. Surefire corre las de arranque de contexto, que excluyen la
+autoconfiguración de base de datos y no necesitan Docker. Failsafe corre las `*IT`, que levantan un MySQL
+real con Testcontainers, aplican las migraciones de Flyway y validan el mapeo JPA ([ADR 0006](../adr/0006-verificacion-de-persistencia-con-testcontainers.md)).
+
+Sin Docker disponible, `./mvnw test` verifica sólo la primera capa.
+
+El esquema lo crea Flyway desde `src/main/resources/db/migration` de cada módulo; Hibernate está en
+`validate` y nunca genera tablas ([ADR 0005](../adr/0005-versionado-de-esquema-con-flyway.md)).
 
 ## Ejecución de un servicio
 
