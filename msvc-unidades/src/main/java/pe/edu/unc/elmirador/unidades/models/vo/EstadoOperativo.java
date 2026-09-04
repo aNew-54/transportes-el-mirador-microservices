@@ -1,9 +1,14 @@
 package pe.edu.unc.elmirador.unidades.models.vo;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Embeddable
-public record EstadoOperativo(SituacionOperativa situacion, String motivo) {
+public record EstadoOperativo(
+        @Enumerated(EnumType.STRING)
+        SituacionOperativa situacion,
+        String motivo) {
 
     public EstadoOperativo {
         if (situacion == null) {

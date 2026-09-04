@@ -1,11 +1,14 @@
 package pe.edu.unc.elmirador.unidades.models.vo;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Embeddable
 public record ProgramaDeMantenimiento(
         Kilometraje kmUltimoServicio,
         Kilometraje kmProximoServicio,
+        @Enumerated(EnumType.STRING)
         IntervaloDeMantenimiento intervalo) {
 
     public ProgramaDeMantenimiento {
