@@ -24,6 +24,10 @@ public class LineaDeFactura {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("El id de la linea de factura es obligatorio");
         }
+        if (ordenDeServicioId == null || ordenDeServicioId.isBlank()) {
+            throw new IllegalArgumentException(
+                "La orden de servicio de la linea es obligatoria: sin ella FAC-02 no se puede comprobar");
+        }
         if (concepto == null) {
             throw new IllegalArgumentException("El concepto facturable es obligatorio");
         }
@@ -31,16 +35,10 @@ public class LineaDeFactura {
             throw new IllegalArgumentException("El importe de la linea es obligatorio");
         }
         this.id = id.trim();
-        this.ordenDeServicioId = ordenDeServicioId != null && !ordenDeServicioId.isBlank()
-            ? ordenDeServicioId.trim()
-            : null;
+        this.ordenDeServicioId = ordenDeServicioId.trim();
         this.concepto = concepto;
         this.descripcion = descripcion != null ? descripcion.trim() : "";
         this.importe = importe;
-    }
-
-    public LineaDeFactura(String id, ConceptoFacturable concepto, String descripcion, Dinero importe) {
-        this(id, null, concepto, descripcion, importe);
     }
 
     public String id() {

@@ -93,7 +93,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 
 | Slice | Invariantes | Estado |
 |---|---|---|
-| `S1-dominio` | FAC-01, FAC-02, FAC-03, FAC-04, FAC-05, NCR-01 | pendiente |
+| `S1-dominio` | FAC-01, FAC-02, FAC-03, FAC-04, FAC-05, NCR-01 | **done** |
 | `S2-persistencia` | — | pendiente |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contrato 8 | pendiente |

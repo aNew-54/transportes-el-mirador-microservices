@@ -79,7 +79,7 @@ class FacturaEmisionTest {
             "ORD-001", "CLI-001", Dinero.de("500.00", "PEN"), "PEN", fechaBase
         );
         Factura factura = Factura.abrir("FAC-FF-001", "ORD-001", "CLI-001", snapshot, detraccion);
-        factura.agregarLinea(new LineaDeFactura("L-FF", ConceptoFacturable.FALSO_FLETE, "Falso flete", Dinero.de("500.00", "PEN")));
+        factura.agregarLinea(new LineaDeFactura("L-FF", "ORD-001", ConceptoFacturable.FALSO_FLETE, "Falso flete", Dinero.de("500.00", "PEN")));
 
         assertThat(factura.conformidad().registrada()).isFalse();
 
@@ -99,7 +99,7 @@ class FacturaEmisionTest {
             "ORD-001", "CLI-001", Dinero.de("500.00", "PEN"), "PEN", fechaBase
         );
         Factura factura = Factura.abrir("FAC-FF-002", "ORD-001", "CLI-001", snapshot, detraccion);
-        factura.agregarLinea(new LineaDeFactura("L1", ConceptoFacturable.FLETE, "Flete regular", Dinero.de("500.00", "PEN")));
+        factura.agregarLinea(new LineaDeFactura("L1", "ORD-001", ConceptoFacturable.FLETE, "Flete regular", Dinero.de("500.00", "PEN")));
 
         NumeroDeComprobante comprobante = NumeroDeComprobante.de("F001", 501);
         assertThatThrownBy(() -> factura.emitirFalsoFlete(comprobante, fechaBase))

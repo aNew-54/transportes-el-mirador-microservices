@@ -147,7 +147,10 @@ public class Factura {
                 "No se pueden agregar lineas a una factura en estado " + this.estado
             );
         }
-        if (linea.ordenDeServicioId() != null && !this.ordenDeServicioId.equals(linea.ordenDeServicioId())) {
+        // FAC-02 sin escapatoria: la linea SIEMPRE declara su orden y siempre se compara.
+        // Con la comparacion condicionada a que no fuera nula, una linea sin orden entraba en
+        // cualquier factura, que es justo lo que la invariante prohibe.
+        if (!this.ordenDeServicioId.equals(linea.ordenDeServicioId())) {
             throw new IllegalArgumentException(
                 "La linea pertenece a la orden " + linea.ordenDeServicioId()
                 + " pero la factura es de la orden " + this.ordenDeServicioId

@@ -181,7 +181,7 @@ class FacturaTest {
         emitida.anular(fechaBase);
         assertThat(emitida.estado()).isEqualTo(EstadoDeFactura.ANULADA);
 
-        LineaDeFactura linea = new LineaDeFactura("L2", ConceptoFacturable.ESTIBA, "Estiba", Dinero.de("10.00", "PEN"));
+        LineaDeFactura linea = new LineaDeFactura("L2", "ORD-001", ConceptoFacturable.ESTIBA, "Estiba", Dinero.de("10.00", "PEN"));
         assertThatThrownBy(() -> emitida.agregarLinea(linea))
             .isInstanceOf(FacturaInmutableException.class);
     }
