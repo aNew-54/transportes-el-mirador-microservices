@@ -266,3 +266,23 @@ Bordes obligatorios:
 - `CondicionDePago` `CREDITO` con plazo 0 lanza; `CONTADO` con plazo 30 lanza.
 - Cotización con vigencia de 6 u 8 días lanza en la fábrica.
 - Toda operación con fecha nula lanza `IllegalArgumentException`.
+
+### Correcciones tras la revisión de `S1-dominio`
+
+**`admiteConsolidacionDe` inventaba un protocolo de texto.** Buscaba los prefijos `NO_` y `EXCLUYE_` dentro
+de cada restricción con `contains`. Eso es una regla de negocio codificada en cadenas de texto libre, que
+no aparece en ningún contrato y que se rompe con un espacio o un acento.
+
+Se fija la semántica que faltaba en esta spec, y que era el hueco que el agente rellenó por su cuenta:
+**cada restricción de `ClausulaDeConsolidacion` nombra un corredor excluido**, y la comparación es de
+igualdad sin distinguir mayúsculas. Es lo que viaja en el contrato 1.
+
+Se aceptan las demás decisiones del agente:
+
+- `TipoDeRecargo.REAJUSTE` y `SOBRECAPACIDAD`, que la spec no enumeraba. El reajuste de ORD-01 se modela
+  como recargo sobre la tarifa, que es coherente con `Tarifa.total()`.
+- `Cotizacion.emitir` exigiendo exactamente siete días de vigencia, con el borde probado en el día siete.
+- `OrdenDeServicio.cancelar` con `Dinero.mitad()`: el falso flete es exactamente la mitad, con escala 2.
+
+Los tres `x != null &&` que quedan no son evasiones: dos normalizan un campo opcional y el tercero es la
+rama de `BORRADOR`/`CONFIRMADA`, donde el reajuste no se exige. En `PROGRAMADA` y `DESPACHADA` sí lanza.

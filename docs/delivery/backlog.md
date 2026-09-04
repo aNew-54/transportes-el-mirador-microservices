@@ -79,7 +79,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 
 | Slice | Invariantes | Estado |
 |---|---|---|
-| `S1-dominio` | CLI-01, COT-01, COT-02, ORD-01, ORD-02, CTM-01, CTM-02, TAR-01 | pendiente |
+| `S1-dominio` | CLI-01, COT-01, COT-02, ORD-01, ORD-02, CTM-01, CTM-02, TAR-01 | **done** |
 | `S2-persistencia` | — | pendiente |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contratos 1, 7 y 9 | pendiente |

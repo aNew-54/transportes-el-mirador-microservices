@@ -1,0 +1,108 @@
+package pe.edu.unc.elmirador.comercial.models.entity;
+
+import pe.edu.unc.elmirador.comercial.models.vo.CondicionDePago;
+import pe.edu.unc.elmirador.comercial.models.vo.EstadoCrediticio;
+import pe.edu.unc.elmirador.comercial.models.vo.RazonSocial;
+import pe.edu.unc.elmirador.comercial.models.vo.Ruc;
+
+/**
+ * Raiz del agregado Cliente.
+ * Sostiene la invariante CLI-01.
+ */
+public class Cliente {
+
+    private final String id;
+    private final Ruc ruc;
+    private final RazonSocial razonSocial;
+    private CondicionDePago condicionHabitual;
+    private EstadoCrediticio estadoCrediticio;
+
+    public Cliente(
+        String id,
+        Ruc ruc,
+        RazonSocial razonSocial,
+        CondicionDePago condicionHabitual,
+        EstadoCrediticio estadoCrediticio
+    ) {
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("El id del cliente es obligatorio");
+        }
+        if (ruc == null) {
+            throw new IllegalArgumentException("El RUC es obligatorio");
+        }
+        if (razonSocial == null) {
+            throw new IllegalArgumentException("La razon social es obligatoria");
+        }
+        if (condicionHabitual == null) {
+            throw new IllegalArgumentException("La condicion de pago habitual es obligatoria");
+        }
+        if (estadoCrediticio == null) {
+            throw new IllegalArgumentException("El estado crediticio es obligatorio");
+        }
+        this.id = id.trim();
+        this.ruc = ruc;
+        this.razonSocial = razonSocial;
+        this.condicionHabitual = condicionHabitual;
+        this.estadoCrediticio = estadoCrediticio;
+    }
+
+    public String id() {
+        return id;
+    }
+
+    public Ruc ruc() {
+        return ruc;
+    }
+
+    public RazonSocial razonSocial() {
+        return razonSocial;
+    }
+
+    public CondicionDePago condicionHabitual() {
+        return condicionHabitual;
+    }
+
+    public EstadoCrediticio estadoCrediticio() {
+        return estadoCrediticio;
+    }
+
+    /**
+     * Invariante CLI-01 (primera mitad):
+     * Un cliente con credito suspendido no puede contratar a credito.
+     */
+    public boolean puedeContratarACredito() {
+        return this.estadoCrediticio.permiteCredito();
+    }
+
+    /**
+     * Invariante CLI-01 (segunda mitad):
+     * Un cliente suspendido si puede contratar al contado. Suspender no lo deja fuera del negocio.
+     */
+    public boolean puedeContratarAlContado() {
+        return true;
+    }
+
+    /**
+     * Sustituye la copia local del estado crediticio proveniente de Cobranza (Contrato 11).
+     * Rechaza lecturas con fecha de cambio anterior a la vigente.
+     */
+    public void refrescarEstadoCrediticio(EstadoCrediticio nuevoEstado) {
+        if (nuevoEstado == null) {
+            throw new IllegalArgumentException("El nuevo estado crediticio es obligatorio");
+        }
+        if (nuevoEstado.fechaDeCambio().isBefore(this.estadoCrediticio.fechaDeCambio())) {
+            throw new IllegalArgumentException(
+                "No se puede registrar un estado crediticio con fecha (" + nuevoEstado.fechaDeCambio()
+                    + ") anterior a la vigente (" + this.estadoCrediticio.fechaDeCambio() + ")"
+            );
+        }
+        this.estadoCrediticio = nuevoEstado;
+    }
+
+    public void cambiarCondicionHabitual(CondicionDePago nuevaCondicion) {
+        if (nuevaCondicion == null) {
+            throw new IllegalArgumentException("La nueva condicion habitual es obligatoria");
+        }
+        this.condicionHabitual = nuevaCondicion;
+    }
+}
