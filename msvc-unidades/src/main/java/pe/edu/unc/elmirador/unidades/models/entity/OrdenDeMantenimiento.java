@@ -1,8 +1,21 @@
 package pe.edu.unc.elmirador.unidades.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import pe.edu.unc.elmirador.unidades.exceptions.KilometrajeDeAtencionInvalidoException;
 import pe.edu.unc.elmirador.unidades.exceptions.OrdenCerradaException;
 import pe.edu.unc.elmirador.unidades.models.vo.Dinero;
@@ -10,17 +23,45 @@ import pe.edu.unc.elmirador.unidades.models.vo.EstadoDeOrden;
 import pe.edu.unc.elmirador.unidades.models.vo.Kilometraje;
 import pe.edu.unc.elmirador.unidades.models.vo.TipoDeMantenimiento;
 
+@Entity
+@Table(name = "ordenes_mantenimiento")
 public class OrdenDeMantenimiento {
 
-    private final String id;
-    private final String unidadId;
-    private final TipoDeMantenimiento tipo;
-    private final Kilometraje kmAtencion;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "unidad_id", length = 40, nullable = false)
+    private String unidadId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_mantenimiento", length = 20, nullable = false)
+    private TipoDeMantenimiento tipo;
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "km_atencion", nullable = false))
+    private Kilometraje kmAtencion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeOrden estado;
-    private final List<TrabajoRealizado> trabajos = new ArrayList<>();
-    private final LocalDate fechaApertura;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "orden_id", nullable = false)
+    private List<TrabajoRealizado> trabajos = new ArrayList<>();
+
+    @Column(name = "fecha_apertura", nullable = false)
+    private LocalDate fechaApertura;
+
+    @Column(name = "fecha_cierre")
     private LocalDate fechaCierre;
-    private final String codigoMoneda;
+
+    @Column(name = "codigo_moneda", length = 3, nullable = false)
+    private String codigoMoneda;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected OrdenDeMantenimiento() {
+    }
 
     public OrdenDeMantenimiento(
             String id,
@@ -160,5 +201,18 @@ public class OrdenDeMantenimiento {
 
     public String getCodigoMoneda() {
         return codigoMoneda;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OrdenDeMantenimiento that = (OrdenDeMantenimiento) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

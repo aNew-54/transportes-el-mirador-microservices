@@ -1,9 +1,23 @@
 package pe.edu.unc.elmirador.unidades.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import pe.edu.unc.elmirador.unidades.exceptions.ReactivacionInvalidaException;
 import pe.edu.unc.elmirador.unidades.models.vo.Capacidad;
 import pe.edu.unc.elmirador.unidades.models.vo.EstadoOperativo;
@@ -24,16 +38,58 @@ import pe.edu.unc.elmirador.unidades.models.vo.TipoDeUnidad;
  * evaluacion y la exige no nula. Un dominio que llama a {@code LocalDate.now()} produce
  * pruebas no deterministas y hace imposible reprocesar un hecho pasado.
  */
+@Entity
+@Table(name = "unidades")
 public class Unidad {
 
-    private final String id;
-    private final Placa placa;
-    private final TipoDeUnidad tipo;
-    private final Capacidad capacidad;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "placa", length = 10, nullable = false))
+    private Placa placa;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", length = 20, nullable = false)
+    private TipoDeUnidad tipo;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "pesoMaximoKg", column = @Column(name = "peso_maximo_kg", nullable = false)),
+        @AttributeOverride(name = "volumenMaximoM3", column = @Column(name = "volumen_maximo_m3", precision = 10, scale = 2, nullable = false))
+    })
+    private Capacidad capacidad;
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "kilometraje", nullable = false))
     private Kilometraje kilometraje;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "situacion", column = @Column(name = "situacion_operativa", length = 20, nullable = false)),
+        @AttributeOverride(name = "motivo", column = @Column(name = "motivo_estado", length = 300))
+    })
     private EstadoOperativo estadoOperativo;
+
+    // Tres Kilometraje conviven en este agregado: kilometraje de la unidad, y los dos anidados
+    // en ProgramaDeMantenimiento (kmUltimoServicio y kmProximoServicio). Sin @AttributeOverride
+    // con ruta con punto, los tres piden la columna "valor" y el mapeo choca.
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "kmUltimoServicio.valor", column = @Column(name = "km_ultimo_servicio", nullable = false)),
+        @AttributeOverride(name = "kmProximoServicio.valor", column = @Column(name = "km_proximo_servicio", nullable = false)),
+        @AttributeOverride(name = "intervalo", column = @Column(name = "intervalo_mantenimiento", length = 30, nullable = false))
+    })
     private ProgramaDeMantenimiento programaDeMantenimiento;
-    private final List<DocumentoVehicular> documentos = new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "unidad_id", nullable = false)
+    private List<DocumentoVehicular> documentos = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Unidad() {
+    }
 
     public Unidad(
             String id,
@@ -270,5 +326,18 @@ public class Unidad {
 
     public List<DocumentoVehicular> getDocumentos() {
         return List.copyOf(documentos);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Unidad unidad = (Unidad) o;
+        return Objects.equals(id, unidad.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
