@@ -1,8 +1,20 @@
 package pe.edu.unc.elmirador.cobranza.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import pe.edu.unc.elmirador.cobranza.exceptions.DominioCobranzaException;
 import pe.edu.unc.elmirador.cobranza.exceptions.RehabilitacionInvalidaException;
 import pe.edu.unc.elmirador.cobranza.models.vo.Dinero;
@@ -12,11 +24,29 @@ import pe.edu.unc.elmirador.cobranza.models.vo.EstadoCrediticio;
  * Raiz del agregado CuentaCorrienteDelCliente.
  * La identidad es el cliente (clienteId).
  */
+@Entity
+@Table(name = "cuentas_corrientes")
 public class CuentaCorrienteDelCliente {
 
-    private final String clienteId;
+    @Id
+    @Column(name = "cliente_id", length = 40, nullable = false)
+    private String clienteId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "situacion", column = @Column(name = "situacion", length = 20, nullable = false)),
+        @AttributeOverride(name = "motivo", column = @Column(name = "motivo", length = 300)),
+        @AttributeOverride(name = "fechaDeCambio", column = @Column(name = "fecha_de_cambio", nullable = false))
+    })
     private EstadoCrediticio estado;
-    private final List<CuentaPorCobrar> cuentas;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private List<CuentaPorCobrar> cuentas = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected CuentaCorrienteDelCliente() {
+    }
 
     public CuentaCorrienteDelCliente(String clienteId, EstadoCrediticio estado) {
         this(clienteId, estado, new ArrayList<>());
@@ -31,7 +61,6 @@ public class CuentaCorrienteDelCliente {
         }
         this.clienteId = clienteId.trim();
         this.estado = estado;
-        this.cuentas = new ArrayList<>();
         if (cuentasIniciales != null) {
             for (CuentaPorCobrar cuenta : cuentasIniciales) {
                 registrarCuenta(cuenta);
@@ -43,11 +72,23 @@ public class CuentaCorrienteDelCliente {
         return clienteId;
     }
 
+    public String getClienteId() {
+        return clienteId;
+    }
+
     public EstadoCrediticio estado() {
         return estado;
     }
 
+    public EstadoCrediticio getEstado() {
+        return estado;
+    }
+
     public List<CuentaPorCobrar> cuentas() {
+        return List.copyOf(cuentas);
+    }
+
+    public List<CuentaPorCobrar> getCuentas() {
         return List.copyOf(cuentas);
     }
 
@@ -150,5 +191,18 @@ public class CuentaCorrienteDelCliente {
         return (int) this.cuentas.stream()
             .filter(c -> !c.estaCancelada() && c.diasDeAtraso(fecha).dias() > 0)
             .count();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CuentaCorrienteDelCliente that = (CuentaCorrienteDelCliente) o;
+        return Objects.equals(clienteId, that.clienteId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(clienteId);
     }
 }

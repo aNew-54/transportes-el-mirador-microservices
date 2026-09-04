@@ -1,16 +1,40 @@
 package pe.edu.unc.elmirador.cobranza.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.util.Objects;
 import pe.edu.unc.elmirador.cobranza.models.vo.Dinero;
 
 /**
  * Entidad hija del agregado Pago.
  * Representa la aplicacion de una parte o la totalidad del monto de un pago a una cuenta por cobrar.
  */
+@Entity
+@Table(name = "aplicaciones")
 public class AplicacionDePago {
 
-    private final String id;
-    private final String cuentaPorCobrarId;
-    private final Dinero importe;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "cuenta_por_cobrar_id", length = 40, nullable = false)
+    private String cuentaPorCobrarId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "importe_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "importe_moneda", length = 3, nullable = false))
+    })
+    private Dinero importe;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected AplicacionDePago() {
+    }
 
     public AplicacionDePago(String id, String cuentaPorCobrarId, Dinero importe) {
         if (id == null || id.isBlank()) {
@@ -34,11 +58,36 @@ public class AplicacionDePago {
         return id;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public String cuentaPorCobrarId() {
+        return cuentaPorCobrarId;
+    }
+
+    public String getCuentaPorCobrarId() {
         return cuentaPorCobrarId;
     }
 
     public Dinero importe() {
         return importe;
+    }
+
+    public Dinero getImporte() {
+        return importe;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AplicacionDePago that = (AplicacionDePago) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

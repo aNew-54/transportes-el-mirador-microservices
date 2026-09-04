@@ -1,8 +1,20 @@
 package pe.edu.unc.elmirador.cobranza.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import pe.edu.unc.elmirador.cobranza.exceptions.AplicacionExcedeElPagoException;
 import pe.edu.unc.elmirador.cobranza.exceptions.MonedaIncompatibleException;
 import pe.edu.unc.elmirador.cobranza.exceptions.PagoDeOtroClienteException;
@@ -14,14 +26,41 @@ import pe.edu.unc.elmirador.cobranza.models.vo.MedioDePago;
  * Raiz del agregado Pago.
  * Administra el registro del pago y sus aplicaciones a una o varias cuentas por cobrar.
  */
+@Entity
+@Table(name = "pagos")
 public class Pago {
 
-    private final String id;
-    private final String clienteId;
-    private final Dinero monto;
-    private final MedioDePago medioDePago;
-    private final LocalDate fecha;
-    private final List<AplicacionDePago> aplicaciones;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "cliente_id", length = 40, nullable = false)
+    private String clienteId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "monto", column = @Column(name = "monto_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "codigoMoneda", column = @Column(name = "monto_moneda", length = 3, nullable = false))
+    })
+    private Dinero monto;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "modalidad", column = @Column(name = "modalidad", length = 20, nullable = false)),
+        @AttributeOverride(name = "referencia", column = @Column(name = "referencia", length = 100))
+    })
+    private MedioDePago medioDePago;
+
+    @Column(name = "fecha", nullable = false)
+    private LocalDate fecha;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "pago_id", nullable = false)
+    private List<AplicacionDePago> aplicaciones = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Pago() {
+    }
 
     public Pago(String id, String clienteId, Dinero monto, MedioDePago medioDePago, LocalDate fecha) {
         this(id, clienteId, monto, medioDePago, fecha, new ArrayList<>());
@@ -59,7 +98,6 @@ public class Pago {
         this.monto = monto;
         this.medioDePago = medioDePago;
         this.fecha = fecha;
-        this.aplicaciones = new ArrayList<>();
 
         if (aplicacionesIniciales != null) {
             Dinero acumulado = Dinero.cero(monto.codigoMoneda());
@@ -79,7 +117,15 @@ public class Pago {
         return id;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public String clienteId() {
+        return clienteId;
+    }
+
+    public String getClienteId() {
         return clienteId;
     }
 
@@ -87,7 +133,15 @@ public class Pago {
         return monto;
     }
 
+    public Dinero getMonto() {
+        return monto;
+    }
+
     public MedioDePago medioDePago() {
+        return medioDePago;
+    }
+
+    public MedioDePago getMedioDePago() {
         return medioDePago;
     }
 
@@ -95,7 +149,15 @@ public class Pago {
         return fecha;
     }
 
+    public LocalDate getFecha() {
+        return fecha;
+    }
+
     public List<AplicacionDePago> aplicaciones() {
+        return List.copyOf(aplicaciones);
+    }
+
+    public List<AplicacionDePago> getAplicaciones() {
         return List.copyOf(aplicaciones);
     }
 
@@ -160,5 +222,18 @@ public class Pago {
         cuenta.aplicar(importe);
         String aplicacionId = this.id + "-APP-" + (this.aplicaciones.size() + 1);
         this.aplicaciones.add(new AplicacionDePago(aplicacionId, cuenta.id(), importe));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Pago pago = (Pago) o;
+        return Objects.equals(id, pago.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
