@@ -282,3 +282,17 @@ Raíz `DominioProgramacionException`; herederas `ReservaSolapadaException`, `Rec
 `AsignacionIncompletaException`, `ViajeDespachadoException`, `TransicionDeViajeInvalidaException`,
 `ConsolidacionProhibidaException` (VIA-04), `CorredorIncompatibleException` (VIA-03),
 `CargaIncompatibleException` (VIA-05), `CapacidadExcedidaException` (VIA-02).
+
+### Revisión de `S1a-dominio-base`
+
+Pasó sin correcciones de código: es el primer slice delegado que llega limpio. Lo verificado:
+
+- `VentanaDeTiempo.seSolapaCon` es estrictamente `desde.isBefore(otra.hasta) && otra.desde.isBefore(hasta)`.
+  Dos ventanas que se tocan en el borde no se solapan, que era el riesgo de la regla D5 aquí.
+- La firma de `Viaje.consolidarOrden` coincide con la spec al parámetro, así que `S1b` encaja sin renegociar.
+- Los ocho `// TODO S1b` están donde debían y ninguna prueba de VIA-02…06 se coló.
+- Cero `now()`, cero JPA, cero imports cruzados.
+
+Los dos `x != null &&` de `AsignacionDeRecursos` no son evasiones: `esCompleta()` es un predicado positivo
+que falla cerrado, y el constructor normaliza el identificador en blanco a nulo. Que se pueda representar
+una asignación incompleta es deliberado: es lo que permite a `confirmarProgramacion` lanzar por **VIA-01**.

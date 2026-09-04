@@ -109,7 +109,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 
 | Slice | Invariantes | Quién | Estado |
 |---|---|---|---|
-| `S1a-dominio-base` | AGU-01, AGU-02, AGC-01, AGC-02, VIA-01, VIA-07 | agy `flash` | pendiente |
+| `S1a-dominio-base` | AGU-01, AGU-02, AGC-01, AGC-02, VIA-01, VIA-07 | agy `flash` | **done** |
 | `S1b-consolidacion` | VIA-02, VIA-03, VIA-04, VIA-05, VIA-06 | **Claude** | pendiente |
 | `S2-persistencia` | — | agy `flash` | pendiente |
 | `S3-api-publica` | — | agy `flash` | pendiente |
