@@ -49,6 +49,10 @@ Un desacuerdo entre el código y estos documentos es un defecto del código, sal
 11. El esquema lo crea Flyway, nunca Hibernate. Con `ddl-auto=validate`, una entidad sin su migración
     rompe el build. Es deliberado.
 12. Los objetos de valor viven en `models/vo` como `@Embeddable`, sin `@Id`. Su lógica vive con ellos.
+13. **Los identificadores Java son ASCII.** La documentación conserva la tilde; el código, no:
+    `estaHabilitada()`, `estaVigente()`, `kmUltimoServicio`, `tramoDeGestion()`, `Induccion`,
+    `NotaDeCredito`. macOS almacena los nombres de archivo en NFD y git en NFC: un
+    `Inducción.java` se corrompe al clonar en Linux. Cada spec lleva la tabla de correspondencia.
 
 ## Ciclo de trabajo por slice
 
