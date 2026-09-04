@@ -259,3 +259,17 @@ Bordes obligatorios:
 - `Saldo.entre` en los tres signos, incluido el caso exacto `SALDADO`.
 - Las transiciones prohibidas de `EstadoDeEjecucion`, una a una.
 - Toda operación con fecha nula lanza `IllegalArgumentException`.
+
+### Correcciones tras la revisión de `S1-dominio`
+
+**`EsperaFacturable.excedente()` devolvía `double`.** Calculaba con `BigDecimal` y tiraba la precisión con
+`.doubleValue()` en la última línea. Ese valor viaja en los contratos 7 y 8 y allí se multiplica por una
+tarifa horaria: es un importe en potencia. En coma flotante binaria, 0,1 hora facturada mil veces no suma
+cien. Pasa a `BigDecimal`, y con él `tiempoRealHoras()`.
+
+Se acepta que el agente añadiera `EjecucionDeViaje.reabrirParada(int)` y `Parada.reabrir()`, que la spec no
+pedía: sin una vía para reabrir una parada atendida, **EJV-04 no se puede violar**, y una invariante que no
+se puede violar tampoco se puede probar. Queda incorporado a la spec.
+
+`Parada.estaConforme()` usa `conformidad != null && conformidad.estaFirmada()`, que parece un D2 pero no lo
+es: es un predicado positivo, y la ausencia de conformidad da `false`. Falla cerrado.
