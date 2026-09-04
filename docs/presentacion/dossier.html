@@ -1,0 +1,1142 @@
+<title>Dossier El Mirador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    /* Verde de señalización vial peruana: el acento sale del mundo del sujeto. */
+    --senal:        #0E5C3F;
+    --senal-vivo:   #147952;
+    --senal-tenue:  #DCE8E1;
+
+    --fondo:        #F4F6F4;
+    --superficie:   #FFFFFF;
+    --superficie-2: #EDF1EE;
+    --tinta:        #131A17;
+    --tinta-media:  #47554E;
+    /* Gris sesgado al verde, no un gris puro. */
+    --gris:         #6E7B75;
+    --linea:        #D3DBD6;
+    --linea-fuerte: #B4C0BA;
+
+    --ambar:        #A96C12;
+    --ambar-suave:  #F5EAD6;
+    --rojo:         #93362A;
+    --rojo-suave:   #F6E3DF;
+
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --grot:  "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --mono:  "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+    --ancho: 1120px;
+    --radio: 3px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --senal:        #4FBF8B;
+      --senal-vivo:   #6FD5A4;
+      --senal-tenue:  #163024;
+
+      --fondo:        #0E1412;
+      --superficie:   #161E1A;
+      --superficie-2: #1D2723;
+      --tinta:        #E4EDE8;
+      --tinta-media:  #A9B8B0;
+      --gris:         #8A9A92;
+      --linea:        #2A3833;
+      --linea-fuerte: #3D4E47;
+
+      --ambar:        #D9A055;
+      --ambar-suave:  #33270F;
+      --rojo:         #E08574;
+      --rojo-suave:   #351B16;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --senal:        #4FBF8B;
+    --senal-vivo:   #6FD5A4;
+    --senal-tenue:  #163024;
+
+    --fondo:        #0E1412;
+    --superficie:   #161E1A;
+    --superficie-2: #1D2723;
+    --tinta:        #E4EDE8;
+    --tinta-media:  #A9B8B0;
+    --gris:         #8A9A92;
+    --linea:        #2A3833;
+    --linea-fuerte: #3D4E47;
+
+    --ambar:        #D9A055;
+    --ambar-suave:  #33270F;
+    --rojo:         #E08574;
+    --rojo-suave:   #351B16;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .envoltorio {
+    max-width: var(--ancho);
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ---------- Cabecera ---------- */
+
+  .masthead {
+    border-bottom: 2px solid var(--tinta);
+    padding: 44px 0 22px;
+    display: grid;
+    gap: 20px;
+  }
+
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--senal);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--grot);
+    font-weight: 700;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    line-height: 1.02;
+    letter-spacing: -0.022em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .bajada {
+    font-size: 1.18rem;
+    color: var(--tinta-media);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .creditos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 26px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--gris);
+    padding-top: 6px;
+  }
+
+  .creditos b { color: var(--tinta-media); font-weight: 500; }
+
+  /* ---------- Cifras ---------- */
+
+  .cifras {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px;
+    background: var(--linea);
+    border: 1px solid var(--linea);
+    margin: 34px 0 0;
+  }
+
+  .cifra {
+    background: var(--superficie);
+    padding: 18px 18px 16px;
+    display: grid;
+    gap: 2px;
+    align-content: start;
+  }
+
+  .cifra .n {
+    font-family: var(--grot);
+    font-weight: 700;
+    font-size: 2.15rem;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cifra .n.completo { color: var(--senal); }
+
+  .cifra .et {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+
+  /* ---------- Secciones ---------- */
+
+  section { margin-top: 68px; }
+
+  h2 {
+    font-family: var(--grot);
+    font-weight: 600;
+    font-size: 1.72rem;
+    letter-spacing: -0.014em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--grot);
+    font-weight: 600;
+    font-size: 1.06rem;
+    letter-spacing: -0.005em;
+    margin: 30px 0 8px;
+  }
+
+  .entradilla {
+    color: var(--tinta-media);
+    max-width: 66ch;
+    margin: 0 0 24px;
+  }
+
+  p { max-width: 66ch; }
+
+  .num-seccion {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.12em;
+    color: var(--senal);
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  code, .mono { font-family: var(--mono); font-size: 0.87em; }
+
+  code {
+    background: var(--superficie-2);
+    padding: 1px 5px;
+    border-radius: var(--radio);
+  }
+
+  /* ---------- Matriz de invariantes ---------- */
+
+  .contextos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: 1px;
+    background: var(--linea);
+    border: 1px solid var(--linea);
+  }
+
+  .contexto {
+    background: var(--superficie);
+    padding: 16px 16px 18px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+  }
+
+  .contexto.core {
+    background: var(--senal-tenue);
+  }
+
+  .contexto-cab {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .contexto-nombre {
+    font-family: var(--grot);
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+
+  .contexto-meta {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--gris);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .etiqueta-core {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--superficie);
+    background: var(--senal);
+    padding: 2px 6px;
+    border-radius: var(--radio);
+  }
+
+  .celdas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .inv {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 7px;
+    border-radius: var(--radio);
+    background: var(--senal);
+    color: #FFFFFF;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+
+  :root[data-theme="dark"] .inv { color: #08120D; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .inv { color: #08120D; }
+  }
+
+  .contexto-pie {
+    font-size: 0.86rem;
+    color: var(--tinta-media);
+    line-height: 1.5;
+    margin: 0;
+    max-width: none;
+  }
+
+  .leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gris);
+  }
+
+  .muestra {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    vertical-align: -1px;
+    margin-right: 6px;
+  }
+
+  /* ---------- Tablas ---------- */
+
+  .scroll {
+    overflow-x: auto;
+    border: 1px solid var(--linea);
+    background: var(--superficie);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9rem;
+    min-width: 620px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--linea);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--gris);
+    font-weight: 500;
+    border-bottom: 1px solid var(--linea-fuerte);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td { border-bottom: 0; }
+
+  td.num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  td.cod { font-family: var(--mono); font-size: 0.82rem; white-space: nowrap; }
+
+  /* ---------- Matriz de contratos ---------- */
+
+  .adyacencia { min-width: 720px; }
+
+  .adyacencia th.prov {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-align: center;
+    padding: 8px 4px;
+    color: var(--gris);
+  }
+
+  .adyacencia td.cons {
+    font-family: var(--grot);
+    font-weight: 600;
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+
+  .adyacencia td.c {
+    text-align: center;
+    padding: 7px 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    border-left: 1px solid var(--linea);
+  }
+
+  .adyacencia td.diag { background: var(--superficie-2); }
+
+  .arco {
+    display: inline-block;
+    min-width: 22px;
+    padding: 2px 5px;
+    border-radius: var(--radio);
+    background: var(--senal);
+    color: #FFFFFF;
+  }
+
+  :root[data-theme="dark"] .arco { color: #08120D; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .arco { color: #08120D; }
+  }
+
+  .fila-proveedora td.cons { color: var(--gris); }
+
+  .nota-proveedor {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--gris);
+  }
+
+  /* ---------- Defectos ---------- */
+
+  .defectos { display: grid; gap: 1px; background: var(--linea); border: 1px solid var(--linea); }
+
+  .defecto {
+    background: var(--superficie);
+    padding: 17px 18px;
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 4px 20px;
+    align-items: start;
+  }
+
+  .defecto .inv-ref {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rojo);
+    background: var(--rojo-suave);
+    padding: 3px 6px;
+    border-radius: var(--radio);
+    justify-self: start;
+    white-space: nowrap;
+  }
+
+  .defecto .cuerpo { display: grid; gap: 6px; }
+
+  .defecto .titulo {
+    font-family: var(--grot);
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0;
+    max-width: none;
+  }
+
+  .defecto .texto { margin: 0; font-size: 0.92rem; color: var(--tinta-media); max-width: 74ch; }
+
+  .defecto .servicio {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+
+  .evidencia {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    background: var(--superficie-2);
+    border-left: 2px solid var(--senal);
+    padding: 8px 11px;
+    margin: 2px 0 0;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--tinta);
+    max-width: none;
+  }
+
+  /* ---------- Reglas de dominio ---------- */
+
+  .reglas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1px; background: var(--linea); border: 1px solid var(--linea); }
+
+  .regla { background: var(--superficie); padding: 15px 17px; display: grid; gap: 5px; align-content: start; }
+
+  .regla .id {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--senal);
+  }
+
+  .regla .enunciado { font-family: var(--grot); font-weight: 600; font-size: 0.95rem; }
+
+  .regla .origen { font-size: 0.85rem; color: var(--tinta-media); margin: 0; max-width: none; }
+
+  /* ---------- Barra de avance ---------- */
+
+  .avance { display: grid; gap: 9px; margin-top: 22px; }
+
+  .barra {
+    height: 26px;
+    background: var(--superficie-2);
+    border: 1px solid var(--linea);
+    display: flex;
+    overflow: hidden;
+  }
+
+  .barra .hecho {
+    background: var(--senal);
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: #FFFFFF;
+    white-space: nowrap;
+  }
+
+  :root[data-theme="dark"] .barra .hecho { color: #08120D; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .barra .hecho { color: #08120D; }
+  }
+
+  .barra-pie {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gris);
+  }
+
+  /* ---------- Pie ---------- */
+
+  footer {
+    margin-top: 76px;
+    border-top: 1px solid var(--linea-fuerte);
+    padding-top: 20px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--gris);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+  }
+
+  a { color: var(--senal); }
+  a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--senal-vivo); outline-offset: 2px; }
+
+  @media (max-width: 620px) {
+    .defecto { grid-template-columns: 1fr; }
+    body { font-size: 16px; }
+  }
+</style>
+
+<div class="envoltorio">
+
+  <header class="masthead">
+    <p class="kicker">Universidad Nacional de Cajamarca · Ingeniería de Software II · Unidad II</p>
+    <h1>Transportes El&nbsp;Mirador</h1>
+    <p class="bajada">
+      Siete microservicios Spring Boot construidos sobre el diseño táctico DDD de una empresa de
+      transporte de carga. El criterio de éxito no es que compile: son cuarenta y ocho invariantes de
+      negocio, cada una con una prueba que la viola y espera el fallo.
+    </p>
+    <div class="creditos">
+      <span><b>Arnold Ocas</b> · Unidades</span>
+      <span><b>Brayam Alfaro</b> · Conductores, Programación</span>
+      <span><b>María Belén Vilca</b> · Cobranza, Facturación</span>
+      <span><b>Sarah Herrera</b> · Comercial</span>
+      <span><b>Alexander Infante</b> · Ejecución</span>
+    </div>
+  </header>
+
+  <div class="cifras">
+    <div class="cifra"><span class="n completo">48/48</span><span class="et">Invariantes cubiertas</span></div>
+    <div class="cifra"><span class="n">7</span><span class="et">Bounded contexts</span></div>
+    <div class="cifra"><span class="n">512</span><span class="et">Pruebas en verde</span></div>
+    <div class="cifra"><span class="n">11</span><span class="et">Contratos de integración</span></div>
+    <div class="cifra"><span class="n">0</span><span class="et">Imports entre contextos</span></div>
+    <div class="cifra"><span class="n">9</span><span class="et">Defectos hallados en revisión</span></div>
+  </div>
+
+  <!-- ===================================================== -->
+  <section>
+    <span class="num-seccion">01 — El criterio de éxito</span>
+    <h2>Las cuarenta y ocho invariantes</h2>
+    <p class="entradilla">
+      Extraídas una a una del documento de diseño táctico y fijadas con un código estable que se cita desde
+      las specs, los mensajes de commit y las pruebas. Una invariante sin una prueba que la viole no cuenta
+      como cubierta: probar que el camino feliz funciona no demuestra que la regla exista.
+    </p>
+
+    <div class="contextos">
+      <div class="contexto core">
+        <div class="contexto-cab">
+          <span class="contexto-nombre">Programación y Despacho</span>
+          <span class="etiqueta-core">Core</span>
+        </div>
+        <div class="celdas">
+          <span class="inv">VIA-01</span><span class="inv">VIA-02</span><span class="inv">VIA-03</span>
+          <span class="inv">VIA-04</span><span class="inv">VIA-05</span><span class="inv">VIA-06</span>
+          <span class="inv">VIA-07</span><span class="inv">AGU-01</span><span class="inv">AGU-02</span>
+          <span class="inv">AGC-01</span><span class="inv">AGC-02</span>
+        </div>
+        <p class="contexto-pie">
+          Decide qué órdenes viajan juntas, con qué unidad y qué conductor, y en qué orden se estiba.
+          VIA-02 a VIA-06 son las cinco reglas acopladas que se evalúan en una sola operación.
+        </p>
+      </div>
+
+      <div class="contexto">
+        <div class="contexto-cab">
+          <span class="contexto-nombre">Ejecución y Seguimiento</span>
+          <span class="contexto-meta">9 · 2 agregados</span>
+        </div>
+        <div class="celdas">
+          <span class="inv">EJV-01</span><span class="inv">EJV-02</span><span class="inv">EJV-03</span>
+          <span class="inv">EJV-04</span><span class="inv">EJV-05</span><span class="inv">LIQ-01</span>
+          <span class="inv">LIQ-02</span><span class="inv">LIQ-03</span><span class="inv">LIQ-04</span>
+        </div>
+        <p class="contexto-pie">
+          LIQ-02 exige que el saldo se calcule y nunca se almacene. La prueba lo comprueba por reflexión:
+          recorre <code>getDeclaredFields()</code> y falla si aparece un campo <code>saldo</code>.
+        </p>
+      </div>
+
+      <div class="contexto">
+        <div class="contexto-cab">
+          <span class="contexto-nombre">Gestión Comercial</span>
+          <span class="contexto-meta">8 · 5 agregados</span>
+        </div>
+        <div class="celdas">
+          <span class="inv">CLI-01</span><span class="inv">COT-01</span><span class="inv">COT-02</span>
+          <span class="inv">ORD-01</span><span class="inv">ORD-02</span><span class="inv">CTM-01</span>
+          <span class="inv">CTM-02</span><span class="inv">TAR-01</span>
+        </div>
+        <p class="contexto-pie">
+          COT-02 se hizo inexpresable: la autorización de gerencia vive dentro del propio
+          <code>Descuento</code>, así que un descuento sin autorizar no se puede ni construir.
+        </p>
+      </div>
+
+      <div class="contexto">
+        <div class="contexto-cab">
+          <span class="contexto-nombre">Gestión de Unidades</span>
+          <span class="contexto-meta">6 · 3 agregados</span>
+        </div>
+        <div class="celdas">
+          <span class="inv">UNI-01</span><span class="inv">UNI-02</span><span class="inv">UNI-03</span>
+          <span class="inv">OMT-01</span><span class="inv">OMT-02</span><span class="inv">REP-01</span>
+        </div>
+        <p class="contexto-pie">
+          UNI-01 no es una alerta, es un cambio de estado: con cualquiera de los cuatro documentos
+          obligatorios vencido, la unidad pasa a inoperativa sola.
+        </p>
+      </div>
+
+      <div class="contexto">
+        <div class="contexto-cab">
+          <span class="contexto-nombre">Facturación</span>
+          <span class="contexto-meta">6 · 2 agregados</span>
+        </div>
+        <div class="celdas">
+          <span class="inv">FAC-01</span><span class="inv">FAC-02</span><span class="inv">FAC-03</span>
+          <span class="inv">FAC-04</span><span class="inv">FAC-05</span><span class="inv">NCR-01</span>
+        </div>
+        <p class="contexto-pie">
+          Una factura por orden de servicio, no por viaje: un viaje con carga de tres clientes emite tres
+          facturas, porque cada cliente es un contribuyente distinto ante SUNAT.
+        </p>
+      </div>
+
+      <div class="contexto">
+        <div class="contexto-cab">
+          <span class="contexto-nombre">Cobranza</span>
+          <span class="contexto-meta">5 · 2 agregados</span>
+        </div>
+        <div class="celdas">
+          <span class="inv">CCC-01</span><span class="inv">CCC-02</span><span class="inv">CCC-03</span>
+          <span class="inv">PAG-01</span><span class="inv">PAG-02</span>
+        </div>
+        <p class="contexto-pie">
+          CCC-03 es la doble condición: una factura sujeta a detracción no se cancela mientras falte el pago
+          del cliente <em>o</em> el depósito en el Banco de la Nación. Se prueban los cuatro casos.
+        </p>
+      </div>
+
+      <div class="contexto">
+        <div class="contexto-cab">
+          <span class="contexto-nombre">Gestión de Conductores</span>
+          <span class="contexto-meta">3 · 1 agregado</span>
+        </div>
+        <div class="celdas">
+          <span class="inv">CON-01</span><span class="inv">CON-02</span><span class="inv">CON-03</span>
+        </div>
+        <p class="contexto-pie">
+          CON-03: la habilitación no es un booleano global. Un conductor puede estar habilitado en general y
+          no habilitado para un cliente minero cuya inducción caducó.
+        </p>
+      </div>
+    </div>
+
+    <div class="leyenda">
+      <span><span class="muestra" style="background: var(--senal);"></span>Cubierta por una prueba que la viola</span>
+      <span>Máximo normado de conducción: 10&nbsp;h en 24&nbsp;h (DS&nbsp;017-2009-MTC)</span>
+    </div>
+  </section>
+
+  <!-- ===================================================== -->
+  <section>
+    <span class="num-seccion">02 — Mapa de contexto</span>
+    <h2>Quién llama a quién</h2>
+    <p class="entradilla">
+      Once contratos HTTP y ni una dependencia Maven entre módulos de negocio. Las filas son el consumidor;
+      las columnas, el proveedor. Una fila vacía significa proveedor puro: ese módulo no lleva OpenFeign ni
+      <code>@EnableFeignClients</code>, y eso es verificable con un grep.
+    </p>
+
+    <div class="scroll">
+      <table class="adyacencia">
+        <thead>
+          <tr>
+            <th>Consumidor ↓ &nbsp; Proveedor →</th>
+            <th class="prov">COM</th><th class="prov">PRO</th><th class="prov">EJE</th>
+            <th class="prov">UNI</th><th class="prov">CON</th><th class="prov">FAC</th><th class="prov">COB</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cons">Comercial</td>
+            <td class="c diag">—</td><td class="c"></td><td class="c"></td><td class="c"></td>
+            <td class="c"></td><td class="c"></td><td class="c"><span class="arco">11</span></td>
+          </tr>
+          <tr>
+            <td class="cons">Programación</td>
+            <td class="c"><span class="arco">1</span></td><td class="c diag">—</td><td class="c"></td>
+            <td class="c"><span class="arco">2</span></td><td class="c"><span class="arco">3</span></td>
+            <td class="c"></td><td class="c"></td>
+          </tr>
+          <tr>
+            <td class="cons">Ejecución</td>
+            <td class="c"><span class="arco">7</span></td><td class="c"><span class="arco">4</span></td>
+            <td class="c diag">—</td><td class="c"><span class="arco">5</span></td>
+            <td class="c"><span class="arco">6</span></td><td class="c"><span class="arco">8</span></td>
+            <td class="c"></td>
+          </tr>
+          <tr>
+            <td class="cons">Facturación</td>
+            <td class="c"><span class="arco">9</span></td><td class="c"></td><td class="c"></td>
+            <td class="c"></td><td class="c"></td><td class="c diag">—</td>
+            <td class="c"><span class="arco">10</span></td>
+          </tr>
+          <tr class="fila-proveedora">
+            <td class="cons">Unidades <span class="nota-proveedor">proveedor puro</span></td>
+            <td class="c"></td><td class="c"></td><td class="c"></td><td class="c diag">—</td>
+            <td class="c"></td><td class="c"></td><td class="c"></td>
+          </tr>
+          <tr class="fila-proveedora">
+            <td class="cons">Conductores <span class="nota-proveedor">proveedor puro</span></td>
+            <td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td>
+            <td class="c diag">—</td><td class="c"></td><td class="c"></td>
+          </tr>
+          <tr class="fila-proveedora">
+            <td class="cons">Cobranza <span class="nota-proveedor">proveedor puro</span></td>
+            <td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td>
+            <td class="c"></td><td class="c"></td><td class="c diag">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Las cuatro invariantes que cruzan la frontera</h3>
+    <p>
+      No se resuelven con una consulta JPA: el servicio llama al contrato del proveedor y, si no responde,
+      la operación falla explícitamente. <strong>Nunca se asume el caso favorable.</strong> Si Cobranza está
+      caída, Comercial rechaza la orden a crédito con <code>503</code> en vez de suponer que el cliente está
+      al día; la orden al contado sí procede, porque no depende de ese contrato.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Invariante</th><th>Depende de</th><th>Contrato</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="cod">AGU-02</td><td>Unidades</td><td class="cod">GET /internal/v1/unidades/{id}/elegibilidad</td></tr>
+          <tr><td class="cod">AGC-02</td><td>Conductores</td><td class="cod">GET /internal/v1/conductores/{id}/elegibilidad</td></tr>
+          <tr><td class="cod">VIA-04</td><td>Comercial</td><td class="cod">GET /internal/v1/ordenes/{id}</td></tr>
+          <tr><td class="cod">ORD-02</td><td>Cobranza</td><td class="cod">GET /internal/v1/clientes/{id}/estado-crediticio</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================== -->
+  <section>
+    <span class="num-seccion">03 — Verificación</span>
+    <h2>Lo que el gate comprueba de verdad</h2>
+    <p class="entradilla">
+      <code>./mvnw clean verify</code> sobre los ocho módulos: 1&nbsp;min&nbsp;16&nbsp;s, salida cero.
+      Failsafe levanta un MySQL 8.4 real con Testcontainers para las pruebas de persistencia, así que un
+      mapeo JPA roto no puede pasar en verde.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Módulo</th><th class="num">Pruebas</th><th class="num">IT</th><th>Invariantes</th><th class="num">VO</th><th class="num">Agregados y entidades</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>msvc-unidades</td><td class="num">91</td><td class="num">1</td><td class="cod">UNI · OMT · REP</td><td class="num">17</td><td class="num">5</td></tr>
+          <tr><td>msvc-ejecucion</td><td class="num">83</td><td class="num">1</td><td class="cod">EJV · LIQ</td><td class="num">15</td><td class="num">8</td></tr>
+          <tr><td>msvc-programacion</td><td class="num">72</td><td class="num">1</td><td class="cod">VIA · AGU · AGC</td><td class="num">14</td><td class="num">5</td></tr>
+          <tr><td>msvc-conductores</td><td class="num">72</td><td class="num">1</td><td class="cod">CON</td><td class="num">9</td><td class="num">2</td></tr>
+          <tr><td>msvc-cobranza</td><td class="num">71</td><td class="num">1</td><td class="cod">CCC · PAG</td><td class="num">9</td><td class="num">4</td></tr>
+          <tr><td>msvc-comercial</td><td class="num">70</td><td class="num">1</td><td class="cod">CLI · COT · ORD · CTM · TAR</td><td class="num">22</td><td class="num">7</td></tr>
+          <tr><td>msvc-facturacion</td><td class="num">46</td><td class="num">1</td><td class="cod">FAC · NCR</td><td class="num">9</td><td class="num">3</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Cuatro comprobaciones estructurales</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Qué se verifica</th><th>Cómo</th><th class="num">Resultado</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Ningún módulo importa otro contexto</td>
+            <td class="cod">grep de <code>^import pe.edu.unc.elmirador.</code> ajeno</td>
+            <td class="num">0 líneas</td>
+          </tr>
+          <tr>
+            <td>El dominio no lee el reloj del sistema</td>
+            <td class="cod">grep de <code>now()</code> en <code>src/main</code></td>
+            <td class="num">0 líneas</td>
+          </tr>
+          <tr>
+            <td>El esquema lo versiona Flyway, no Hibernate</td>
+            <td class="cod">ddl-auto=validate + aserción sobre <code>flyway_schema_history</code></td>
+            <td class="num">7 de 7</td>
+          </tr>
+          <tr>
+            <td>OpenFeign sólo donde el mapa de contexto lo justifica</td>
+            <td class="cod">dependencia ausente en los tres proveedores puros</td>
+            <td class="num">4 de 7</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================== -->
+  <section>
+    <span class="num-seccion">04 — Hallazgos</span>
+    <h2>Nueve defectos que las pruebas en verde no atraparon</h2>
+    <p class="entradilla">
+      Cada slice se delegó a un agente ejecutor y volvió con su suite completa en verde. La revisión del
+      diff contra las invariantes encontró nueve defectos en seis de los siete contextos. El patrón se
+      repite: <strong>el agente escribe pruebas que confirman lo que programó</strong>, no lo que la regla
+      exige.
+    </p>
+
+    <div class="defectos">
+
+      <article class="defecto">
+        <span class="inv-ref">UNI-01</span>
+        <div class="cuerpo">
+          <p class="titulo">La vigencia documental se evaluaba en la fecha del propio documento</p>
+          <p class="texto">
+            Registrar un SOAT caducado hacía un año se evaluaba contra su fecha de inicio, cuando sí estaba
+            vigente. La unidad volvía a <span class="mono">OPERATIVA</span>: un camión sin seguro, elegible
+            para viaje. La fecha de evaluación pasa a ser un parámetro obligatorio.
+          </p>
+          <span class="servicio">msvc-unidades</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">UNI-01</span>
+        <div class="cuerpo">
+          <p class="titulo">Renovar un papel rehabilitaba la unidad sola</p>
+          <p class="texto">
+            Una regla que nadie pidió. Un camión parado por <span class="mono">SINIESTRO_FRONTAL</span>
+            volvía a la flota en cuanto le renovaban el SOAT. Volver a servicio pasa a ser un acto explícito
+            que falla si queda algo vencido.
+          </p>
+          <span class="servicio">msvc-unidades</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">UNI-02 · OMT-02</span>
+        <div class="cuerpo">
+          <p class="titulo">Dos invariantes se evadían pasando <span class="mono">null</span></p>
+          <p class="texto">
+            El patrón <span class="mono">if (x != null &amp;&amp; !cumple) fallar;</span> deja pasar el caso
+            nulo. Con el programa de mantenimiento nulo, UNI-02 no se evaluaba; con el kilometraje del último
+            servicio nulo, OMT-02 se saltaba entera.
+          </p>
+          <span class="servicio">msvc-unidades</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">CON-02</span>
+        <div class="cuerpo">
+          <p class="titulo">La ventana de conducción duraba cuarenta y ocho horas</p>
+          <p class="texto">
+            Un periodo inclusivo en los dos extremos sobre <span class="mono">[fecha, fecha+1]</span> hacía
+            que el día siguiente contara como el mismo periodo. Un conductor que agotaba sus diez horas el
+            lunes seguía sin horas el martes. La prueba estaba escrita contra el defecto: usaba
+            <span class="mono">plusDays(2)</span> para «salir de la ventana».
+          </p>
+          <pre class="evidencia">expected: 5.00
+ but was: 9.00</pre>
+          <span class="servicio">msvc-conductores · prueba corrida contra el commit del agente</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">FAC-04</span>
+        <div class="cuerpo">
+          <p class="titulo">Un constructor de escape hacía la invariante indemostrable</p>
+          <p class="texto">
+            <span class="mono">CuentaPorCobrar</span> traía un constructor que deducía
+            <span class="mono">montoNeto = total − detraccion</span>. Por esa vía la igualdad se cumple por
+            construcción y la excepción no puede lanzarse nunca. Es justo lo que el contrato 10 debe rechazar
+            con <span class="mono">422</span>, y lo usaban 34 de 35 llamadas.
+          </p>
+          <span class="servicio">msvc-cobranza</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">Contrato 11</span>
+        <div class="cuerpo">
+          <p class="titulo">La deuda adivinaba la moneda y reventaba con la cartera vacía</p>
+          <p class="texto">
+            Tomaba la moneda de la primera cuenta y lanzaba <span class="mono">IllegalStateException</span> si
+            no había ninguna. Un cliente nuevo sin cartera es el primer caso que responde ese contrato: habría
+            devuelto <span class="mono">500</span>.
+          </p>
+          <span class="servicio">msvc-cobranza</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">FAC-02</span>
+        <div class="cuerpo">
+          <p class="titulo">Una línea sin orden entraba en cualquier factura</p>
+          <p class="texto">
+            El mismo patrón que UNI-02, en otro servicio: un segundo constructor sin identificador de orden y
+            una comparación condicionada a que no fuera nulo. La línea llevaba
+            <span class="mono">null</span> y pasaba de largo.
+          </p>
+          <span class="servicio">msvc-facturacion</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">Contratos 7 y 8</span>
+        <div class="cuerpo">
+          <p class="titulo">Horas facturables en coma flotante</p>
+          <p class="texto">
+            <span class="mono">excedente()</span> calculaba con <span class="mono">BigDecimal</span> y tiraba
+            la precisión con <span class="mono">.doubleValue()</span> en la última línea. Ese valor se
+            multiplica por una tarifa horaria río abajo: es un importe en potencia, y 0,1 hora facturada mil
+            veces no suma cien.
+          </p>
+          <span class="servicio">msvc-ejecucion</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">CTM-02</span>
+        <div class="cuerpo">
+          <p class="titulo">Una regla de negocio codificada en prefijos de texto</p>
+          <p class="texto">
+            La cláusula de consolidación buscaba <span class="mono">NO_</span> y
+            <span class="mono">EXCLUYE_</span> dentro de cada restricción. Un protocolo inventado que no
+            aparece en ningún contrato y que se rompe con un espacio. El hueco era de la spec: no decía qué
+            contiene esa lista.
+          </p>
+          <span class="servicio">msvc-comercial</span>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ===================================================== -->
+  <section>
+    <span class="num-seccion">05 — Reglas destiladas</span>
+    <h2>Ocho reglas que salieron de esos defectos</h2>
+    <p class="entradilla">
+      Cada defecto encontrado se convirtió en una regla escrita, y cada spec posterior la incorporó como
+      condición de aceptación. Es lo que hizo que el octavo slice llegara sin correcciones.
+    </p>
+
+    <div class="reglas">
+      <div class="regla">
+        <span class="id">D1</span>
+        <span class="enunciado">El dominio no lee el reloj</span>
+        <p class="origen">Una sobrecarga con reloj implícito es una prueba no determinista esperando a romper el CI.</p>
+      </div>
+      <div class="regla">
+        <span class="id">D2</span>
+        <span class="enunciado">Ninguna invariante se evade pasando <span class="mono">null</span></span>
+        <p class="origen">Si el dato hace falta para evaluar la regla, es obligatorio y su ausencia lanza.</p>
+      </div>
+      <div class="regla">
+        <span class="id">D3</span>
+        <span class="enunciado">Ningún constructor de escape</span>
+        <p class="origen">Deducir un importe de los otros hace que la igualdad se cumpla por construcción.</p>
+      </div>
+      <div class="regla">
+        <span class="id">D4</span>
+        <span class="enunciado">Nada de valores por defecto silenciosos</span>
+        <p class="origen">La moneda de un importe no se adivina, ni se toma del primer elemento de una lista.</p>
+      </div>
+      <div class="regla">
+        <span class="id">D5</span>
+        <span class="enunciado">Cuidado con los rangos inclusivos</span>
+        <p class="origen">Un periodo inclusivo en ambos extremos convierte un día en dos. Los bordes se prueban uno a uno.</p>
+      </div>
+      <div class="regla">
+        <span class="id">D6</span>
+        <span class="enunciado">Se valida todo antes de mutar nada</span>
+        <p class="origen">Una operación rechazada no puede dejar ninguna de las dos partes a medias.</p>
+      </div>
+      <div class="regla">
+        <span class="id">D7</span>
+        <span class="enunciado">Ningún parámetro muerto</span>
+        <p class="origen">Un argumento que se valida y no se usa miente, y el slice siguiente lo copia al controlador.</p>
+      </div>
+      <div class="regla">
+        <span class="id">D8</span>
+        <span class="enunciado">Lo derivado se calcula</span>
+        <p class="origen">Un campo persistido que duplica un cálculo es un defecto. En LIQ-02 lo dice la propia invariante.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== -->
+  <section>
+    <span class="num-seccion">06 — Método</span>
+    <h2>Quién decide y quién escribe</h2>
+    <p class="entradilla">
+      El trabajo se partió en dos capas. Una decide el dominio, los contratos y los criterios de aceptación;
+      la otra escribe código contra una spec cerrada. Un agente ejecutor nunca recibe un objetivo de negocio:
+      recibe una spec y una lista de condiciones verificables.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Decisión</th><th>Ejecución</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Lee el diseño táctico y decide los agregados</td>
+            <td>Escribe entidades, objetos de valor y excepciones</td>
+          </tr>
+          <tr>
+            <td>Escribe la spec del slice y los contratos HTTP</td>
+            <td>Escribe las pruebas que la spec exige</td>
+          </tr>
+          <tr>
+            <td>Corre el gate y revisa el diff contra las invariantes</td>
+            <td>Devuelve un digest; nunca declara éxito</td>
+          </tr>
+          <tr>
+            <td>Implementa el 20&nbsp;% duro: consolidación y estiba del Core</td>
+            <td>Implementa el 80&nbsp;% mecánico</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Lo que se aprendió delegando</h3>
+    <p>
+      Once ejecuciones del agente para ocho slices: cuatro murieron por fallos de red o de permisos y se
+      reanudaron. Una entregó los ficheros <em>sin haber compilado nunca</em>, porque se quedó sin terminal
+      —su «46 pruebas en verde» era papel, y la primera compilación real falló—. De ahí la regla que
+      gobierna el resto: <strong>la salida cruda del agente se commitea sin editar antes de tocarla</strong>,
+      para que el diff separe las dos manos y se pueda auditar cada una.
+    </p>
+    <p>
+      El único slice que llegó sin correcciones fue el octavo, después de que las ocho reglas de arriba
+      entraran en la spec. La revisión no es un trámite: con un ejecutor no humano es el control de calidad
+      principal.
+    </p>
+  </section>
+
+  <!-- ===================================================== -->
+  <section>
+    <span class="num-seccion">07 — Estado</span>
+    <h2>Lo que queda</h2>
+    <p class="entradilla">
+      Los siete contextos tienen su modelo de dominio completo y probado. Falta la capa de fuera: mapeo JPA
+      con sus migraciones, endpoints y clientes Feign.
+    </p>
+
+    <div class="avance">
+      <div class="barra"><div class="hecho" style="width: 100%;">48 / 48 invariantes cubiertas</div></div>
+      <div class="barra-pie"><span>Criterio de éxito del proyecto</span><span>completo</span></div>
+    </div>
+
+    <div class="avance">
+      <div class="barra"><div class="hecho" style="width: 24.2%;">8 / 33</div></div>
+      <div class="barra-pie"><span>Slices integrados en <span class="mono">main</span></span><span>25 pendientes</span></div>
+    </div>
+
+    <div class="scroll" style="margin-top: 26px;">
+      <table>
+        <thead><tr><th>Slice</th><th>Qué entrega</th><th class="num">Estado</th></tr></thead>
+        <tbody>
+          <tr><td class="cod">S1-dominio</td><td>Objetos de valor, agregados, invariantes y sus pruebas</td><td class="num">8 de 8</td></tr>
+          <tr><td class="cod">S2-persistencia</td><td>Mapeo JPA, repositorios y la migración Flyway del esquema</td><td class="num">0 de 7</td></tr>
+          <tr><td class="cod">S3-api-publica</td><td>Controladores <code>/api/v1</code>, DTO, validación, Problem Details</td><td class="num">0 de 7</td></tr>
+          <tr><td class="cod">S4-api-interna</td><td>Endpoints <code>/internal/v1</code> de los contratos que publica</td><td class="num">0 de 6</td></tr>
+          <tr><td class="cod">S5-clientes</td><td>Clientes Feign, timeouts, traducción de error, pruebas con stub</td><td class="num">0 de 4</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>Java 26 · Spring Boot 4.1.0 · Spring Cloud 2025.1.2</span>
+    <span>MySQL 8.4 · Flyway 12.4 · Testcontainers 2.0</span>
+    <span>Monorepo Maven · 8 módulos · 262 ficheros en <span class="mono">src/main</span></span>
+    <span>4 de septiembre de 2026</span>
+  </footer>
+
+</div>
