@@ -92,6 +92,11 @@ Después, revisión manual del diff contra:
 - la frontera de contexto (sin imports cruzados, sin entidades JPA en la firma de un controlador),
 - los códigos HTTP y el `application/problem+json`.
 
+**Antes de tocar nada, se commitea la salida cruda de agy.** Un commit `feat(agy): ...` con lo que
+el agente escribio, sin editar, y despues un commit `fix: ...` con las correcciones de Claude. Si se
+corrige encima sin commitear, el diff de revision mezcla las dos manos y ya no se puede ver que hizo
+el agente ni medir si delegar compenso. Es la unica forma de que el pull request sea auditable.
+
 ### 3.4 Claude cierra o corrige
 
 - **Pasa**: se marca el slice como Done en `backlog.md` y se integra a `main`.

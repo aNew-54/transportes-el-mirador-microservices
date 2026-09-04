@@ -48,7 +48,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 
 | Slice | Invariantes | Estado |
 |---|---|---|
-| `S1-dominio` | UNI-01, UNI-02, UNI-03, OMT-01, OMT-02, REP-01 | pendiente |
+| `S1-dominio` | UNI-01, UNI-02, UNI-03, OMT-01, OMT-02, REP-01 | **done** |
 | `S2-persistencia` | — | pendiente |
 | `S3-api-publica` | — | pendiente |
 | `S4-api-interna` | contratos 2 y 5 | pendiente |
@@ -147,7 +147,7 @@ Ejecución no tiene `S4`: no publica endpoints de integración.
 
 | | Hecho | Total |
 |---|---:|---:|
-| Slices | 0 | 33 |
-| Invariantes cubiertas | 0 | 48 |
+| Slices | 1 | 33 |
+| Invariantes cubiertas | 6 | 48 |
 | Contratos implementados | 0 | 11 |
 | Servicios terminados | 0 | 7 |

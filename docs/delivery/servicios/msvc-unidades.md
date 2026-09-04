@@ -234,3 +234,28 @@ Bordes obligatorios, además de las invariantes:
 - `Capacidad.admite` con el peso exacto y con el volumen exacto del máximo.
 - `motivosDeNoElegibilidad` acumulando dos motivos a la vez, y devolviendo lista vacía en el caso elegible.
 - `Dinero` sumando monedas distintas lanza.
+
+### Correcciones tras la revisión de `S1-dominio`
+
+La primera implementación pasó sus 80 pruebas y aun así dejaba tres invariantes evadibles. Lo que sigue
+es normativo y corrige la spec de arriba donde la contradiga.
+
+**El dominio no lee el reloj.** Ningún método llama a `LocalDate.now()`. Toda operación que dependa de
+«hoy» recibe la fecha y la exige no nula. Un agregado que consulta el reloj produce pruebas no
+deterministas y hace imposible reprocesar un hecho pasado.
+
+| Antes | Ahora | Por qué |
+|---|---|---|
+| `registrarDocumento(tipo, vigencia)` evaluaba en `vigencia.desde()` | `registrarDocumento(tipo, vigencia, numero, fechaEvaluacion)` | Evaluar en la fecha de inicio del documento daba por vigente un documento ya caducado: registrar un SOAT vencido devolvía la unidad a servicio. Agujero directo en **UNI-01** |
+| `estaHabilitada()` sin argumento, con `LocalDate.now()` | sólo `estaHabilitada(LocalDate)` | Una sobrecarga con reloj implícito es una prueba no determinista esperando a fallar en el CI |
+| Renovar un documento rehabilitaba sola la unidad | `reactivar(LocalDate)` explícito | Volver a servicio es un acto deliberado. La rehabilitación automática devolvía a la flota un camión siniestrado en cuanto le renovaban el SOAT. `reactivar` falla si queda un documento vencido (**UNI-01**) o el mantenimiento está vencido (**UNI-02**) |
+| `evaluarVigenciaDocumental` pisaba el motivo anterior | conserva el motivo no documental | `INOPERATIVA:SINIESTRO_FRONTAL` no se sustituye por `DOCUMENTO_VENCIDO:SOAT`. Se perdía por qué estaba parada |
+| `ProgramaDeMantenimiento` podía ser `null` | obligatorio en el constructor | Con el programa nulo, **UNI-02** no se evaluaba y la unidad quedaba habilitada |
+| `abrir(...)` aceptaba `kmUltimoMantenimiento` nulo y saltaba la comprobación | obligatorio | Una invariante que se evade pasando `null` no es una invariante. Agujero en **OMT-02** |
+| `abrir(...)` tenía tres sobrecargas y ponía `"PEN"` por defecto | una sola fábrica, moneda obligatoria | No se adivina la moneda de un importe |
+
+Métodos añadidos a `Unidad`: `marcarEnTaller(String motivo)`, `reactivar(LocalDate)` y
+`registrarMantenimientoRealizado(Kilometraje kmAtencion)`, que reprograma el próximo servicio al cerrar
+una orden. Excepción añadida: `ReactivacionInvalidaException`.
+
+Pruebas que guardan estas correcciones: `UnidadCicloDeVidaTest` (9) y `OrdenDeMantenimientoAperturaTest` (2).
