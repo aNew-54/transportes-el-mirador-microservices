@@ -108,3 +108,154 @@ Ninguno. Unidades es un proveedor puro.
 - [ ] `POST .../fallas` con `dejaInoperativa:true` deja la unidad no elegible en la consulta siguiente
 - [ ] 0 imports de otro contexto
 - [ ] Sano en `./scripts/smoke-test.sh`
+
+---
+
+## Slice `S1-dominio` — decisiones de diseño
+
+Este slice entrega **sólo el modelo de dominio y sus pruebas**. Sin repositorios, sin controladores, sin
+`@Entity` y sin migraciones: eso es `S2`. Los objetos de valor sí llevan ya `@Embeddable`, porque la anotación
+es inerte mientras ninguna entidad los referencie y evita reescribirlos en `S2`.
+
+### Correspondencia con el diseño táctico (regla 13)
+
+| Diseño táctico | Código |
+|---|---|
+| `estáHabilitada()` | `estaHabilitada()` |
+| `estáVigente()` | `estaVigente()` |
+| `estáVencido(km)` | `estaVencido(km)` |
+| `kmÚltimoServicio` | `kmUltimoServicio` |
+| `kmPróximoServicio` | `kmProximoServicio` |
+| `requiereReposición()` | `requiereReposicion()` |
+
+### Objetos de valor — `models/vo`
+
+Todos `record` inmutables, anotados `@Embeddable`, validando en el constructor compacto.
+
+| Tipo | Forma | Comportamiento |
+|---|---|---|
+| `Placa` | `record Placa(String valor)` | Normaliza a mayúsculas. Formato peruano `AAA-000` o `A0A-000`; otro valor lanza `IllegalArgumentException` |
+| `Capacidad` | `record Capacidad(int pesoMaximoKg, BigDecimal volumenMaximoM3)` | `admite(int pesoKg, BigDecimal volumenM3)`. Ambos deben ser positivos |
+| `Kilometraje` | `record Kilometraje(int valor)` | No negativo. `avanzarA(Kilometraje nuevo)` devuelve el nuevo o lanza `KilometrajeRetrocedeException` (**UNI-03**) |
+| `PeriodoDeVigencia` | `record PeriodoDeVigencia(LocalDate desde, LocalDate hasta)` | `hasta` posterior a `desde`. `estaVigenteEn(LocalDate)`, `venceDentroDe(int dias, LocalDate ref)` |
+| `ProgramaDeMantenimiento` | `record ProgramaDeMantenimiento(Kilometraje kmUltimoServicio, Kilometraje kmProximoServicio, IntervaloDeMantenimiento intervalo)` | `estaVencido(Kilometraje km)`, `requiereAlerta(Kilometraje km)` a 500 km o menos del próximo servicio |
+| `EstadoOperativo` | `record EstadoOperativo(SituacionOperativa situacion, String motivo)` | `esAsignable()` ⇔ `situacion == OPERATIVA`. Fábricas `operativa()`, `enTaller(motivo)`, `inoperativa(motivo)`. Toda situación distinta de `OPERATIVA` exige motivo no vacío |
+| `Dinero` | `record Dinero(BigDecimal monto, String codigoMoneda)` | Monto no negativo con escala 2, moneda ISO-4217 de 3 letras. `sumar`, `multiplicarPor(int)`; operar con monedas distintas lanza `MonedaIncompatibleException` |
+
+Enumeraciones, también en `models/vo`:
+
+| Enum | Valores | Comportamiento |
+|---|---|---|
+| `TipoDeUnidad` | `FURGON` · `PLATAFORMA` · `CAMA_BAJA` | `admite(TipoDeCarga)`, `licenciaRequerida()` |
+| `TipoDeCarga` | `PALETIZADA` · `GENERAL` · `MAQUINARIA_PESADA` | — |
+| `CategoriaDeLicencia` | `A_IIIA` · `A_IIIB` · `A_IIIC` | — |
+| `TipoDeDocumento` | `REVISION_TECNICA` · `SOAT` · `PERMISO_MTC` · `HABILITACION_VEHICULAR` | — |
+| `SituacionOperativa` | `OPERATIVA` · `EN_TALLER` · `INOPERATIVA` | — |
+| `IntervaloDeMantenimiento` | `ACEITE_Y_FILTROS` (10 000 km) · `REVISION_MAYOR` (20 000) · `LLANTAS` (40 000) | `kilometros()` |
+| `TipoDeMantenimiento` | `PREVENTIVO` · `CORRECTIVO` | — |
+| `EstadoDeOrden` | `ABIERTA` · `CERRADA` | — |
+| `MotivoDeNoElegibilidad` | `DOCUMENTO_VENCIDO` · `MANTENIMIENTO_VENCIDO` · `EN_TALLER` · `INOPERATIVA` · `CAPACIDAD_INSUFICIENTE` · `TIPO_INCOMPATIBLE` | `codigo()` y `codigo(String detalle)` → `"DOCUMENTO_VENCIDO:SOAT"` |
+
+**Tablas de decisión.** `admite` y `licenciaRequerida` son la fuente de verdad del negocio:
+
+| `TipoDeUnidad` | `PALETIZADA` | `GENERAL` | `MAQUINARIA_PESADA` | `licenciaRequerida()` |
+|---|:---:|:---:|:---:|---|
+| `FURGON` | sí | sí | **no** | `A_IIIA` |
+| `PLATAFORMA` | sí | sí | **no** | `A_IIIB` |
+| `CAMA_BAJA` | **no** | sí | sí | `A_IIIC` |
+
+`CategoriaDeLicencia` se duplica aquí y en `msvc-conductores` a propósito: son contextos distintos y no
+comparten código. La coincidencia se verifica en el contrato 3, nunca por un import.
+
+### Agregados — `models/entity`
+
+Clases ricas, **sin anotaciones JPA en este slice**. Identidad con `String` (`UnidadId` no es un VO: el
+identificador de la raíz se modela como campo `String id`, y las referencias a otros agregados también).
+
+`Unidad` — raíz. Campos: `id`, `Placa`, `TipoDeUnidad`, `Capacidad`, `Kilometraje`, `EstadoOperativo`,
+`ProgramaDeMantenimiento`, `List<DocumentoVehicular> documentos`.
+
+| Método | Contrato |
+|---|---|
+| `actualizarKilometraje(Kilometraje nuevo)` | Delega en `Kilometraje.avanzarA`. Propaga el fallo (**UNI-03**) |
+| `registrarDocumento(TipoDeDocumento, PeriodoDeVigencia)` | Reemplaza el documento del mismo tipo. Al terminar, reevalúa el estado |
+| `evaluarVigenciaDocumental(LocalDate)` | Si **cualquier** documento falta o no está vigente, pasa a `INOPERATIVA` con motivo `DOCUMENTO_VENCIDO:<tipo>` (**UNI-01**). Es un cambio de estado, no una alerta |
+| `estaHabilitada(LocalDate)` | `false` si el estado no es asignable, si falta o venció un documento, o si el mantenimiento preventivo está vencido (**UNI-02**) |
+| `marcarInoperativa(String motivo)` | Fuerza `INOPERATIVA`. Motivo obligatorio |
+| `motivosDeNoElegibilidad(LocalDate, int pesoKg, BigDecimal volumenM3, TipoDeCarga)` | Devuelve la lista de motivos del contrato 2, vacía si es elegible. Alimenta `S4` sin que el controlador decida nada |
+
+`DocumentoVehicular` — entidad hija: `id`, `TipoDeDocumento`, `PeriodoDeVigencia`, `numero`. `estaVigente(LocalDate)`.
+
+`OrdenDeMantenimiento` — raíz. Campos: `id`, `unidadId`, `TipoDeMantenimiento`, `Kilometraje kmAtencion`,
+`EstadoDeOrden`, `List<TrabajoRealizado> trabajos`, `fechaApertura`, `fechaCierre`.
+
+| Método | Contrato |
+|---|---|
+| `abrir(...)` (fábrica) | Rechaza `kmAtencion` menor al del último mantenimiento de la unidad (**OMT-02**) → `KilometrajeDeAtencionInvalidoException` |
+| `registrarTrabajo(TrabajoRealizado)` | `OrdenCerradaException` si ya está `CERRADA` (**OMT-01**) |
+| `cerrar(LocalDate)` | Idempotencia no: cerrar una orden `CERRADA` lanza `OrdenCerradaException` |
+| `costoTotal()` | Suma los `Dinero` de sus trabajos. Con la lista vacía, cero en la moneda de la orden |
+
+`TrabajoRealizado` — entidad hija: `id`, `descripcion`, `Dinero costoManoDeObra`, `repuestoId`, `cantidad`.
+
+`Repuesto` — raíz. Campos: `id`, `codigo`, `descripcion`, `int existencias`, `int stockMinimo`, `Dinero costoUnitario`.
+
+| Método | Contrato |
+|---|---|
+| `ajustarInventario(int cantidad)` | Positivo entra, negativo sale. Si el resultado es negativo lanza `ExistenciasNegativasException` (**REP-01**) |
+| `requiereReposicion()` | `existencias <= stockMinimo` |
+
+### Excepciones — `exceptions`
+
+Todas extienden `RuntimeException` y una raíz común `DominioUnidadesException`:
+`KilometrajeRetrocedeException`, `KilometrajeDeAtencionInvalidoException`, `OrdenCerradaException`,
+`ExistenciasNegativasException`, `MonedaIncompatibleException`, `PlacaInvalidaException`.
+
+Traducirlas a `application/problem+json` es trabajo de `S3`; aquí sólo se lanzan.
+
+### Pruebas exigidas por este slice
+
+JUnit 5 puro, sin `@SpringBootTest`. Una clase por agregado o VO con lógica, en
+`src/test/java/pe/edu/unc/elmirador/unidades/models/`.
+
+| Invariante | Prueba mínima |
+|---|---|
+| **UNI-01** | Cuatro casos, uno por `TipoDeDocumento`: con ese documento vencido y los otros tres vigentes, la unidad queda `INOPERATIVA` con motivo `DOCUMENTO_VENCIDO:<tipo>`. Más un caso con el documento ausente |
+| **UNI-02** | Unidad `OPERATIVA`, documentos vigentes y `ProgramaDeMantenimiento` vencido ⇒ `estaHabilitada()` es `false` |
+| **UNI-03** | `actualizarKilometraje` con un valor menor lanza; con el mismo valor **no** lanza (no decrece) |
+| **OMT-01** | `registrarTrabajo` y `cerrar` sobre una orden `CERRADA` lanzan |
+| **OMT-02** | `abrir` con `kmAtencion` menor al último mantenimiento lanza; igual no lanza |
+| **REP-01** | `ajustarInventario(-n)` que deja negativo lanza y **no** altera las existencias; dejar exactamente cero no lanza |
+
+Bordes obligatorios, además de las invariantes:
+
+- `requiereAlerta` en 501, 500 y 499 km del próximo servicio.
+- `TipoDeUnidad.admite` para las 9 combinaciones de la tabla, y `licenciaRequerida` para los 3 tipos.
+- `Capacidad.admite` con el peso exacto y con el volumen exacto del máximo.
+- `motivosDeNoElegibilidad` acumulando dos motivos a la vez, y devolviendo lista vacía en el caso elegible.
+- `Dinero` sumando monedas distintas lanza.
+
+### Correcciones tras la revisión de `S1-dominio`
+
+La primera implementación pasó sus 80 pruebas y aun así dejaba tres invariantes evadibles. Lo que sigue
+es normativo y corrige la spec de arriba donde la contradiga.
+
+**El dominio no lee el reloj.** Ningún método llama a `LocalDate.now()`. Toda operación que dependa de
+«hoy» recibe la fecha y la exige no nula. Un agregado que consulta el reloj produce pruebas no
+deterministas y hace imposible reprocesar un hecho pasado.
+
+| Antes | Ahora | Por qué |
+|---|---|---|
+| `registrarDocumento(tipo, vigencia)` evaluaba en `vigencia.desde()` | `registrarDocumento(tipo, vigencia, numero, fechaEvaluacion)` | Evaluar en la fecha de inicio del documento daba por vigente un documento ya caducado: registrar un SOAT vencido devolvía la unidad a servicio. Agujero directo en **UNI-01** |
+| `estaHabilitada()` sin argumento, con `LocalDate.now()` | sólo `estaHabilitada(LocalDate)` | Una sobrecarga con reloj implícito es una prueba no determinista esperando a fallar en el CI |
+| Renovar un documento rehabilitaba sola la unidad | `reactivar(LocalDate)` explícito | Volver a servicio es un acto deliberado. La rehabilitación automática devolvía a la flota un camión siniestrado en cuanto le renovaban el SOAT. `reactivar` falla si queda un documento vencido (**UNI-01**) o el mantenimiento está vencido (**UNI-02**) |
+| `evaluarVigenciaDocumental` pisaba el motivo anterior | conserva el motivo no documental | `INOPERATIVA:SINIESTRO_FRONTAL` no se sustituye por `DOCUMENTO_VENCIDO:SOAT`. Se perdía por qué estaba parada |
+| `ProgramaDeMantenimiento` podía ser `null` | obligatorio en el constructor | Con el programa nulo, **UNI-02** no se evaluaba y la unidad quedaba habilitada |
+| `abrir(...)` aceptaba `kmUltimoMantenimiento` nulo y saltaba la comprobación | obligatorio | Una invariante que se evade pasando `null` no es una invariante. Agujero en **OMT-02** |
+| `abrir(...)` tenía tres sobrecargas y ponía `"PEN"` por defecto | una sola fábrica, moneda obligatoria | No se adivina la moneda de un importe |
+
+Métodos añadidos a `Unidad`: `marcarEnTaller(String motivo)`, `reactivar(LocalDate)` y
+`registrarMantenimientoRealizado(Kilometraje kmAtencion)`, que reprograma el próximo servicio al cerrar
+una orden. Excepción añadida: `ReactivacionInvalidaException`.
+
+Pruebas que guardan estas correcciones: `UnidadCicloDeVidaTest` (9) y `OrdenDeMantenimientoAperturaTest` (2).
