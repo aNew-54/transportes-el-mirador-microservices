@@ -151,7 +151,7 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total |
 |---|---:|---:|
-| Slices | 10 | 32 |
+| Slices | 13 | 32 |
 | Invariantes cubiertas | **48** | 48 |
 | Contratos implementados | 0 | 11 |
 | Servicios terminados | 0 | 7 |
