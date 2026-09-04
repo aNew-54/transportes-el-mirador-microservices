@@ -31,7 +31,7 @@ class PagoTest {
 
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("2000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("2000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("2000.00", "PEN"), vencimiento
         );
 
         // Primera aplicacion valida de 800.00 (queda saldo sin aplicar = 200.00)
@@ -67,7 +67,7 @@ class PagoTest {
 
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1500.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1500.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1500.00", "PEN"), vencimiento
         );
 
         pago.aplicarACuentaPorCobrar(cpc, Dinero.de("1000.00", "PEN"));
@@ -88,7 +88,7 @@ class PagoTest {
 
         CuentaPorCobrar cuentaDeOtro = new CuentaPorCobrar(
             "CPC-999", "CLI-9999", "FAC-999", "F001-999",
-            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), Dinero.de("500.00", "PEN"), vencimiento
         );
 
         assertThatThrownBy(() -> pago.aplicarACuentaPorCobrar(cuentaDeOtro, Dinero.de("500.00", "PEN")))
@@ -110,12 +110,12 @@ class PagoTest {
 
         CuentaPorCobrar cpc1 = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("800.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("800.00", "PEN"), Dinero.cero("PEN"), Dinero.de("800.00", "PEN"), vencimiento
         );
 
         CuentaPorCobrar cpc2 = new CuentaPorCobrar(
             "CPC-002", clienteId, "FAC-002", "F001-002",
-            Dinero.de("700.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("700.00", "PEN"), Dinero.cero("PEN"), Dinero.de("700.00", "PEN"), vencimiento
         );
 
         pago.aplicarACuentaPorCobrar(cpc1, Dinero.de("800.00", "PEN"));
@@ -137,7 +137,7 @@ class PagoTest {
     void debePermitirUnaFacturaCobradaEnDosPagos() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
 
         Pago pago1 = new Pago(
@@ -169,7 +169,7 @@ class PagoTest {
 
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("400.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("400.00", "PEN"), Dinero.cero("PEN"), Dinero.de("400.00", "PEN"), vencimiento
         );
 
         assertThatThrownBy(() -> pago.aplicarACuentaPorCobrar(cpc, Dinero.de("500.00", "PEN")))
@@ -191,7 +191,7 @@ class PagoTest {
 
         CuentaPorCobrar cpcSoles = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
 
         Dinero importeDolares = Dinero.de("100.00", "USD");

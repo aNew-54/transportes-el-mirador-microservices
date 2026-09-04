@@ -105,6 +105,14 @@ public class CuentaPorCobrar {
         this.detraccionDepositada = detraccionDepositada;
     }
 
+    /**
+     * Abre una cuenta con el saldo sin aplicar y la detraccion pendiente.
+     *
+     * <p>{@code montoNeto} se recibe, no se deduce. Es el tercer importe del contrato 10 y existe
+     * justamente para contrastarlo: deducirlo como {@code total - detraccion} haria que
+     * {@code montoNeto + detraccion == total} se cumpliera por construccion y FAC-04 no pudiera
+     * fallar nunca por esa via. Cobranza rechaza los importes que no cuadran; no los corrige.
+     */
     public CuentaPorCobrar(
         String id,
         String clienteId,
@@ -126,27 +134,6 @@ public class CuentaPorCobrar {
             fechaDeVencimiento,
             total != null ? Dinero.cero(total.codigoMoneda()) : null,
             false
-        );
-    }
-
-    public CuentaPorCobrar(
-        String id,
-        String clienteId,
-        String facturaId,
-        String documentoId,
-        Dinero total,
-        Dinero detraccion,
-        LocalDate fechaDeVencimiento
-    ) {
-        this(
-            id,
-            clienteId,
-            facturaId,
-            documentoId,
-            total,
-            detraccion,
-            (total != null && detraccion != null) ? total.restar(detraccion) : null,
-            fechaDeVencimiento
         );
     }
 

@@ -30,7 +30,7 @@ class CuentaCorrienteDelClienteTest {
         LocalDate vencimiento = hoy.minusDays(30);
         CuentaPorCobrar cuenta = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
         ccc.registrarCuenta(cuenta);
 
@@ -51,7 +51,7 @@ class CuentaCorrienteDelClienteTest {
         LocalDate vencimiento = hoy.minusDays(31);
         CuentaPorCobrar cuenta = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
         ccc.registrarCuenta(cuenta);
 
@@ -73,7 +73,7 @@ class CuentaCorrienteDelClienteTest {
         LocalDate vencimiento = hoy.minusDays(45);
         CuentaPorCobrar cuenta = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
         cuenta.aplicar(Dinero.de("1000.00", "PEN")); // Totalmente cancelada
         ccc.registrarCuenta(cuenta);
@@ -93,7 +93,7 @@ class CuentaCorrienteDelClienteTest {
         LocalDate vencimiento = hoy.minusDays(45);
         CuentaPorCobrar cuenta = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
         ccc.registrarCuenta(cuenta);
 
@@ -114,7 +114,7 @@ class CuentaCorrienteDelClienteTest {
         LocalDate vencimiento = hoy.minusDays(45);
         CuentaPorCobrar cuenta = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
         cuenta.aplicar(Dinero.de("1000.00", "PEN"));
         ccc.registrarCuenta(cuenta);
@@ -148,12 +148,13 @@ class CuentaCorrienteDelClienteTest {
 
         CuentaPorCobrar cuentaOtro = new CuentaPorCobrar(
             "CPC-001", "CLI-9999", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), hoy
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), hoy
         );
 
         assertThatThrownBy(() -> ccc.registrarCuenta(cuentaOtro))
             .isInstanceOf(DominioCobranzaException.class)
-            .hasMessageContaining("otro cliente");
+            .hasMessageContaining("CLI-9999")
+            .hasMessageContaining(clienteId);
     }
 
     @Test
@@ -165,11 +166,11 @@ class CuentaCorrienteDelClienteTest {
 
         CuentaPorCobrar c1 = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), hoy
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), hoy
         );
         CuentaPorCobrar c2 = new CuentaPorCobrar(
             "CPC-002", clienteId, "FAC-001", "F001-002",
-            Dinero.de("2000.00", "PEN"), Dinero.cero("PEN"), hoy
+            Dinero.de("2000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("2000.00", "PEN"), hoy
         );
 
         ccc.registrarCuenta(c1);
@@ -188,18 +189,18 @@ class CuentaCorrienteDelClienteTest {
 
         CuentaPorCobrar c1 = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), hoy
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), hoy
         );
         c1.aplicar(Dinero.de("300.00", "PEN")); // Saldo 700.00
 
         CuentaPorCobrar c2 = new CuentaPorCobrar(
             "CPC-002", clienteId, "FAC-002", "F001-002",
-            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), hoy
+            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), Dinero.de("500.00", "PEN"), hoy
         ); // Saldo 500.00
 
         CuentaPorCobrar c3 = new CuentaPorCobrar(
             "CPC-003", clienteId, "FAC-003", "F001-003",
-            Dinero.de("800.00", "PEN"), Dinero.cero("PEN"), hoy
+            Dinero.de("800.00", "PEN"), Dinero.cero("PEN"), Dinero.de("800.00", "PEN"), hoy
         );
         c3.aplicar(Dinero.de("800.00", "PEN")); // Cancelada, saldo 0.00
 
@@ -207,7 +208,7 @@ class CuentaCorrienteDelClienteTest {
         ccc.registrarCuenta(c2);
         ccc.registrarCuenta(c3);
 
-        assertThat(ccc.deudaTotal()).isEqualTo(Dinero.de("1200.00", "PEN"));
+        assertThat(ccc.deudaTotal("PEN")).isEqualTo(Dinero.de("1200.00", "PEN"));
     }
 
     @Test
@@ -220,25 +221,25 @@ class CuentaCorrienteDelClienteTest {
         // Cuenta 1: vencio hace 43 dias
         CuentaPorCobrar c1 = new CuentaPorCobrar(
             "CPC-001", clienteId, "FAC-001", "F001-001",
-            Dinero.de("3000.00", "PEN"), Dinero.cero("PEN"), hoy.minusDays(43)
+            Dinero.de("3000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("3000.00", "PEN"), hoy.minusDays(43)
         );
 
         // Cuenta 2: vencio hace 12 dias
         CuentaPorCobrar c2 = new CuentaPorCobrar(
             "CPC-002", clienteId, "FAC-002", "F001-002",
-            Dinero.de("2420.30", "PEN"), Dinero.cero("PEN"), hoy.minusDays(12)
+            Dinero.de("2420.30", "PEN"), Dinero.cero("PEN"), Dinero.de("2420.30", "PEN"), hoy.minusDays(12)
         );
 
         // Cuenta 3: aun no vence (vence en 10 dias)
         CuentaPorCobrar c3 = new CuentaPorCobrar(
             "CPC-003", clienteId, "FAC-003", "F001-003",
-            Dinero.de("1500.00", "PEN"), Dinero.cero("PEN"), hoy.plusDays(10)
+            Dinero.de("1500.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1500.00", "PEN"), hoy.plusDays(10)
         );
 
         // Cuenta 4: vencio hace 60 dias pero esta cancelada
         CuentaPorCobrar c4 = new CuentaPorCobrar(
             "CPC-004", clienteId, "FAC-004", "F001-004",
-            Dinero.de("900.00", "PEN"), Dinero.cero("PEN"), hoy.minusDays(60)
+            Dinero.de("900.00", "PEN"), Dinero.cero("PEN"), Dinero.de("900.00", "PEN"), hoy.minusDays(60)
         );
         c4.aplicar(Dinero.de("900.00", "PEN"));
 
@@ -249,7 +250,7 @@ class CuentaCorrienteDelClienteTest {
 
         assertThat(ccc.diasDeAtrasoMaximo(hoy)).isEqualTo(43);
         assertThat(ccc.cuentasVencidas(hoy)).isEqualTo(2);
-        assertThat(ccc.deudaTotal()).isEqualTo(Dinero.de("6920.30", "PEN"));
+        assertThat(ccc.deudaTotal("PEN")).isEqualTo(Dinero.de("6920.30", "PEN"));
     }
 
     @Test

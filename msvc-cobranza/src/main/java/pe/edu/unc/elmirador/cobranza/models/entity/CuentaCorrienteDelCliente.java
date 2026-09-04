@@ -112,13 +112,13 @@ public class CuentaCorrienteDelCliente {
         this.estado = EstadoCrediticio.vigente(fecha);
     }
 
-    public Dinero deudaTotal() {
-        if (this.cuentas.isEmpty()) {
-            throw new IllegalStateException("No hay cuentas registradas para determinar la moneda de la deuda total");
-        }
-        return deudaTotal(this.cuentas.get(0).total().codigoMoneda());
-    }
-
+    /**
+     * Deuda del cliente en la moneda indicada. Alimenta el contrato 11.
+     *
+     * <p>La moneda es un parametro y no se deduce de la primera cuenta: un cliente sin cuentas debe
+     * responder cero, no reventar, y tomar la moneda de {@code cuentas.get(0)} seria un valor por
+     * defecto silencioso en un importe.
+     */
     public Dinero deudaTotal(String codigoMoneda) {
         if (codigoMoneda == null || codigoMoneda.isBlank()) {
             throw new IllegalArgumentException("El codigo de moneda es obligatorio");

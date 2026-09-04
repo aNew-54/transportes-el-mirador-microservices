@@ -244,3 +244,34 @@ Bordes obligatorios:
 - `rehabilitarCredito` sobre una cartera con una cuenta de 45 días lanza.
 - Toda operación con fecha nula lanza `IllegalArgumentException`.
 - `Dinero` operando monedas distintas lanza.
+
+### Correcciones tras la revisión de `S1-dominio`
+
+**FAC-04 tenía una puerta trasera.** `CuentaPorCobrar` traía un tercer constructor, de siete parámetros,
+que deducía `montoNeto = total − detraccion`. Por esa vía `montoNeto + detraccion == total` se cumple por
+construcción y `ImportesInconsistentesException` no puede lanzarse nunca. Es exactamente lo que el contrato
+10 debe rechazar con `422`, y 34 de las 35 llamadas de las pruebas usaban ese atajo.
+
+El constructor se eliminó. `montoNeto` **se recibe, no se deduce**: es el tercer importe del contrato y
+existe para contrastarlo. Cobranza rechaza los importes que no cuadran; no los corrige.
+
+**`deudaTotal()` adivinaba la moneda y reventaba con la cartera vacía.** Tomaba `cuentas.get(0).total()
+.codigoMoneda()` —un valor por defecto silencioso en un importe— y lanzaba `IllegalStateException` si no
+había cuentas. Un cliente nuevo sin cartera es el primer caso que responde el contrato 11, y habría dado
+`500`. Queda sólo `deudaTotal(String codigoMoneda)`.
+
+`CuentaCorrienteSinCuentasTest` cubre la cartera vacía: deuda cero en cualquier moneda, sin suspensión y
+con la moneda exigida.
+
+**Decisiones de agy que se aceptan:**
+
+- Orden de validación en `aplicarACuentaPorCobrar`: PAG-02, luego moneda, luego PAG-01, luego CCC-02, y
+  sólo entonces muta. Cumple «se valida todo antes de mutar nada».
+- `AplicacionDePago` genera su id como `<pagoId>-APP-<indice>`. Determinista y sin colisiones mientras no
+  se puedan eliminar aplicaciones, que es el caso.
+- `diasDeAtrasoMaximo` normaliza los atrasos negativos a cero: el contrato 11 informa mora, no anticipación.
+
+**Nota sobre la evidencia:** estas dos correcciones son estructurales —un constructor de más y una
+sobrecarga que adivinaba— y se ven en el diff. A diferencia del defecto de `msvc-conductores`, no hay una
+prueba en rojo que las demuestre: el atajo no producía un resultado incorrecto, permitía saltarse la
+comprobación.

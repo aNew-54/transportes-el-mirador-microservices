@@ -70,7 +70,7 @@ class CuentaPorCobrarTest {
     void ccc02_debeAplicarImporteValido() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         cpc.aplicar(Dinero.de("400.00", "PEN"));
@@ -84,7 +84,7 @@ class CuentaPorCobrarTest {
     void ccc02_debePermitirAplicarImporteExactoAlSaldo() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         cpc.aplicar(Dinero.de("900.00", "PEN"));
@@ -98,7 +98,7 @@ class CuentaPorCobrarTest {
     void ccc02_debeFallarYSinAlterarAplicadoCuandoExcedeSaldo() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         cpc.aplicar(Dinero.de("500.00", "PEN"));
@@ -118,7 +118,7 @@ class CuentaPorCobrarTest {
     void ccc03_caso1_sinPagoCompletoYSinDetraccion() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         assertThat(cpc.estaCancelada()).isFalse();
@@ -129,7 +129,7 @@ class CuentaPorCobrarTest {
     void ccc03_caso2_conPagoCompletoSinDetraccion() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         cpc.aplicar(Dinero.de("900.00", "PEN"));
@@ -144,7 +144,7 @@ class CuentaPorCobrarTest {
     void ccc03_caso3_conDetraccionDepositadaYSaldosPendientes() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         cpc.registrarDepositoDeDetraccion();
@@ -159,7 +159,7 @@ class CuentaPorCobrarTest {
     void ccc03_caso4_conPagoCompletoYDetraccionDepositada() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         cpc.aplicar(Dinero.de("900.00", "PEN"));
@@ -173,7 +173,7 @@ class CuentaPorCobrarTest {
     void ccc03_caso5_cuentaSinDetraccionSeCancelaSoloConPago() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-002", "CLI-0007", "FAC-002", "F001-002",
-            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), Dinero.de("500.00", "PEN"), vencimiento
         );
 
         assertThat(cpc.estaCancelada()).isFalse();
@@ -188,7 +188,7 @@ class CuentaPorCobrarTest {
     void debeFallarAlRegistrarDetraccionEnCuentaSinDetraccion() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-002", "CLI-0007", "FAC-002", "F001-002",
-            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("500.00", "PEN"), Dinero.cero("PEN"), Dinero.de("500.00", "PEN"), vencimiento
         );
 
         assertThatThrownBy(cpc::registrarDepositoDeDetraccion)
@@ -201,7 +201,7 @@ class CuentaPorCobrarTest {
     void debePermitirCobroDeFacturaEnDosPagos() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.de("100.00", "PEN"), Dinero.de("900.00", "PEN"), vencimiento
         );
 
         cpc.aplicar(Dinero.de("400.00", "PEN"));
@@ -221,7 +221,7 @@ class CuentaPorCobrarTest {
     void debeEvaluarEstadoEn() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
 
         LocalDate antes = LocalDate.of(2026, 10, 5);
@@ -241,7 +241,7 @@ class CuentaPorCobrarTest {
     void debeRechazarFechasNulas() {
         CuentaPorCobrar cpc = new CuentaPorCobrar(
             "CPC-001", "CLI-0007", "FAC-001", "F001-001",
-            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), vencimiento
+            Dinero.de("1000.00", "PEN"), Dinero.cero("PEN"), Dinero.de("1000.00", "PEN"), vencimiento
         );
 
         assertThatThrownBy(() -> cpc.estadoEn(null))
