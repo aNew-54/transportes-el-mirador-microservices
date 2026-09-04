@@ -210,3 +210,17 @@ Bordes obligatorios:
 - Dos notas de crédito sucesivas: la segunda se compara contra el saldo ya reducido por la primera.
 - El snapshot comercial no cambia tras emitir: no hay método que lo sustituya.
 - Toda operación con fecha nula lanza `IllegalArgumentException`.
+
+### Correcciones tras la revisión de `S1-dominio`
+
+**FAC-02 era evadible.** `LineaDeFactura` traía un segundo constructor sin `ordenDeServicioId`, y
+`agregarLinea` comprobaba `if (linea.ordenDeServicioId() != null && !coincide)`. Una línea construida con
+el constructor corto llevaba `null` y entraba en cualquier factura. Es la regla **D2** literal, y la misma
+forma que ya apareció en `msvc-unidades` con OMT-02.
+
+`ordenDeServicioId` pasa a ser obligatorio en la línea y la comparación es incondicional.
+
+Se aceptan las demás decisiones del agente: las tres sobrecargas de `NotaDeCredito.emitir` conservan el
+instante y el saldo ajustable, así que no incumplen D1 ni D2; `aplicarNotaDeCredito` mantiene
+`saldoAjustable()` como cálculo y no como campo; y `Factura.emitir()` compara el `montoNeto` recibido sin
+deducirlo, que es lo que D3 exige.
