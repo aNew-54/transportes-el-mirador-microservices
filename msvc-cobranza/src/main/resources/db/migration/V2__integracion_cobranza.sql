@@ -1,0 +1,8 @@
+-- Slice S4-api-interna. 
+-- Regla 6 de los contratos: un reintento con la misma Idempotency-Key devuelve el resultado original y no repite el efecto.
+CREATE TABLE peticiones_idempotentes (
+    clave         VARCHAR(200) NOT NULL,
+    recurso_id    VARCHAR(40)  NOT NULL,
+    registrada_en DATETIME(6)  NOT NULL,
+    CONSTRAINT pk_peticiones_idempotentes PRIMARY KEY (clave)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
