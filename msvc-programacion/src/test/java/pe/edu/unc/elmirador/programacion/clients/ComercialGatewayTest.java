@@ -43,7 +43,7 @@ class ComercialGatewayTest {
     void traduceLaRespuestaDelContratoAlObjetoDeValorPropio() {
         OrdenRemota remota = new OrdenRemota(
                 "ORD-1", "CLI-1", "CONFIRMADA",
-                new CargaRemota(8500, new BigDecimal("24.5"), "PALLETS", "ALIMENTARIA"),
+                new CargaRemota(8500, new BigDecimal("24.5"), "PALETIZADA", "PALLETS", "ALIMENTARIA"),
                 new RutaRemota("Cajamarca", "Trujillo", "COSTA_NORTE", 296),
                 new VentanaRemota(OffsetDateTime.parse("2026-09-10T06:00:00-05:00"), OffsetDateTime.parse("2026-09-10T18:00:00-05:00")),
                 true, List.of("SOLO_CARGA_ALIMENTARIA"), "FURGON"
@@ -53,7 +53,9 @@ class ComercialGatewayTest {
         OrdenConfirmada orden = pasarela.obtenerOrden("ORD-1");
 
         assertThat(orden.ordenId()).isEqualTo("ORD-1");
-        assertThat(orden.carga().tipo()).isEqualTo(TipoDeCarga.PALETIZADA);
+        assertThat(orden.tipo()).isEqualTo(TipoDeCarga.PALETIZADA);
+        // La secuencia de descarga no viene de Comercial: la pone Programacion al consolidar.
+        assertThat(orden.cargaCon(3).secuenciaDeDescarga()).isEqualTo(3);
         assertThat(orden.ruta().corredor()).isEqualTo("COSTA_NORTE");
         assertThat(orden.clausula().permitida()).isTrue();
     }

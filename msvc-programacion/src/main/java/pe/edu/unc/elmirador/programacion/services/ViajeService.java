@@ -37,6 +37,8 @@ import pe.edu.unc.elmirador.programacion.repositories.AgendaDeConductorRepositor
 import pe.edu.unc.elmirador.programacion.repositories.AgendaDeUnidadRepository;
 import pe.edu.unc.elmirador.programacion.repositories.ViajeRepository;
 import pe.edu.unc.elmirador.programacion.clients.ComercialGateway;
+import pe.edu.unc.elmirador.programacion.clients.EvaluacionDeUnidad;
+import pe.edu.unc.elmirador.programacion.clients.OrdenConfirmada;
 import pe.edu.unc.elmirador.programacion.clients.UnidadesGateway;
 import pe.edu.unc.elmirador.programacion.clients.ConductoresGateway;
 
@@ -92,13 +94,17 @@ public class ViajeService {
         Viaje viaje = viajeRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Viaje", id));
 
-        Carga carga = toCarga(peticion.carga());
-        Ruta ruta = toRuta(peticion.rutaDeLaOrden());
-        VentanaDeTiempo ventana = toVentanaDeTiempo(peticion.ventanaDeLaOrden());
-        ClausulaDeConsolidacion clausula = toClausulaDeConsolidacion(peticion.clausulaDelContrato());
-        Capacidad capacidad = toCapacidad(peticion.capacidadDeLaUnidad());
+        // Contrato 1. La carga, la ruta, la ventana y —sobre todo— la clausula del contrato marco las
+        // pone Comercial, que es su dueno. VIA-04 se comprobaba antes contra una clausula que enviaba
+        // quien pedia consolidar: bastaba mandarla permisiva para que la invariante no pudiera fallar.
+        OrdenConfirmada orden = comercialGateway.obtenerOrden(peticion.ordenId());
 
-        viaje.consolidarOrden(carga, ruta, ventana, clausula, capacidad);
+        viaje.consolidarOrden(
+                orden.cargaCon(peticion.secuenciaDeDescarga()),
+                orden.ruta(),
+                orden.ventana(),
+                orden.clausula(),
+                toCapacidad(peticion.capacidadDeLaUnidad()));
         viajeRepository.save(viaje);
         return ViajeMapper.aResponse(viaje);
     }
@@ -108,19 +114,40 @@ public class ViajeService {
         Viaje viaje = viajeRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Viaje", id));
 
+        // El tipo de unidad requerido y el cliente son hechos de la orden, no de esta peticion. Se
+        // vuelve a pedir la orden en vez de guardarlos en el viaje: la regla 7 de contracts.md solo
+        // deja copiar la representacion ajena en los snapshots explicitos, y este no lo es.
+        OrdenConfirmada orden = comercialGateway.obtenerOrden(viaje.ordenIds().get(0));
+
+        // Contratos 2 y 3. La elegibilidad venia en el cuerpo de la peticion, o sea que quien asignaba
+        // declaraba tambien que sus recursos eran elegibles. Si Unidades o Conductores no responden,
+        // el gateway lanza y la asignacion no ocurre: no se supone elegible lo que no se pudo comprobar.
+        EvaluacionDeUnidad evaluacion = unidadesGateway.consultarElegibilidad(
+                peticion.unidadId(),
+                viaje.ventana().desde(),
+                viaje.ventana().hasta(),
+                viaje.cargaConsolidada().pesoTotal(),
+                viaje.cargaConsolidada().volumenTotal(),
+                viaje.cargaConsolidada().tipoDominante().name());
+
         AgendaDeUnidad agendaUnidad = agendaDeUnidadRepository.findById(peticion.unidadId())
                 .orElseGet(() -> new AgendaDeUnidad(peticion.unidadId()));
         agendaUnidad.reservar(
                 UUID.randomUUID().toString(),
                 viaje.ventana(),
-                toElegibilidadDeRecurso(peticion.elegibilidadDeLaUnidad()),
+                evaluacion.elegibilidad(),
                 viaje.id()
         );
         agendaDeUnidadRepository.save(agendaUnidad);
 
         for (int i = 0; i < peticion.conductorIds().size(); i++) {
             String conductorId = peticion.conductorIds().get(i);
-            ElegibilidadDeRecurso elegibilidad = toElegibilidadDeRecurso(peticion.elegibilidadDeLosConductores().get(i));
+            ElegibilidadDeRecurso elegibilidad = conductoresGateway.consultarElegibilidad(
+                    conductorId,
+                    viaje.ventana().desde(),
+                    viaje.ventana().hasta(),
+                    orden.tipoUnidadRequerido(),
+                    orden.clienteId());
             AgendaDeConductor agendaConductor = agendaDeConductorRepository.findById(conductorId)
                     .orElseGet(() -> new AgendaDeConductor(conductorId));
             agendaConductor.reservar(

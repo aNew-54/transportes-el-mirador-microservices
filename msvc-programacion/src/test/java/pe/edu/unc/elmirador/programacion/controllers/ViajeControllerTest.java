@@ -138,13 +138,7 @@ class ViajeControllerTest {
     void consolidar200() throws Exception {
         when(servicio.consolidarOrden(eq("v-1"), any())).thenReturn(viajePlanificado());
 
-        ConsolidarOrdenRequest req = new ConsolidarOrdenRequest(
-                new CargaRequest("ord-2", 500, new BigDecimal("1.0"), TipoDeCarga.GENERAL, 2),
-                new RutaRequest("Lima", "Arequipa", "Sur"),
-                new VentanaDeTiempoRequest(OffsetDateTime.parse("2026-03-10T10:00:00Z"), OffsetDateTime.parse("2026-03-11T10:00:00Z")),
-                new ClausulaDeConsolidacionRequest(true, List.of()),
-                new CapacidadRequest(20000, new BigDecimal("40.0"))
-        );
+        ConsolidarOrdenRequest req = new ConsolidarOrdenRequest("ord-2", 2, new CapacidadRequest(20000, new BigDecimal("60.0")));
 
         mockMvc.perform(post("/api/v1/viajes/v-1/ordenes")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -157,13 +151,7 @@ class ViajeControllerTest {
     void consolidar422Capacidad() throws Exception {
         when(servicio.consolidarOrden(eq("v-1"), any())).thenThrow(new CapacidadExcedidaException("VIA-02: capacidad excedida"));
 
-        ConsolidarOrdenRequest req = new ConsolidarOrdenRequest(
-                new CargaRequest("ord-2", 500, new BigDecimal("1.0"), TipoDeCarga.GENERAL, 2),
-                new RutaRequest("Lima", "Arequipa", "Sur"),
-                new VentanaDeTiempoRequest(OffsetDateTime.parse("2026-03-10T10:00:00Z"), OffsetDateTime.parse("2026-03-11T10:00:00Z")),
-                new ClausulaDeConsolidacionRequest(true, List.of()),
-                new CapacidadRequest(20000, new BigDecimal("40.0"))
-        );
+        ConsolidarOrdenRequest req = new ConsolidarOrdenRequest("ord-2", 2, new CapacidadRequest(20000, new BigDecimal("60.0")));
 
         mockMvc.perform(post("/api/v1/viajes/v-1/ordenes")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -181,13 +169,7 @@ class ViajeControllerTest {
     void recursos200() throws Exception {
         when(servicio.asignarRecursos(eq("v-1"), any())).thenReturn(viajePlanificado());
 
-        AsignarRecursosRequest req = new AsignarRecursosRequest(
-                "u-1",
-                List.of("c-1"),
-                false,
-                new ElegibilidadDeRecursoRequest(true, List.of()),
-                List.of(new ElegibilidadDeRecursoRequest(true, List.of()))
-        );
+        AsignarRecursosRequest req = new AsignarRecursosRequest("u-1", List.of("c-1"), false);
 
         mockMvc.perform(post("/api/v1/viajes/v-1/recursos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -200,13 +182,7 @@ class ViajeControllerTest {
     void recursos409Elegibilidad() throws Exception {
         when(servicio.asignarRecursos(eq("v-1"), any())).thenThrow(new RecursoNoElegibleException(List.of("motivo")));
 
-        AsignarRecursosRequest req = new AsignarRecursosRequest(
-                "u-1",
-                List.of("c-1"),
-                false,
-                new ElegibilidadDeRecursoRequest(true, List.of()),
-                List.of(new ElegibilidadDeRecursoRequest(true, List.of()))
-        );
+        AsignarRecursosRequest req = new AsignarRecursosRequest("u-1", List.of("c-1"), false);
 
         mockMvc.perform(post("/api/v1/viajes/v-1/recursos")
                         .contentType(MediaType.APPLICATION_JSON)

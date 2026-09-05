@@ -5,7 +5,6 @@ import feign.FeignException;
 import feign.RetryableException;
 import pe.edu.unc.elmirador.programacion.clients.dto.OrdenRemota;
 import pe.edu.unc.elmirador.programacion.exceptions.ComercialIntegrationException;
-import pe.edu.unc.elmirador.programacion.models.vo.Carga;
 import pe.edu.unc.elmirador.programacion.models.vo.ClausulaDeConsolidacion;
 import pe.edu.unc.elmirador.programacion.models.vo.Ruta;
 import pe.edu.unc.elmirador.programacion.models.vo.TipoDeCarga;
@@ -32,29 +31,38 @@ public class ComercialGateway {
         return traducir(ordenId, remoto);
     }
     
+    /**
+     * El {@code tipo} llega del contrato 1 y no se deduce.
+     *
+     * <p>Antes se reconstruia a ojo desde {@code embalaje} y {@code naturaleza}, con
+     * {@code GENERAL} como salida por defecto para todo lo no reconocido. VIA-05 se decide con ese
+     * campo, y la maquinaria pesada es justamente la que no comparte plataforma con nada: una
+     * naturaleza escrita de otra forma la convertia en carga general consolidable con cualquier cosa.
+     */
     private OrdenConfirmada traducir(String ordenId, OrdenRemota remoto) {
-        if (remoto == null || remoto.estado() == null || remoto.carga() == null || remoto.ruta() == null || remoto.ventana() == null) {
+        if (remoto == null || remoto.estado() == null || remoto.carga() == null
+                || remoto.ruta() == null || remoto.ventana() == null) {
             throw new ComercialIntegrationException("Comercial respondio una orden incompleta para " + ordenId);
         }
-        
+
         TipoDeCarga tipo;
         try {
-            if ("PALLETS".equalsIgnoreCase(remoto.carga().embalaje())) {
-                tipo = TipoDeCarga.PALETIZADA;
-            } else if ("MAQUINARIA".equalsIgnoreCase(remoto.carga().naturaleza()) || "MAQUINARIA_PESADA".equalsIgnoreCase(remoto.carga().naturaleza())) {
-                tipo = TipoDeCarga.MAQUINARIA_PESADA;
-            } else {
-                tipo = TipoDeCarga.GENERAL;
-            }
-        } catch (Exception e) {
-            throw new ComercialIntegrationException("Comercial respondio una carga que no se puede traducir para " + ordenId, e);
+            tipo = TipoDeCarga.valueOf(remoto.carga().tipo());
+        } catch (IllegalArgumentException | NullPointerException desconocido) {
+            throw new ComercialIntegrationException(
+                    "Comercial respondio un tipo de carga que Programacion no conoce: "
+                            + remoto.carga().tipo(), desconocido);
         }
-        
-        Carga carga = new Carga(remoto.ordenId(), remoto.carga().pesoKg(), remoto.carga().volumenM3(), tipo, 1);
-        Ruta ruta = new Ruta(remoto.ruta().origen(), remoto.ruta().destino(), remoto.ruta().corredor());
-        VentanaDeTiempo ventana = new VentanaDeTiempo(remoto.ventana().inicio(), remoto.ventana().fin());
-        ClausulaDeConsolidacion clausula = new ClausulaDeConsolidacion(remoto.permiteConsolidacion(), remoto.restriccionesConsolidacion());
-        
-        return new OrdenConfirmada(remoto.ordenId(), remoto.clienteId(), carga, ruta, ventana, clausula, remoto.tipoUnidadRequerido());
+
+        return new OrdenConfirmada(
+                remoto.ordenId(),
+                remoto.clienteId(),
+                remoto.carga().pesoKg(),
+                remoto.carga().volumenM3(),
+                tipo,
+                new Ruta(remoto.ruta().origen(), remoto.ruta().destino(), remoto.ruta().corredor()),
+                new VentanaDeTiempo(remoto.ventana().inicio(), remoto.ventana().fin()),
+                new ClausulaDeConsolidacion(remoto.permiteConsolidacion(), remoto.restriccionesConsolidacion()),
+                remoto.tipoUnidadRequerido());
     }
 }
