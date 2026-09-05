@@ -17,12 +17,18 @@ import java.util.List;
  *   "incidenciasSinResolver": [] }
  * </pre>
  *
- * {@code incidenciasSinResolver} va siempre, la ausencia es 400.
+ * <p>{@code incidenciasSinResolver} va SIEMPRE, aunque este vacio: su ausencia es un error de
+ * contrato y no un «sin incidencias». Por eso lleva {@code @NotNull} y no {@code @NotEmpty}.
+ *
+ * <p>{@code estado} va tipado como {@link EstadoDeConformidad}: un valor que no sea FIRMADA, PARCIAL
+ * ni RECHAZADA es un {@code 400} en la frontera.
  */
+import pe.edu.unc.elmirador.facturacion.models.vo.EstadoDeConformidad;
+
 public record RegistrarConformidadRequest(
         @NotBlank String viajeId,
         @NotBlank String ordenDeServicioId,
-        @NotBlank String estado,
+        @NotNull EstadoDeConformidad estado,
         @NotNull OffsetDateTime fechaDeFirma,
         @NotNull @Valid List<ConceptoFacturableRequest> conceptosFacturables,
         @NotNull List<String> incidenciasSinResolver

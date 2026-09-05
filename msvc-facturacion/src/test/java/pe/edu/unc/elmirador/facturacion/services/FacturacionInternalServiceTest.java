@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import pe.edu.unc.elmirador.facturacion.dto.internal.request.ConceptoFacturableRequest;
 import pe.edu.unc.elmirador.facturacion.dto.internal.request.RegistrarConformidadRequest;
 import pe.edu.unc.elmirador.facturacion.exceptions.RecursoNoEncontradoException;
+import pe.edu.unc.elmirador.facturacion.models.vo.ConceptoFacturable;
+import pe.edu.unc.elmirador.facturacion.models.vo.EstadoDeConformidad;
 import pe.edu.unc.elmirador.facturacion.models.entity.Factura;
 import pe.edu.unc.elmirador.facturacion.models.entity.PeticionIdempotente;
 import pe.edu.unc.elmirador.facturacion.models.vo.Detraccion;
@@ -70,8 +72,8 @@ class FacturacionInternalServiceTest {
 
         String clave = "VIA-2026-00045:ORD-2026-000123:conformidad";
         var peticion = new RegistrarConformidadRequest(
-                "VIA-2026-00045", "ORD-2026-000123", "FIRMADA", FIRMA,
-                List.of(new ConceptoFacturableRequest("ESTIBA", new BigDecimal("180.00"), "PEN", null)),
+                "VIA-2026-00045", "ORD-2026-000123", EstadoDeConformidad.FIRMADA, FIRMA,
+                List.of(new ConceptoFacturableRequest(ConceptoFacturable.ESTIBA, new BigDecimal("180.00"), "PEN", null)),
                 List.of()
         );
 
@@ -101,8 +103,8 @@ class FacturacionInternalServiceTest {
         when(repositorio.findByOrdenDeServicioId("ORD-2026-000123")).thenReturn(Optional.of(f));
 
         var peticion = new RegistrarConformidadRequest(
-                "VIA-2026-00045", "ORD-2026-000123", "FIRMADA", FIRMA,
-                List.of(new ConceptoFacturableRequest("ESTIBA", new BigDecimal("180.00"), "PEN", null)),
+                "VIA-2026-00045", "ORD-2026-000123", EstadoDeConformidad.FIRMADA, FIRMA,
+                List.of(new ConceptoFacturableRequest(ConceptoFacturable.ESTIBA, new BigDecimal("180.00"), "PEN", null)),
                 List.of("Falta sello")
         );
 
@@ -118,7 +120,7 @@ class FacturacionInternalServiceTest {
         when(repositorio.findByOrdenDeServicioId("ORD-999")).thenReturn(Optional.empty());
 
         var peticion = new RegistrarConformidadRequest(
-                "VIA-1", "ORD-999", "FIRMADA", FIRMA, List.of(), List.of()
+                "VIA-1", "ORD-999", EstadoDeConformidad.FIRMADA, FIRMA, List.of(), List.of()
         );
 
         assertThatThrownBy(() -> servicio.registrarConformidad("clave", peticion))

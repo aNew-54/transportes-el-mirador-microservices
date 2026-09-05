@@ -61,15 +61,20 @@ public class FacturacionInternalService {
         Factura factura = repositorio.findByOrdenDeServicioId(peticion.ordenDeServicioId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("factura para orden de servicio", peticion.ordenDeServicioId()));
 
-        boolean registrada = !"RECHAZADA".equals(peticion.estado());
-        Conformidad conformidad = new Conformidad(registrada, peticion.incidenciasSinResolver(), OffsetDateTime.now(reloj));
+        // Que una conformidad rechazada no cuente vive en EstadoDeConformidad, no aqui. Y la fecha
+        // es la de la firma, que es el hecho que el contrato transmite: sustituirla por la del reloj
+        // perderia el dato y fecharia la conformidad cuando se recibio el mensaje, no cuando ocurrio.
+        Conformidad conformidad = new Conformidad(
+                peticion.estado().cuentaComoRegistrada(),
+                peticion.incidenciasSinResolver(),
+                peticion.fechaDeFirma());
         factura.registrarConformidad(conformidad);
 
         for (ConceptoFacturableRequest cr : peticion.conceptosFacturables()) {
             LineaDeFactura linea = new LineaDeFactura(
                     UUID.randomUUID().toString(),
                     peticion.ordenDeServicioId(),
-                    ConceptoFacturable.valueOf(cr.concepto()),
+                    cr.concepto(),
                     cr.detalle(),
                     new Dinero(cr.monto(), cr.moneda())
             );
