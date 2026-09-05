@@ -91,6 +91,12 @@ public class CobranzaInternalService {
         Dinero detraccion = Dinero.de(peticion.detraccion().monto(), peticion.detraccion().moneda());
         Dinero montoNeto = Dinero.de(peticion.montoNeto().monto(), peticion.montoNeto().moneda());
 
+        if (!peticion.detraccion().tieneCuentaCuandoHaceFalta()) {
+            throw new ImportesInconsistentesException(
+                    "La detraccion de " + peticion.detraccion().monto()
+                            + " no dice a que cuenta bancaria fue depositada");
+        }
+
         Dinero suma = montoNeto.sumar(detraccion);
         if (suma.monto().compareTo(total.monto()) != 0) {
             throw new ImportesInconsistentesException(

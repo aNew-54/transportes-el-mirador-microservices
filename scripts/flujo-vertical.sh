@@ -121,15 +121,23 @@ paso "Despachar viaje" "POST" "$PROGRAMACION_URL/api/v1/viajes/$VIAJE_ID/despach
 
 # 7. Ejecucion: check-list, iniciar, conformidades, cerrar
 paso "Crear ejecucion" "POST" "$EJECUCION_URL/api/v1/ejecuciones" "{\"viajeId\":\"$VIAJE_ID\"}" "201"
-paso "Registrar checklist" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/checklist" "{\"aprobado\":true,\"observaciones\":\"Todo bien\"}" "200"
+paso "Registrar checklist" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/checklist" "{\"aprobado\":true,\"observaciones\":[]}" "200"
 paso "Iniciar ejecucion" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/iniciar" "null" "200"
 paso "Conformidad parada 1" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/paradas/1/conformidad" "{\"estado\":\"FIRMADA\",\"recibidoPor\":\"Encargado 1\"}" "201"
 paso "Conformidad parada 2" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/paradas/2/conformidad" "{\"estado\":\"FIRMADA\",\"recibidoPor\":\"Encargado 2\"}" "201"
-paso "Cerrar ejecucion" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/cerrar" "{\"kilometrajeFinal\":1000,\"horasPorConductor\":[{\"conductorId\":\"$COND1_ID\",\"horas\":4,\"desde\":\"2026-10-10T09:00:00-05:00\",\"hasta\":\"2026-10-10T13:00:00-05:00\"},{\"conductorId\":\"$COND2_ID\",\"horas\":4,\"desde\":\"2026-10-10T13:00:00-05:00\",\"hasta\":\"2026-10-10T17:00:00-05:00\"}],\"conceptosFacturables\":[{\"ordenDeServicioId\":\"$ORDEN_ID\",\"concepto\":\"ESTIBA\",\"monto\":\"1500.00\",\"moneda\":\"PEN\"}]}" "200"
-
-# 8. Facturacion: factura y emision
+# El contrato 8 no crea la factura: la desbloquea. FAC-01 mantiene BLOQUEADA una factura sin
+# conformidad, asi que la factura tiene que existir ANTES de cerrar el viaje. Ponerla despues
+# —como estaba— hacia que Facturacion respondiera 404 al contrato 8 y el cierre saliera 503.
 paso "Abrir factura" "POST" "$FACTURACION_URL/api/v1/facturas" "{\"ordenDeServicioId\":\"$ORDEN_ID\",\"clienteId\":\"$CLIENTE_ID\",\"snapshot\":{\"tarifaMonto\":1500.00,\"codigoMoneda\":\"PEN\",\"obtenidoEn\":\"2026-10-10T18:00:00-05:00\"},\"detraccion\":{\"porcentaje\":0,\"monto\":0,\"cuentaBancaria\":\"\"}}" "201"
 FACTURA_ID=$(id_de id)
+
+# EJV-03: la ejecucion solo se cierra desde ENTREGADA, y solo se entrega con todas las paradas
+# firmadas. Este endpoint no existia: el agregado tenia marcarEntregada con su invariante y sus
+# pruebas, y ningun controlador lo exponia.
+paso "Marcar entregada" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/entregar" "null" "200"
+
+paso "Cerrar ejecucion" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/cerrar" "{\"kilometrajeFinal\":1000,\"horasPorConductor\":[{\"conductorId\":\"$COND1_ID\",\"horas\":4,\"desde\":\"2026-10-10T09:00:00-05:00\",\"hasta\":\"2026-10-10T13:00:00-05:00\"},{\"conductorId\":\"$COND2_ID\",\"horas\":4,\"desde\":\"2026-10-10T13:00:00-05:00\",\"hasta\":\"2026-10-10T17:00:00-05:00\"}],\"conceptosFacturables\":[{\"ordenDeServicioId\":\"$ORDEN_ID\",\"concepto\":\"ESTIBA\",\"monto\":\"1500.00\",\"moneda\":\"PEN\"}]}" "200"
+
 paso "Emitir factura" "POST" "$FACTURACION_URL/api/v1/facturas/$FACTURA_ID/emitir" "{\"serie\":\"F001\",\"correlativo\":1}" "200"
 
 # 9. Cobranza: comprobar cuenta corriente

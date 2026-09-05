@@ -205,6 +205,26 @@ public class EjecucionDeViajeService {
         return EjecucionDeViajeMapper.mapear(ejecucion);
     }
 
+    /**
+     * Marca el viaje como entregado. EJV-03 lo permite solo si todas las paradas tienen conformidad
+     * firmada, y esa comprobacion vive en el agregado.
+     *
+     * <p>Hasta aqui el metodo existia en {@code EjecucionDeViaje}, con su invariante y sus pruebas,
+     * y ningun controlador lo exponia: la maquina de estados no podia llegar a ENTREGADA y por
+     * tanto una ejecucion no se podia cerrar nunca. Lo destapo el flujo vertical con un
+     * «Transicion invalida de EN_RUTA a CERRADA».
+     */
+    @Transactional
+    public EjecucionDeViajeResponse marcarEntregada(String viajeId) {
+        EjecucionDeViaje ejecucion = repository.findById(viajeId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("EjecucionDeViaje", viajeId));
+
+        ejecucion.marcarEntregada(OffsetDateTime.now(clock));
+        repository.save(ejecucion);
+
+        return EjecucionDeViajeMapper.mapear(ejecucion);
+    }
+
     @Transactional
     public EjecucionDeViajeResponse registrarEspera(String viajeId, int secuencia, RegistrarEsperaRequest request) {
         EjecucionDeViaje ejecucion = repository.findById(viajeId)
