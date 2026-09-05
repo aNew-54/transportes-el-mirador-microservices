@@ -437,24 +437,44 @@ se asume `VIGENTE`. La orden al contado sí procede, porque no depende de este c
 
 ## Estado de implementación
 
-**Los once contratos tienen su lado proveedor implementado y probado** (slice `S4-api-interna`). Falta el
-lado consumidor: los clientes Feign, con su timeout y su traducción de fallo remoto, que son de `S5`.
-Hasta entonces ningún contrato está terminado según el criterio de `docs/api/README.md`, que exige la
-prueba del cliente contra un stub.
+Los once contratos tienen **proveedor y cliente**, cada uno con su prueba de gateway y su prueba de
+stub contra el JSON de este documento. Un contrato está *cableado* cuando además hay un servicio de
+aplicación que lo llama: escribir el cliente y no llamarlo deja el contrato en verde y sin efecto.
 
-| # | Proveedor | Endpoint | Estado |
-|---|---|---|---|
-| 1 | Comercial | `GET /internal/v1/ordenes/{ordenId}` | proveedor **done** · cliente pendiente |
-| 2 | Unidades | `GET /internal/v1/unidades/{id}/elegibilidad` | proveedor **done** · cliente pendiente |
-| 3 | Conductores | `GET /internal/v1/conductores/{id}/elegibilidad` | proveedor **done** · cliente pendiente |
-| 4 | Programación | `GET /internal/v1/viajes/{id}/hoja-de-ruta` | proveedor **done** · cliente pendiente |
-| 5 | Unidades | `POST .../kilometraje` y `.../fallas` | proveedor **done** · cliente pendiente |
-| 6 | Conductores | `POST .../horas-conduccion` y `.../incidencias` | proveedor **done** · cliente pendiente |
-| 7 | Comercial | `POST .../diferencias-de-carga` y `.../esperas` | proveedor **done** · cliente pendiente |
-| 8 | Facturación | `POST /internal/v1/conformidades` | proveedor **done** · cliente pendiente |
-| 9 | Comercial | `GET /internal/v1/ordenes/{id}/snapshot-facturable` | proveedor **done** · cliente pendiente |
-| 10 | Cobranza | `POST /internal/v1/cuentas-por-cobrar` | proveedor **done** · cliente pendiente |
-| 11 | Cobranza | `GET /internal/v1/clientes/{id}/estado-crediticio` | proveedor **done** · cliente pendiente |
+| # | Proveedor | Endpoint | Proveedor | Cliente | Cableado |
+|---|---|---|---|---|---|
+| 1 | Comercial | `GET /internal/v1/ordenes/{ordenId}` | done | done | `ViajeService` |
+| 2 | Unidades | `GET /internal/v1/unidades/{id}/elegibilidad` | done | done | `ViajeService` |
+| 3 | Conductores | `GET /internal/v1/conductores/{id}/elegibilidad` | done | done | `ViajeService` |
+| 4 | Programación | `GET /internal/v1/viajes/{id}/hoja-de-ruta` | done | done | `EjecucionDeViajeService.crear` |
+| 5 | Unidades | `POST .../kilometraje` y `.../fallas` | done | done | `EjecucionDeViajeService.cerrar` |
+| 6 | Conductores | `POST .../horas-conduccion` y `.../incidencias` | done | done | `EjecucionDeViajeService.cerrar` |
+| 7 | Comercial | `POST .../esperas` | done | done | `EjecucionDeViajeService.cerrar` |
+| 7 | Comercial | `POST .../diferencias-de-carga` | done | done | **no** |
+| 8 | Facturación | `POST /internal/v1/conformidades` | done | done | `EjecucionDeViajeService.cerrar` |
+| 9 | Comercial | `GET /internal/v1/ordenes/{id}/snapshot-facturable` | done | done | `FacturaService` |
+| 10 | Cobranza | `POST /internal/v1/cuentas-por-cobrar` | done | done | `FacturaService` |
+| 11 | Cobranza | `GET /internal/v1/clientes/{id}/estado-crediticio` | done | done | `OrdenDeServicioService` |
+
+La única mitad sin cablear es la diferencia de carga del contrato 7. No es un olvido: Ejecución no
+tiene en ningún sitio del agregado lo declarado ni lo real, así que cablearla exige una entidad
+`DiferenciaDeCarga` por parada con su migración y sus invariantes. Es un slice propio.
+
+### Lo que `S6` cambió de estos contratos
+
+Cablear los contratos 5 a 8 destapó dos desajustes que las pruebas de stub no podían ver, porque un
+stub responde lo que el contrato dice y nadie comparaba el contrato con el dominio de al lado:
+
+| Qué | Contrato | Resolución |
+|---|---|---|
+| El `estado` de la conformidad | 8 | El contrato habla de `FIRMADA` · `PARCIAL` · `RECHAZADA`; el enum de Ejecución es `PENDIENTE` · `FIRMADA` · `OBSERVADA`. La traducción vive en `EstadoConformidad.codigoDelContrato()`, que es lo que la capa anticorrupción existe para hacer. `OBSERVADA` → `PARCIAL`; `PENDIENTE` **lanza**, porque EJV-03 no debería haber dejado entregar la ejecución y un `RECHAZADA` inventado enterraría ese defecto en Facturación |
+| El `tipo` de la falla | 5 | El ejemplo dice `"MECANICA"`, un valor que no existe en `TipoDeIncidencia`. Ejecución manda el nombre de su propio enum, `"AVERIA"`. El contrato no enumera valores permitidos para este campo; queda escrito para que la próxima lectura no lo tome por un defecto |
+
+Y confirmó, ya con las dos caras conectadas, que los dos `409` que `S4` corrigió en el proveedor no
+llegaban a servir de nada: el consumidor mandaba cualquier `FeignException` a su excepción de
+integración, así que UNI-03 y CON-02 salían por la API pública de Ejecución como un `503`. Un `503`
+dice «no pude comprobarlo» y manda al operador a mirar si el otro servicio está caído. No lo está:
+respondió, y respondió que no.
 
 ### Lo que `S4` cambió de estos contratos
 

@@ -101,4 +101,15 @@ public class Incidencia {
     public void resolver() {
         this.resuelta = true;
     }
+
+    /**
+     * Lo que viaja como {@code dejaInoperativa} en el contrato 5.
+     *
+     * <p>Una averia que se resolvio en ruta —se cambio la rueda, se repuso el fusible— no deja la
+     * unidad fuera de servicio al cerrar el viaje. Una que no, si: Unidades la marca INOPERATIVA y
+     * deja de ser elegible en el contrato 2 de forma inmediata.
+     */
+    public boolean dejaUnidadInoperativa() {
+        return tipo.esFallaDeUnidad() && !resuelta;
+    }
 }

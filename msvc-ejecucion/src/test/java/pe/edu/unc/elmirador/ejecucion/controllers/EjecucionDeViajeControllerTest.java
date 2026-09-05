@@ -20,7 +20,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.OffsetDateTime;
+
 import pe.edu.unc.elmirador.ejecucion.dto.request.CerrarEjecucionRequest;
+import pe.edu.unc.elmirador.ejecucion.dto.request.HorasDeConductorRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ConformidadRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.CrearEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ParadaRequest;
@@ -57,7 +60,7 @@ class EjecucionDeViajeControllerTest {
 
     private EjecucionDeViajeResponse respuestaDeEjemplo() {
         return new EjecucionDeViajeResponse(
-                "v-1", "u-1", EstadoDeEjecucion.PENDIENTE, null,
+                "v-1", "u-1", List.of("c-1"), null, EstadoDeEjecucion.PENDIENTE, null,
                 List.of(), List.of(), List.of(), List.of());
     }
 
@@ -211,7 +214,12 @@ class EjecucionDeViajeControllerTest {
     void cerrar200() throws Exception {
         when(servicio.cerrar(eq("v-1"), any())).thenReturn(respuestaDeEjemplo());
 
-        CerrarEjecucionRequest peticion = new CerrarEjecucionRequest(false);
+        CerrarEjecucionRequest peticion = new CerrarEjecucionRequest(
+                184320,
+                List.of(new HorasDeConductorRequest("c-1", 8.5,
+                        OffsetDateTime.parse("2026-09-10T06:00:00-05:00"),
+                        OffsetDateTime.parse("2026-09-10T14:30:00-05:00"))),
+                List.of());
 
         mockMvc.perform(post("/api/v1/ejecuciones/v-1/cerrar")
                         .contentType(MediaType.APPLICATION_JSON)

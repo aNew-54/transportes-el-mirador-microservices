@@ -26,6 +26,8 @@ public final class EjecucionDeViajeMapper {
         return new EjecucionDeViajeResponse(
                 ejecucion.getViajeId(),
                 ejecucion.getUnidadEjecutoraId(),
+                ejecucion.getConductorIds(),
+                ejecucion.getKilometrajeFinal(),
                 ejecucion.getEstado(),
                 mapear(ejecucion.getCheckList()),
                 ejecucion.getParadas().stream().map(EjecucionDeViajeMapper::mapear).toList(),

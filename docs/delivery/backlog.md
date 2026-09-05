@@ -128,8 +128,10 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
 | `S5-clientes` | contratos 4, 5, 6, 7, 8 | **done** |
+| `S6-cierre` | LIQ-04, EJV-04, UNI-03, CON-02 | **done** |
 
-Ejecución no tiene `S4`: no publica endpoints de integración.
+Ejecución no tiene `S4`: no publica endpoints de integración. Es el único servicio con `S6`: es el
+único que empuja hechos a otros cuatro contextos al terminar, y ese empuje resultó ser un slice.
 
 ---
 
@@ -141,6 +143,7 @@ Ejecución no tiene `S4`: no publica endpoints de integración.
 | Los siete arrancan | `./scripts/smoke-test.sh` | **done** |
 | 48 invariantes cubiertas | Todas con prueba en verde | **done** |
 | 11 contratos implementados | Con prueba de cliente y de proveedor | **done** |
+| Contratos cableados | Un servicio de aplicación llama a cada cliente | **10 de 11** |
 | Flujo vertical | Orden → viaje → ejecución → factura → cobranza, de extremo a extremo | pendiente |
 
 ## Progreso
@@ -151,29 +154,44 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total | |
 |---|---:|---:|---|
-| Slices | **32** | 32 | **100 %** |
+| Slices | **33** | 33 | **100 %** |
 | Invariantes cubiertas | **48** | 48 | 100 % |
 | Contratos con proveedor listo | **11** | 11 | 100 % |
 | Contratos con cliente Feign | **11** | 11 | **100 %** |
+| Contratos que alguien llama | **10** | 11 | **91 %** |
 | Servicios terminados | **7** | 7 | **100 %** |
 
 Un servicio esta terminado cuando no le queda ningun slice. Unidades, Conductores y Cobranza lo estan:
 la regla 10 no les da flecha saliente, asi que su ultimo slice es `S4` y no tienen `S5` que esperar.
-Los cuatro restantes estan al completo salvo sus clientes Feign.
+Los cuatro restantes tambien lo estan: Ejecucion cerro el ultimo con `S6`.
 
-Los 32 slices estan integrados y los once contratos tienen cliente y proveedor, cada uno con su prueba
+Los 33 slices estan integrados y los once contratos tienen cliente y proveedor, cada uno con su prueba
 de gateway y su prueba de stub contra el JSON de `contracts.md`.
 
-**Una distincion que el contador no hace y hay que decir en voz alta:** de los once clientes, siete los
-llama un servicio de aplicacion y cuatro todavia no. Los cuatro son los reportes de Ejecucion
-—contratos 5, 6, 7 y 8—, que son empujes al cerrar el viaje y necesitan datos que el agregado aun no
-lleva: el odometro final, las horas por conductor, los conceptos facturables. Estan escritos, probados
-y con sus claves de idempotencia; les falta quien los invoque, y eso es el hito de flujo vertical.
+**Lo que queda, dicho en voz alta.** De los once contratos, diez los llama un servicio de
+aplicacion. El que falta es la diferencia de carga del contrato 7: Ejecucion no tiene en ningun sitio
+del agregado lo declarado ni lo real, asi que cablearla exige una entidad `DiferenciaDeCarga` por
+parada, con su migracion y sus invariantes. Es un slice propio, no un apendice del cierre.
 
-| Contrato | Consumidor | Cliente | ¿Lo llama alguien? |
-|---|---|---|---|
-| 1, 2, 3 | Programación | sí | sí — `ViajeService` |
-| 4 | Ejecución | sí | sí — `EjecucionDeViajeService` |
-| 5, 6, 7, 8 | Ejecución | sí | **todavía no** |
-| 9, 10 | Facturación | sí | sí — `FacturaService` |
-| 11 | Comercial | sí | sí — `OrdenDeServicioService` |
+| Contrato | Consumidor | ¿Lo llama alguien? |
+|---|---|---|
+| 1, 2, 3 | Programación | sí — `ViajeService` |
+| 4 | Ejecución | sí — `EjecucionDeViajeService.crear` |
+| 5, 6, 8 | Ejecución | sí — `EjecucionDeViajeService.cerrar` |
+| 7 · esperas | Ejecución | sí — `EjecucionDeViajeService.cerrar` |
+| 7 · diferencia de carga | Ejecución | **no** — le falta el concepto de dominio |
+| 9, 10 | Facturación | sí — `FacturaService` |
+| 11 | Comercial | sí — `OrdenDeServicioService` |
+
+**Los tres defectos de la misma familia.** Tres invariantes se comprobaban contra un dato que ponia
+quien llamaba, y las tres eran infalsificables por eso. Aparecieron una por slice y ninguna la vio una
+suite en verde:
+
+| Invariante | Dato que venia en el cuerpo | Slice que lo cerro |
+|---|---|---|
+| VIA-04 | La clausula del contrato marco | `S5` de Programación, con el contrato 1 |
+| ORD-02 | El estado crediticio del cliente | `S5` de Comercial, con el contrato 11 |
+| LIQ-04 | Si quedaban liquidaciones pendientes | `S6` de Ejecución, **sin contrato**: el dato era suyo |
+
+El tercero es el que mas dice. No hacia falta ningun contrato para arreglarlo: las liquidaciones son
+del propio contexto y el metodo de repositorio que las cuenta existia desde `S2`. Nadie lo llamaba.

@@ -22,12 +22,14 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import pe.edu.unc.elmirador.ejecucion.exceptions.CheckListNoAprobadoException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.ConformidadesPendientesException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.DominioEjecucionException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.EjecucionEntregadaException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.EvidenciaRequeridaException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.LiquidacionPendienteException;
+import pe.edu.unc.elmirador.ejecucion.models.vo.EsperaFacturable;
 import pe.edu.unc.elmirador.ejecucion.models.vo.EstadoDeEjecucion;
 import pe.edu.unc.elmirador.ejecucion.models.vo.EstadoDeParada;
 import pe.edu.unc.elmirador.ejecucion.models.vo.ResultadoDeCheckList;
@@ -76,6 +78,19 @@ public class EjecucionDeViaje {
     @Column(name = "unidad_id", length = 40, nullable = false)
     private List<String> unidadesAnteriores = new ArrayList<>();
 
+    /**
+     * Los conductores que el contrato 4 asigno al viaje. Sin ellos el contrato 6 no tiene a quien
+     * reportarle horas: hasta este slice llegaban en la hoja de ruta y se tiraban al suelo.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "ejecucion_conductores", joinColumns = @JoinColumn(name = "ejecucion_id"))
+    @Column(name = "conductor_id", length = 40, nullable = false)
+    private List<String> conductorIds = new ArrayList<>();
+
+    /** Odometro al cerrar. Nulo hasta entonces: es lo que viaja en el contrato 5. */
+    @Column(name = "kilometraje_final")
+    private Integer kilometrajeFinal;
+
     @Column(name = "fecha_inicio")
     private OffsetDateTime fechaInicio;
 
@@ -86,16 +101,21 @@ public class EjecucionDeViaje {
     protected EjecucionDeViaje() {
     }
 
-    public static EjecucionDeViaje crear(String viajeId, String unidadEjecutoraId, List<Parada> paradas) {
-        return new EjecucionDeViaje(viajeId, unidadEjecutoraId, paradas);
+    public static EjecucionDeViaje crear(String viajeId, String unidadEjecutoraId,
+                                        List<String> conductorIds, List<Parada> paradas) {
+        return new EjecucionDeViaje(viajeId, unidadEjecutoraId, conductorIds, paradas);
     }
 
-    public EjecucionDeViaje(String viajeId, String unidadEjecutoraId, List<Parada> paradas) {
+    public EjecucionDeViaje(String viajeId, String unidadEjecutoraId,
+                           List<String> conductorIds, List<Parada> paradas) {
         if (viajeId == null || viajeId.isBlank()) {
             throw new IllegalArgumentException("El viajeId es obligatorio");
         }
         if (unidadEjecutoraId == null || unidadEjecutoraId.isBlank()) {
             throw new IllegalArgumentException("La unidadEjecutoraId es obligatoria");
+        }
+        if (conductorIds == null || conductorIds.isEmpty()) {
+            throw new IllegalArgumentException("Los conductores asignados son obligatorios");
         }
         if (paradas == null || paradas.isEmpty()) {
             throw new IllegalArgumentException("Las paradas son obligatorias");
@@ -105,9 +125,8 @@ public class EjecucionDeViaje {
         this.estado = EstadoDeEjecucion.PENDIENTE;
         this.checkList = null;
         this.paradas.addAll(paradas);
-        
-        
-        
+        this.conductorIds.addAll(conductorIds);
+        this.kilometrajeFinal = null;
         this.fechaInicio = null;
         this.fechaEntrega = null;
     }
@@ -238,7 +257,20 @@ public class EjecucionDeViaje {
         this.unidadEjecutoraId = nuevaUnidadNormalizada;
     }
 
-    public void cerrar(boolean hayLiquidacionesPendientes) {
+    /**
+     * Cierra la ejecucion y fija el odometro final.
+     *
+     * <p>{@code hayLiquidacionesPendientes} lo calcula el servicio de aplicacion contando las
+     * liquidaciones de este mismo contexto. Hasta este slice llegaba en el cuerpo de la peticion,
+     * y entonces bastaba mandar {@code false} para que LIQ-04 no pudiera fallar nunca.
+     */
+    public void cerrar(int kilometrajeFinal, boolean hayLiquidacionesPendientes,
+                       Set<String> conductoresConHoras, Set<String> ordenesConConceptos) {
+        if (kilometrajeFinal <= 0) {
+            throw new IllegalArgumentException("El kilometraje final debe ser positivo: " + kilometrajeFinal);
+        }
+        validarCoberturaDeHoras(conductoresConHoras);
+        validarConceptosImputables(ordenesConConceptos);
         if (this.estado != EstadoDeEjecucion.ENTREGADA) {
             this.estado.validarTransicionHacia(EstadoDeEjecucion.CERRADA);
         }
@@ -247,7 +279,80 @@ public class EjecucionDeViaje {
                 "No se puede cerrar la ejecucion mientras existan liquidaciones pendientes (LIQ-04)"
             );
         }
+        this.kilometrajeFinal = kilometrajeFinal;
         this.estado = EstadoDeEjecucion.CERRADA;
+    }
+
+    /**
+     * El conjunto de conductores con horas reportadas debe ser exactamente el asignado.
+     *
+     * <p>Uno de mas es un conductor que no iba en el viaje. Uno de menos son horas que no llegan a
+     * CON-02, y CON-02 es lo unico que impide que un conductor acumule mas de lo normado. Un
+     * conductor que no condujo reporta cero horas; no se omite. Estricto es falsable.
+     */
+    private void validarCoberturaDeHoras(Set<String> conductoresConHoras) {
+        if (conductoresConHoras == null) {
+            throw new IllegalArgumentException("Las horas por conductor son obligatorias al cerrar");
+        }
+        Set<String> asignados = Set.copyOf(this.conductorIds);
+        if (!asignados.equals(conductoresConHoras)) {
+            throw new DominioEjecucionException(
+                "Las horas reportadas no cubren exactamente a los conductores asignados: se esperaba "
+                    + asignados + " y llego " + conductoresConHoras);
+        }
+    }
+
+    /** Un concepto facturable se imputa a una orden de este viaje, o no se imputa. */
+    private void validarConceptosImputables(Set<String> ordenesConConceptos) {
+        if (ordenesConConceptos == null) {
+            throw new IllegalArgumentException("Los conceptos facturables son obligatorios al cerrar");
+        }
+        Set<String> ordenesDelViaje = paradas.stream()
+                .map(Parada::getOrdenDeServicioId)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        for (String orden : ordenesConConceptos) {
+            if (!ordenesDelViaje.contains(orden)) {
+                throw new DominioEjecucionException(
+                    "El concepto facturable se imputa a la orden " + orden
+                        + ", que no tiene parada en este viaje");
+            }
+        }
+    }
+
+    /** Las paradas con espera registrada: una llamada al contrato 7 por cada una. */
+    public List<Parada> paradasConEspera() {
+        return paradas.stream().filter(p -> p.getEsperaFacturable() != null).toList();
+    }
+
+    /** EJV-04: una ejecucion entregada o cerrada ya no admite registrar esperas. */
+    public void registrarEspera(int secuenciaDeParada, EsperaFacturable espera) {
+        if (espera == null) {
+            throw new IllegalArgumentException("La espera facturable es obligatoria");
+        }
+        if (this.estado == EstadoDeEjecucion.ENTREGADA || this.estado == EstadoDeEjecucion.CERRADA) {
+            throw new EjecucionEntregadaException(
+                "No se pueden registrar esperas sobre una ejecucion entregada o cerrada (EJV-04)"
+            );
+        }
+        buscarParada(secuenciaDeParada).registrarEsperaFacturable(espera);
+    }
+
+    /**
+     * Las incidencias que Unidades debe conocer por el contrato 5. Vacia no es un error: la mayoria
+     * de los viajes terminan sin averia.
+     */
+    public List<Incidencia> fallasDeUnidad() {
+        return incidencias.stream().filter(i -> i.getTipo().esFallaDeUnidad()).toList();
+    }
+
+    /** Las incidencias que Conductores debe conocer por el contrato 6. */
+    public List<Incidencia> incidenciasImputablesAlConductor() {
+        return incidencias.stream().filter(i -> i.getTipo().esImputableAlConductor()).toList();
+    }
+
+    /** Las paradas con conformidad registrada: una llamada al contrato 8 por cada una. */
+    public List<Parada> paradasAtendidas() {
+        return paradas.stream().filter(p -> p.getConformidad() != null).toList();
     }
 
     public void suspender() {
@@ -303,6 +408,14 @@ public class EjecucionDeViaje {
 
     public List<Incidencia> getIncidencias() {
         return List.copyOf(incidencias);
+    }
+
+    public List<String> getConductorIds() {
+        return List.copyOf(conductorIds);
+    }
+
+    public Integer getKilometrajeFinal() {
+        return kilometrajeFinal;
     }
 
     public List<String> getUnidadesAnteriores() {

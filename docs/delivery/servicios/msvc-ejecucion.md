@@ -384,3 +384,163 @@ repite por punto, y el punto la nombra. Un `UUID` aleatorio convertiría el rein
 
 Los `ClientStubTest` comprueban que la cabecera llega con el valor esperado y devuelven `400` si no
 llega: es lo único que demuestra que el cliente la envía.
+
+---
+
+## Slice `S6-cierre` — decisiones de diseño
+
+Los contratos 5, 6, 7 y 8 dejan de ser código escrito que nadie llama. `cerrar` pasa a ser el momento
+en que Ejecución rinde cuentas a los otros cuatro contextos.
+
+### El defecto que este slice existe para cerrar
+
+`cerrar` recibía `hayLiquidacionesPendientes` **en el cuerpo de la petición**:
+
+```java
+ejecucion.cerrar(request.hayLiquidacionesPendientes());   // antes
+```
+
+**LIQ-04** dice que una ejecución no se cierra con liquidaciones pendientes. Comprobada así, bastaba
+mandar `false` para que la invariante no pudiera fallar nunca. Es el mismo defecto que apareció en
+VIA-04 (la cláusula del contrato marco la ponía quien pedía consolidar) y en ORD-02 (el estado
+crediticio lo ponía quien pedía la orden), y es el tercero de la misma familia.
+
+Aquí ni siquiera hacía falta un contrato para arreglarlo: las liquidaciones son de este contexto y
+`LiquidacionDeViajeRepository.findByViajeIdAndEstadoNot` existe desde `S2` para esto exacto. Nadie la
+llamaba. El campo desaparece del DTO; la cuenta la hace el servicio.
+
+```java
+boolean hayPendientes = !liquidaciones
+        .findByViajeIdAndEstadoNot(viajeId, EstadoDeLiquidacion.APROBADA).isEmpty();
+ejecucion.cerrar(request.kilometrajeFinal(), hayPendientes);
+```
+
+### Qué puede venir en el cuerpo y qué no
+
+La regla que separa un dato legítimo de un veredicto disfrazado, y que vale para los tres defectos
+de esta familia:
+
+| Categoría | Origen | Ejemplos en este slice |
+|---|---|---|
+| Veredicto sobre una invariante | **Nunca** del que llama | LIQ-04, EJV-03, el estado de la conformidad |
+| Hecho derivable de lo que el agregado ya tiene | Derivado, **nunca** del cuerpo | `excedenteHoras`, `incidenciasSinResolver`, `fechaDeFirma`, `ordenDeServicioId` de cada parada |
+| Hecho observado en el mundo al cerrar | Del cuerpo, y está bien | El odómetro final, las horas de cada conductor, los importes ya tarifados |
+
+El odómetro se lee del tablero y las horas las firma el conductor: ningún contexto los puede deducir.
+Que vengan en el cuerpo no los hace sospechosos. Lo sospechoso es que venga la **conclusión**.
+
+### Lo que el agregado no llevaba
+
+`crear` recibía del contrato 4 una hoja de ruta con `conductorIds` y **los tiraba**. Sin ellos el
+contrato 6 no tiene a quién reportarle horas. `EjecucionDeViaje` gana:
+
+| Campo | Tipo | Por qué |
+|---|---|---|
+| `conductorIds` | `@ElementCollection List<String>` | Los del contrato 4. Un viaje sin conductor no es un viaje: el constructor los exige no vacíos |
+| `kilometrajeFinal` | `Integer`, nulo hasta cerrar | Lo que viaja en el contrato 5 |
+
+Y dos reglas nuevas, en el VO y la entidad donde el proyecto dice que viven las reglas:
+
+```java
+// TipoDeIncidencia
+public boolean esFallaDeUnidad()        { return this == AVERIA; }
+public boolean esImputableAlConductor() { return this == DANIO || this == FALTANTE; }
+
+// Incidencia
+public boolean dejaUnidadInoperativa()  { return tipo.esFallaDeUnidad() && !resuelta; }
+```
+
+`esImputableAlConductor()` es una decisión de diseño discutible y por eso se escribe aquí y no se
+esconde en un `if` del servicio: la custodia de la carga es del conductor, así que un daño o un
+faltante se le reportan; un clima o un bloqueo de vía, no. Quien no esté de acuerdo discute con esta
+línea, no con el código.
+
+### Orden de operaciones de `cerrar`, y por qué ese orden
+
+```
+1. cargar la ejecución
+2. contar liquidaciones pendientes          ← LIQ-04, de este contexto
+3. ejecucion.cerrar(km, hayPendientes)      ← el agregado decide si se puede
+4. empujar los contratos 5, 6, 7 y 8        ← sólo si el paso 3 no lanzó
+5. save
+```
+
+Los reportes van **después** de que el agregado acepte cerrar y **dentro** de la transacción. Las dos
+mitades importan:
+
+- Si fueran antes, un viaje que no se puede cerrar habría emitido igualmente su kilometraje y sus
+  conformidades. Los otros contextos habrían aprendido un hecho que no ocurrió.
+- Si el empuje falla, la transacción revierte y la ejecución **sigue en `ENTREGADA`**. El operador
+  reintenta. Ese reintento es seguro porque las siete claves de idempotencia se derivan del hecho
+  reportado y no de un UUID: lo ya entregado responde `200` a la misma clave y no se duplica.
+
+Cerrar y dejar los reportes «para luego» sería peor que fallar: nadie los reintentaría.
+
+### Qué se empuja, y desde dónde sale cada dato
+
+| Contrato | Cuándo | Datos |
+|---|---|---|
+| 5 · kilometraje | Siempre | `unidadEjecutoraId`, `kilometrajeFinal` (cuerpo), `fechaEntrega` (agregado) |
+| 5 · falla | Una por incidencia con `esFallaDeUnidad()` | `dejaInoperativa = dejaUnidadInoperativa()` |
+| 6 · horas | Una por conductor asignado | Del cuerpo, validado contra `conductorIds` |
+| 6 · incidencia | Por cada conductor × incidencia con `esImputableAlConductor()` | `atribuible = !resuelta` |
+| 7 · espera | Una por parada con espera registrada | `excedente()` lo calcula el VO, no el cuerpo |
+| 8 · conformidad | Una por parada atendida | Estado, firma y orden del agregado; importes del cuerpo; `incidenciasSinResolver()` del agregado |
+
+Las horas se validan estrictas: el conjunto de conductores del cuerpo debe ser **exactamente** el de
+`conductorIds`. Uno de más es un conductor que no iba en el viaje; uno de menos es un conductor cuyas
+horas no llegan a CON-02. Un conductor que no condujo reporta cero horas, no se omite. Estricto es
+falsable; permisivo no.
+
+### Los dos `409` remotos que no son un `503`
+
+`gate-s5.sh` exige que todo fallo remoto se traduzca, y hasta ahora los cuatro gateways mandaban
+cualquier `FeignException` a su excepción de integración y de ahí a `503`. Correcto para un fallo de
+red, equivocado para estos dos:
+
+| Origen | Significado | Antes | Ahora |
+|---|---|---|---|
+| Unidades `409` | El kilometraje es menor al vigente (UNI-03) | `503` | `409` |
+| Conductores `409` | Las horas acumuladas superan el máximo normado (CON-02) | `503` | `409` |
+
+Un `503` dice «no pude comprobarlo» y manda al operador a mirar si Unidades está caído. No lo está:
+respondió, y respondió que no. `FeignException.Conflict` se atrapa **antes** que `FeignException` y se
+traduce a `ConflictoDeRecursoException`, que ya mapea a `409`. El `catch` de `RetryableException`
+sigue primero y el gate lo sigue viendo.
+
+### Endpoint nuevo: registrar la espera
+
+`Parada.registrarEsperaFacturable` existía desde `S1` y no la llamaba nadie, así que ninguna parada
+tenía nunca espera y el contrato 7 no se podía disparar aunque estuviera cableado.
+
+```
+POST /api/v1/ejecuciones/{viajeId}/paradas/{secuencia}/espera
+{ "inicio": "...", "fin": "...", "tiempoLibreHoras": 2 }
+```
+
+Sujeto a EJV-04 como el resto: una ejecución entregada o cerrada no admite registrar esperas.
+
+### Lo que este slice deja fuera, y por qué
+
+**Contrato 7 · diferencia de carga.** No se cablea. Ejecución no tiene, en ningún sitio del agregado,
+lo declarado ni lo real: no existe el concepto. Cablearlo exige una entidad `DiferenciaDeCarga` por
+parada, con su migración y sus invariantes, y eso es un slice propio, no un apéndice de éste. El
+cliente y su prueba de stub siguen en verde y siguen sin llamarse; queda escrito aquí para que el
+contador no lo cuente como hecho.
+
+**`punto` de la espera.** Va siempre `"DESCARGA"`. Las paradas de la hoja de ruta son puntos de
+entrega; `Parada` no tiene tipo y no se lo inventa este slice.
+
+### Pruebas exigidas por este slice
+
+| Qué | Dónde | Debe fallar cuando |
+|---|---|---|
+| LIQ-04 real | `EjecucionDeViajeServiceTest` | Hay una liquidación `ABIERTA` y `cerrar` la ignora |
+| LIQ-04 no falseable | `EjecucionDeViajeServiceTest` | El cuerpo no puede afirmar nada sobre liquidaciones |
+| Conductores exactos | `EjecucionDeViajeServiceTest` | Sobra o falta un conductor en las horas |
+| Los cuatro empujes | `EjecucionDeViajeServiceTest` | Falta cualquiera de los cinco `verify` |
+| No se cierra si un empuje falla | `EjecucionDeViajeServiceTest` | El estado quedó `CERRADA` tras un `503` |
+| `409` de Unidades | `UnidadesGatewayTest` | Un `409` remoto sale como excepción de integración |
+| `409` de Conductores | `ConductoresGatewayTest` | Ídem |
+| `dejaUnidadInoperativa` | `EjecucionDeViajeTest` | Una `AVERIA` resuelta deja la unidad inoperativa |
+| Espera y EJV-04 | `EjecucionConformidadesTest` | Se registra una espera sobre una ejecución cerrada |

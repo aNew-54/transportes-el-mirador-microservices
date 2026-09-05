@@ -22,6 +22,7 @@ import pe.edu.unc.elmirador.ejecucion.models.vo.TipoDeIncidencia;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,7 +36,7 @@ class EjecucionDeViajeTest {
 
     private EjecucionDeViaje crearEjecucionBasica() {
         Parada parada = new Parada(1, "ORD-001", "Av. Industrial 123");
-        return EjecucionDeViaje.crear("VIA-001", "UNI-001", List.of(parada));
+        return EjecucionDeViaje.crear("VIA-001", "UNI-001", List.of("CON-001"), List.of(parada));
     }
 
     private EjecucionDeViaje crearEjecucionEntregada() {
@@ -134,7 +135,7 @@ class EjecucionDeViajeTest {
     @DisplayName("[EJV-04] Sobre ejecucion CERRADA reportarHito lanza EjecucionEntregadaException")
     void reportarHitoSobreEjecucionCerradaLanzaExcepcion_EJV04() {
         EjecucionDeViaje ejecucion = crearEjecucionEntregada();
-        ejecucion.cerrar(false);
+        ejecucion.cerrar(184320, false, Set.of("CON-001"), Set.of());
 
         Hito hito = new Hito("HITO-02", TipoDeHito.LLEGADA_A_DESTINO, T16_00, "Destino Final");
 
@@ -152,7 +153,7 @@ class EjecucionDeViajeTest {
     void cerrarConLiquidacionesPendientesLanzaExcepcion_LIQ04() {
         EjecucionDeViaje ejecucion = crearEjecucionEntregada();
 
-        assertThatThrownBy(() -> ejecucion.cerrar(true))
+        assertThatThrownBy(() -> ejecucion.cerrar(184320, true, Set.of("CON-001"), Set.of()))
                 .as("[LIQ-04] No se puede cerrar la ejecucion con liquidaciones pendientes")
                 .isInstanceOf(LiquidacionPendienteException.class)
                 .hasMessageContaining("liquidaciones pendientes");
@@ -165,7 +166,7 @@ class EjecucionDeViajeTest {
     void cerrarSinLiquidacionesPendientesPasaACerrada_LIQ04() {
         EjecucionDeViaje ejecucion = crearEjecucionEntregada();
 
-        ejecucion.cerrar(false);
+        ejecucion.cerrar(184320, false, Set.of("CON-001"), Set.of());
 
         assertThat(ejecucion.getEstado()).isEqualTo(EstadoDeEjecucion.CERRADA);
     }
@@ -177,7 +178,7 @@ class EjecucionDeViajeTest {
         ejecucion.registrarCheckList(ResultadoDeCheckList.aprobado(T08_00));
         ejecucion.iniciar(T08_00);
 
-        assertThatThrownBy(() -> ejecucion.cerrar(false))
+        assertThatThrownBy(() -> ejecucion.cerrar(184320, false, Set.of("CON-001"), Set.of()))
                 .isInstanceOf(TransicionDeEjecucionInvalidaException.class);
     }
 
@@ -260,5 +261,85 @@ class EjecucionDeViajeTest {
         assertThatThrownBy(() -> ejecucion.marcarEntregada(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("entrega");
+    }
+    @Test
+    @DisplayName("dejaUnidadInoperativa: AVERIA no resuelta -> true; AVERIA resuelta -> false; DEMORA -> false")
+    void dejaUnidadInoperativaTest() {
+        Incidencia averiaNoResuelta = new Incidencia("1", TipoDeIncidencia.AVERIA, "desc", null, T12_00);
+        assertThat(averiaNoResuelta.dejaUnidadInoperativa()).isTrue();
+        
+        Incidencia averiaResuelta = new Incidencia("2", TipoDeIncidencia.AVERIA, "desc", null, T12_00);
+        averiaResuelta.resolver();
+        assertThat(averiaResuelta.dejaUnidadInoperativa()).isFalse();
+        
+        Incidencia demora = new Incidencia("3", TipoDeIncidencia.DEMORA, "desc", null, T12_00);
+        assertThat(demora.dejaUnidadInoperativa()).isFalse();
+    }
+
+    @Test
+    @DisplayName("fallasDeUnidad y incidenciasImputablesAlConductor devuelven lo correspondiente")
+    void fallasEIncidenciasTest() {
+        EjecucionDeViaje ejecucion = crearEjecucionBasica();
+        Evidencia ev = new Evidencia(List.of("f"), "d", T12_00);
+        Incidencia averia = new Incidencia("1", TipoDeIncidencia.AVERIA, "d", null, T12_00);
+        Incidencia danio = new Incidencia("2", TipoDeIncidencia.DANIO, "d", ev, T12_00);
+        Incidencia faltante = new Incidencia("3", TipoDeIncidencia.FALTANTE, "d", ev, T12_00);
+        Incidencia clima = new Incidencia("4", TipoDeIncidencia.CLIMA, "d", null, T12_00);
+        
+        ejecucion.registrarIncidencia(averia);
+        ejecucion.registrarIncidencia(danio);
+        ejecucion.registrarIncidencia(faltante);
+        ejecucion.registrarIncidencia(clima);
+        
+        List<Incidencia> fallas = ejecucion.fallasDeUnidad();
+        assertThat(fallas).containsExactly(averia);
+        
+        List<Incidencia> imputables = ejecucion.incidenciasImputablesAlConductor();
+        assertThat(imputables).containsExactly(danio, faltante);
+    }
+
+    @Test
+    @DisplayName("cerrar con kilometrajeFinal <= 0 lanza IllegalArgumentException")
+    void cerrarKilometrajeInvalido() {
+        EjecucionDeViaje ejecucion = crearEjecucionEntregada();
+        assertThatThrownBy(() -> ejecucion.cerrar(0, false, Set.of("CON-001"), Set.of("ORD-001")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ejecucion.cerrar(-10, false, Set.of("CON-001"), Set.of("ORD-001")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("cerrar fija el kilometrajeFinal en el agregado")
+    void cerrarFijaKilometraje() {
+        EjecucionDeViaje ejecucion = crearEjecucionEntregada();
+        ejecucion.cerrar(1500, false, Set.of("CON-001"), Set.of("ORD-001"));
+        assertThat(ejecucion.getKilometrajeFinal()).isEqualTo(1500);
+    }
+
+    @Test
+    @DisplayName("Constructor sin conductores lanza IllegalArgumentException")
+    void constructorSinConductores() {
+        List<Parada> paradas = List.of(new Parada(1, "ORD-001", "Dir"));
+        assertThatThrownBy(() -> EjecucionDeViaje.crear("V-1", "U-1", List.of(), paradas))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> EjecucionDeViaje.crear("V-1", "U-1", null, paradas))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("paradasConEspera y paradasAtendidas devuelven lo correspondiente")
+    void paradasMetodos() {
+        Parada p1 = new Parada(1, "ORD-001", "D1");
+        Parada p2 = new Parada(2, "ORD-002", "D2");
+        EjecucionDeViaje ejecucion = EjecucionDeViaje.crear("V-1", "U-1", List.of("C-1"), List.of(p1, p2));
+        
+        ejecucion.registrarCheckList(ResultadoDeCheckList.aprobado(T08_00));
+        ejecucion.iniciar(T08_00);
+        
+        p1.registrarEsperaFacturable(new pe.edu.unc.elmirador.ejecucion.models.vo.EsperaFacturable(T08_00, T12_00, 2));
+        p1.registrarConformidad(new ConformidadDeEntrega("C1", "ORD-001", EstadoConformidad.FIRMADA, "Juan", T12_00, ""));
+        
+        assertThat(ejecucion.paradasConEspera()).containsExactly(p1);
+        assertThat(ejecucion.paradasAtendidas()).containsExactly(p1);
     }
 }
