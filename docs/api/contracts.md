@@ -247,11 +247,18 @@ POST /internal/v1/ordenes/{ordenId}/diferencias-de-carga
   "declarado": { "pesoKg": 6000, "volumenM3": 18.0, "embalaje": "SACOS" },
   "real":      { "pesoKg": 8000, "volumenM3": 22.5, "embalaje": "SACOS" },
   "decision": "ACEPTADA_CON_REAJUSTE",
+  "importeDelReajuste": { "monto": "320.00", "moneda": "PEN" },
   "momento": "2026-09-10T06:55:00-05:00"
 }
 ```
 
 `decision` ∈ `ACEPTADA_CON_REAJUSTE` · `ACEPTADA_PARCIAL` · `RECHAZADA`.
+
+**Corrección sobre la versión anterior del contrato**, que no enviaba `importeDelReajuste`. Sin él,
+Comercial no puede aplicar ORD-01: `OrdenDeServicio.reajustarCarga(...)` exige el importe para una orden
+ya programada, y sin importe la operación no se puede completar. El número existe —Ejecución lo calcula
+y lo manda en el contrato 8 como concepto `REAJUSTE`—, sólo que no viajaba aquí. Va como `null` cuando
+la `decision` es `RECHAZADA`.
 
 ```
 POST /internal/v1/ordenes/{ordenId}/esperas
