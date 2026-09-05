@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import pe.edu.unc.elmirador.comercial.dto.request.CancelarOrdenRequest;
 import pe.edu.unc.elmirador.comercial.dto.request.CrearOrdenRequest;
-import pe.edu.unc.elmirador.comercial.dto.request.ReajustarCargaRequest;
 import pe.edu.unc.elmirador.comercial.dto.response.OrdenDeServicioResponse;
 import pe.edu.unc.elmirador.comercial.services.OrdenDeServicioService;
 
@@ -52,21 +51,9 @@ public class OrdenDeServicioController {
     }
 
     // Para uso interno de Ejecución
-    @PostMapping("/{id}/diferencias-de-carga")
-    public OrdenDeServicioResponse reajustarCarga(
-            @PathVariable String id,
-            @Valid @RequestBody ReajustarCargaRequest peticion) {
-        return servicio.reajustarCarga(id, peticion);
-    }
-    
-    // Contratos internos - de solo lectura
     @GetMapping("/{id}")
     public OrdenDeServicioResponse porId(@PathVariable String id) {
         return servicio.porId(id);
     }
     
-    @GetMapping("/{id}/snapshot-facturable")
-    public OrdenDeServicioResponse snapshotFacturable(@PathVariable String id) {
-        return servicio.porId(id);
-    }
 }

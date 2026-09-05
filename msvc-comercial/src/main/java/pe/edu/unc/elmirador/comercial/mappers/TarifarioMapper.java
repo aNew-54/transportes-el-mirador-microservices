@@ -18,7 +18,7 @@ public final class TarifarioMapper {
                         p.ruta().origen(),
                         p.ruta().destino(),
                         p.ruta().corredor(),
-                        p.tipoDeUnidad().name(),
+                        p.tipoUnidad().name(),
                         p.precio().monto(),
                         p.precio().codigoMoneda()
                 )).toList(),

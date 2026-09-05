@@ -3,6 +3,7 @@ package pe.edu.unc.elmirador.comercial.services;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -43,26 +44,31 @@ public class ContratoMarcoService {
         Cliente cliente = clienteRepository.findById(peticion.clienteId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Cliente", peticion.clienteId()));
 
+        // Las tarifas se construyen ANTES y entran por el constructor. Anadirlas despues sobre la
+        // lista que devuelve el agregado no solo revienta —la devuelve inmutable, y hace bien—,
+        // sino que seria construir el agregado por la espalda, sin pasar por sus validaciones.
+        List<TarifaPactada> tarifas = new ArrayList<>();
+        if (peticion.tarifasPactadas() != null) {
+            for (var t : peticion.tarifasPactadas()) {
+                tarifas.add(new TarifaPactada(
+                        UUID.randomUUID().toString(),
+                        new Ruta(t.rutaOrigen(), t.rutaDestino(), t.rutaCorredor()),
+                        t.tipoUnidad(),
+                        new Dinero(t.precioMonto(), t.precioMoneda())));
+            }
+        }
+
         ContratoMarco contrato = new ContratoMarco(
                 UUID.randomUUID().toString(),
                 cliente.id(),
                 new PeriodoDeVigencia(peticion.vigenteDesde(), peticion.vigenteHasta()),
                 new TiempoLibre(peticion.tiempoLibreHoras()),
                 new ClausulaDeConsolidacion(
-                        peticion.consolidacionPermitida(), 
-                        peticion.consolidacionRestricciones() != null ? peticion.consolidacionRestricciones() : List.of()
-                ),
-                List.of()
-        );
-
-        if (peticion.tarifasPactadas() != null) {
-            peticion.tarifasPactadas().forEach(t -> contrato.tarifasPactadas().add(new TarifaPactada(
-                    UUID.randomUUID().toString(),
-                    new Ruta(t.rutaOrigen(), t.rutaDestino(), t.rutaCorredor()),
-                    t.tipoUnidad(),
-                    new Dinero(t.precioMonto(), t.precioMoneda())
-            )));
-        }
+                        peticion.consolidacionPermitida(),
+                        peticion.consolidacionRestricciones() != null
+                                ? peticion.consolidacionRestricciones()
+                                : List.of()),
+                tarifas);
 
         return ContratoMarcoMapper.aRespuesta(contratoRepository.save(contrato));
     }

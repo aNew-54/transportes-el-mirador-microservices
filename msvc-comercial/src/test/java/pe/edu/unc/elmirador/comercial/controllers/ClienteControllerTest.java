@@ -12,7 +12,7 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -62,12 +62,30 @@ class ClienteControllerTest {
                 .andExpect(jsonPath("$.id").value("cli-123"));
     }
 
+    /** La validacion de forma corta antes de llegar al servicio: el tipo es «validacion». */
+    @Test
+    void registrar_rucConFormatoMalo_devuelve400DeValidacion() throws Exception {
+        RegistrarClienteRequest request = new RegistrarClienteRequest(
+                "99123456789", "Acme S.A.", ModalidadDePago.CREDITO, 30);
+
+        mvc.perform(post("/api/v1/clientes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("https://elmirador.unc.edu.pe/problems/validacion"))
+                .andExpect(jsonPath("$.errores.ruc").exists());
+    }
+
+    /**
+     * El {@code @Pattern} no sustituye al objeto de valor: un RUC que pasa el patron y que {@code Ruc}
+     * rechaza igualmente sigue siendo un 400, y con su propio tipo.
+     */
     @Test
     void registrar_rucInvalido_devuelve400() throws Exception {
         RegistrarClienteRequest request = new RegistrarClienteRequest(
-                "99123456789", "Acme S.A.", ModalidadDePago.CREDITO, 30);
-        
-        when(servicio.registrar(any())).thenThrow(new RucInvalidoException("RUC debe empezar con 10, 15, 17 o 20"));
+                "20123456789", "Acme S.A.", ModalidadDePago.CREDITO, 30);
+
+        when(servicio.registrar(any())).thenThrow(new RucInvalidoException("El digito verificador no cuadra"));
 
         mvc.perform(post("/api/v1/clientes")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,6 +28,7 @@ import pe.edu.unc.elmirador.comercial.exceptions.CondicionDePagoInconsistenteExc
 import pe.edu.unc.elmirador.comercial.exceptions.TransicionDeOrdenInvalidaException;
 import pe.edu.unc.elmirador.comercial.models.vo.ModalidadDePago;
 import pe.edu.unc.elmirador.comercial.models.vo.TipoDeCarga;
+import pe.edu.unc.elmirador.comercial.models.vo.TipoDeUnidad;
 import pe.edu.unc.elmirador.comercial.services.OrdenDeServicioService;
 
 @WebMvcTest(OrdenDeServicioController.class)
@@ -45,7 +46,7 @@ class OrdenDeServicioControllerTest {
     @Test
     void crear_ordenValida_devuelve201() throws Exception {
         CrearOrdenRequest request = new CrearOrdenRequest(
-                "cli-1", null, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
+                "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
                 "LIMA", "PIURA", "NORTE", ModalidadDePago.CONTADO, 0);
 
         OrdenDeServicioResponse response = new OrdenDeServicioResponse(
@@ -68,7 +69,7 @@ class OrdenDeServicioControllerTest {
     @Test
     void crear_condicionDePagoInconsistente_devuelve422() throws Exception {
         CrearOrdenRequest request = new CrearOrdenRequest(
-                "cli-1", null, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
+                "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
                 "LIMA", "PIURA", "NORTE", ModalidadDePago.CREDITO, 30);
 
         when(servicio.crear(any())).thenThrow(new CondicionDePagoInconsistenteException("Cliente suspendido"));

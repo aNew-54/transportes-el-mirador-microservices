@@ -7,6 +7,6 @@ package pe.edu.unc.elmirador.comercial.exceptions;
  */
 public class RecursoNoEncontradoException extends RuntimeException {
     public RecursoNoEncontradoException(String recurso, String id) {
-        super("No se encontró el recurso " + recurso + " con ID " + id);
+        super("No existe " + recurso + " con ID " + id);
     }
 }

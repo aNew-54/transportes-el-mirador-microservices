@@ -22,7 +22,7 @@ public final class ContratoMarcoMapper {
                         t.ruta().origen(),
                         t.ruta().destino(),
                         t.ruta().corredor(),
-                        t.tipoDeUnidad().name(),
+                        t.tipoUnidad().name(),
                         t.precio().monto(),
                         t.precio().codigoMoneda()
                 )).toList()
