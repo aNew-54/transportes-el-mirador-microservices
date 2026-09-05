@@ -36,12 +36,33 @@ class ProgramacionGatewayTest {
     @Test
     void devuelveLaRespuestaEnCasoDeExito() {
         when(cliente.obtenerHojaDeRuta("VIA-1")).thenReturn(new HojaDeRutaRemota(
-                "VIA-1", "DESPACHADO", "UNI-1", List.of(), "Obs", List.of()));
+                "VIA-1", "DESPACHADO", "UNI-1", List.of("CON-1"), "Obs",
+                List.of(new pe.edu.unc.elmirador.ejecucion.clients.dto.ParadaRemota(
+                        1, "DESCARGA", "ORD-1",
+                        new pe.edu.unc.elmirador.ejecucion.clients.dto.UbicacionRemota(
+                                "Av. Siempre Viva 123", "Cajamarca", "Frente al grifo", "999888777"),
+                        java.time.OffsetDateTime.parse("2026-09-10T08:00:00-05:00")))));
 
-        HojaDeRutaRemota hoja = pasarela.obtenerHojaDeRuta("VIA-1");
+        HojaDeRutaDeViaje hoja = pasarela.obtenerHojaDeRuta("VIA-1");
 
         assertThat(hoja.viajeId()).isEqualTo("VIA-1");
         assertThat(hoja.estado()).isEqualTo("DESPACHADO");
+        assertThat(hoja.unidadId()).isEqualTo("UNI-1");
+        assertThat(hoja.paradas()).hasSize(1);
+        // El gateway se queda con la direccion: es lo unico de la ubicacion que la parada de
+        // Ejecucion usa hoy, y traducir de menos es mejor que arrastrar la forma ajena entera.
+        assertThat(hoja.paradas().get(0).direccion()).isEqualTo("Av. Siempre Viva 123");
+    }
+
+    /** Una hoja de ruta sin paradas no es una hoja de ruta: se ejecutaria un viaje que no va a ningun sitio. */
+    @Test
+    void unaHojaSinParadasEsUnFalloDeIntegracion() {
+        when(cliente.obtenerHojaDeRuta("VIA-1")).thenReturn(new HojaDeRutaRemota(
+                "VIA-1", "DESPACHADO", "UNI-1", List.of(), "Obs", List.of()));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> pasarela.obtenerHojaDeRuta("VIA-1"))
+                .isInstanceOf(pe.edu.unc.elmirador.ejecucion.exceptions.ProgramacionIntegrationException.class)
+                .hasMessageContaining("incompleta");
     }
 
     @Test

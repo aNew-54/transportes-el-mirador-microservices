@@ -66,8 +66,7 @@ class EjecucionDeViajeControllerTest {
     void crear201() throws Exception {
         when(servicio.crear(any())).thenReturn(respuestaDeEjemplo());
 
-        CrearEjecucionRequest peticion = new CrearEjecucionRequest("v-1", "u-1", 
-                List.of(new ParadaRequest(1, "os-1", "Direccion 1")));
+        CrearEjecucionRequest peticion = new CrearEjecucionRequest("v-1");
 
         mockMvc.perform(post("/api/v1/ejecuciones")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,8 +82,7 @@ class EjecucionDeViajeControllerTest {
         when(servicio.crear(any()))
                 .thenThrow(new ConflictoDeRecursoException("Ya existe"));
 
-        CrearEjecucionRequest peticion = new CrearEjecucionRequest("v-1", "u-1", 
-                List.of(new ParadaRequest(1, "os-1", "Direccion 1")));
+        CrearEjecucionRequest peticion = new CrearEjecucionRequest("v-1");
 
         mockMvc.perform(post("/api/v1/ejecuciones")
                         .contentType(MediaType.APPLICATION_JSON)

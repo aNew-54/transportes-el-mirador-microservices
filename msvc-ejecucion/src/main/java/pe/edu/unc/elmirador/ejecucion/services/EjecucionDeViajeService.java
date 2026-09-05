@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import pe.edu.unc.elmirador.ejecucion.dto.request.CerrarEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ConformidadRequest;
+import pe.edu.unc.elmirador.ejecucion.clients.HojaDeRutaDeViaje;
+import pe.edu.unc.elmirador.ejecucion.clients.ProgramacionGateway;
 import pe.edu.unc.elmirador.ejecucion.dto.request.CrearEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.RegistrarCheckListRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.RegistrarIncidenciaRequest;
@@ -34,7 +36,12 @@ public class EjecucionDeViajeService {
     private final EjecucionDeViajeRepository repository;
     private final Clock clock;
 
-    public EjecucionDeViajeService(EjecucionDeViajeRepository repository, Clock clock) {
+    private final ProgramacionGateway programacionGateway;
+
+    public EjecucionDeViajeService(EjecucionDeViajeRepository repository,
+                                   ProgramacionGateway programacionGateway,
+                                   Clock clock) {
+        this.programacionGateway = programacionGateway;
         this.repository = repository;
         this.clock = clock;
     }
@@ -52,11 +59,16 @@ public class EjecucionDeViajeService {
             throw new ConflictoDeRecursoException("Ya existe una ejecucion para el viaje " + request.viajeId());
         }
 
-        List<Parada> paradas = request.paradas().stream()
+        // Contrato 4. La unidad y las paradas son de la hoja de ruta, no de quien abre la ejecucion.
+        // Si Programacion no responde, el gateway lanza y la ejecucion no se abre: ejecutar un viaje
+        // contra una hoja de ruta que nadie ha confirmado es peor que no ejecutarlo.
+        HojaDeRutaDeViaje hoja = programacionGateway.obtenerHojaDeRuta(request.viajeId());
+
+        List<Parada> paradas = hoja.paradas().stream()
                 .map(p -> new Parada(p.secuencia(), p.ordenDeServicioId(), p.direccion()))
                 .toList();
 
-        EjecucionDeViaje ejecucion = new EjecucionDeViaje(request.viajeId(), request.unidadEjecutoraId(), paradas);
+        EjecucionDeViaje ejecucion = new EjecucionDeViaje(request.viajeId(), hoja.unidadId(), paradas);
         repository.save(ejecucion);
         
         return EjecucionDeViajeMapper.mapear(ejecucion);
