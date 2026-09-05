@@ -149,10 +149,25 @@ Los contadores se actualizan **sólo en `main`**, al integrar cada rama. Una ram
 su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, el merge choca siempre.
 
 
-| | Hecho | Total |
-|---|---:|---:|
-| Slices | 28 | 32 |
-| Invariantes cubiertas | **48** | 48 |
-| Contratos con proveedor listo | 11 | 11 |
-| Contratos con cliente Feign | 0 | 11 |
-| Servicios terminados | 0 | 7 |
+| | Hecho | Total | |
+|---|---:|---:|---|
+| Slices | 28 | 32 | 88 % |
+| Invariantes cubiertas | **48** | 48 | 100 % |
+| Contratos con proveedor listo | **11** | 11 | 100 % |
+| Contratos con cliente Feign | 0 | 11 | 0 % |
+| Servicios terminados | 3 | 7 | 43 % |
+
+Un servicio esta terminado cuando no le queda ningun slice. Unidades, Conductores y Cobranza lo estan:
+la regla 10 no les da flecha saliente, asi que su ultimo slice es `S4` y no tienen `S5` que esperar.
+Los cuatro restantes estan al completo salvo sus clientes Feign.
+
+Los cuatro slices que faltan son todos `S5` y suman los once clientes. No estan repartidos a partes iguales:
+
+| Modulo | Contratos que consume | Clientes |
+|---|---|---:|
+| `msvc-ejecucion` | 4, 5, 6, 7, 8 | 5 |
+| `msvc-programacion` | 1, 2, 3 | 3 |
+| `msvc-facturacion` | 9, 10 | 2 |
+| `msvc-comercial` | 11 | 1 |
+
+Medido en clientes y no en slices, `S5` esta al 0 % y es una cuarta parte larga del trabajo de integracion.
