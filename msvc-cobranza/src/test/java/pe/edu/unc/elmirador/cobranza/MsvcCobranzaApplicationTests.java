@@ -32,6 +32,9 @@ class MsvcCobranzaApplicationTests {
     @MockitoBean
     private PagoRepository pagoRepositorio;
 
+    @MockitoBean
+    private pe.edu.unc.elmirador.cobranza.repositories.PeticionIdempotenteRepository peticionIdempotenteRepository;
+
     @Autowired
     private CuentaCorrienteController cuentaCorrienteController;
 
@@ -48,6 +51,12 @@ class MsvcCobranzaApplicationTests {
     private PagoService pagoService;
 
     @Autowired
+    private pe.edu.unc.elmirador.cobranza.services.CobranzaInternalService cobranzaInternalService;
+
+    @Autowired
+    private pe.edu.unc.elmirador.cobranza.controllers.CobranzaInternalController cobranzaInternalController;
+
+    @Autowired
     private ManejadorDeErrores manejadorDeErrores;
 
     @Test
@@ -58,5 +67,7 @@ class MsvcCobranzaApplicationTests {
         assertThat(cuentaService).isNotNull();
         assertThat(pagoService).isNotNull();
         assertThat(manejadorDeErrores).isNotNull();
+        assertThat(cobranzaInternalService).isNotNull();
+        assertThat(cobranzaInternalController).isNotNull();
     }
 }
