@@ -51,7 +51,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S1-dominio` | UNI-01, UNI-02, UNI-03, OMT-01, OMT-02, REP-01 | **done** |
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
-| `S4-api-interna` | contratos 2 y 5 | pendiente |
+| `S4-api-interna` | contratos 2 y 5 | **done** |
 
 ### msvc-conductores · revisa Brayam Alfaro
 
@@ -60,7 +60,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S1-dominio` | CON-01, CON-02, CON-03 | **done** |
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
-| `S4-api-interna` | contratos 3 y 6 | pendiente |
+| `S4-api-interna` | contratos 3 y 6 | **done** |
 
 ### msvc-cobranza · revisa María Belén Vilca
 
@@ -69,7 +69,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S1-dominio` | CCC-01, CCC-02, CCC-03, PAG-01, PAG-02 | **done** |
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
-| `S4-api-interna` | contratos 10 y 11 | pendiente |
+| `S4-api-interna` | contratos 10 y 11 | **done** |
 
 ---
 
@@ -82,7 +82,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S1-dominio` | CLI-01, COT-01, COT-02, ORD-01, ORD-02, CTM-01, CTM-02, TAR-01 | **done** |
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
-| `S4-api-interna` | contratos 1, 7 y 9 | pendiente |
+| `S4-api-interna` | contratos 1, 7 y 9 | **done** |
 | `S5-clientes` | contrato 11 → Cobranza | pendiente |
 
 ---
@@ -96,7 +96,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S1-dominio` | FAC-01, FAC-02, FAC-03, FAC-04, FAC-05, NCR-01 | **done** |
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
-| `S4-api-interna` | contrato 8 | pendiente |
+| `S4-api-interna` | contrato 8 | **done** |
 | `S5-clientes` | contratos 9 → Comercial, 10 → Cobranza | pendiente |
 
 ---
@@ -113,7 +113,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S1b-consolidacion` | VIA-02, VIA-03, VIA-04, VIA-05, VIA-06 | **Claude** | **done** |
 | `S2-persistencia` | — | agy `flash` | **done** |
 | `S3-api-publica` | — | agy `flash` | **done** |
-| `S4-api-interna` | contrato 4 | agy `flash` | pendiente |
+| `S4-api-interna` | contrato 4 | agy `flash` | **done** |
 | `S5-clientes` | contratos 1, 2, 3 | agy `flash` | pendiente |
 
 ---
@@ -138,9 +138,9 @@ Ejecución no tiene `S4`: no publica endpoints de integración.
 | Hito | Criterio | Estado |
 |---|---|---|
 | Reactor verde | `./mvnw clean verify` | **done** |
-| Los siete arrancan | `./scripts/smoke-test.sh` | pendiente |
+| Los siete arrancan | `./scripts/smoke-test.sh` | **done** |
 | 48 invariantes cubiertas | Todas con prueba en verde | **done** |
-| 11 contratos implementados | Con prueba de cliente y de proveedor | pendiente |
+| 11 contratos implementados | Con prueba de cliente y de proveedor | proveedor **done** · cliente en `S5` |
 | Flujo vertical | Orden → viaje → ejecución → factura → cobranza, de extremo a extremo | pendiente |
 
 ## Progreso
@@ -151,7 +151,8 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total |
 |---|---:|---:|
-| Slices | 22 | 32 |
+| Slices | 28 | 32 |
 | Invariantes cubiertas | **48** | 48 |
-| Contratos implementados | 0 | 11 |
+| Contratos con proveedor listo | 11 | 11 |
+| Contratos con cliente Feign | 0 | 11 |
 | Servicios terminados | 0 | 7 |

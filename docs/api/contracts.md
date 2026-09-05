@@ -410,7 +410,37 @@ se asume `VIGENTE`. La orden al contado sí procede, porque no depende de este c
 
 ## Estado de implementación
 
-Ningún contrato está implementado todavía. El orden de construcción está en
-[`../delivery/backlog.md`](../delivery/backlog.md). Cada contrato se considera terminado cuando cumple el
-criterio de `docs/api/README.md`: esquema, ejemplos, estados HTTP, validaciones, tratamiento de
-indisponibilidad y una prueba del cliente Feign contra un stub.
+**Los once contratos tienen su lado proveedor implementado y probado** (slice `S4-api-interna`). Falta el
+lado consumidor: los clientes Feign, con su timeout y su traducción de fallo remoto, que son de `S5`.
+Hasta entonces ningún contrato está terminado según el criterio de `docs/api/README.md`, que exige la
+prueba del cliente contra un stub.
+
+| # | Proveedor | Endpoint | Estado |
+|---|---|---|---|
+| 1 | Comercial | `GET /internal/v1/ordenes/{ordenId}` | proveedor **done** · cliente pendiente |
+| 2 | Unidades | `GET /internal/v1/unidades/{id}/elegibilidad` | proveedor **done** · cliente pendiente |
+| 3 | Conductores | `GET /internal/v1/conductores/{id}/elegibilidad` | proveedor **done** · cliente pendiente |
+| 4 | Programación | `GET /internal/v1/viajes/{id}/hoja-de-ruta` | proveedor **done** · cliente pendiente |
+| 5 | Unidades | `POST .../kilometraje` y `.../fallas` | proveedor **done** · cliente pendiente |
+| 6 | Conductores | `POST .../horas-conduccion` y `.../incidencias` | proveedor **done** · cliente pendiente |
+| 7 | Comercial | `POST .../diferencias-de-carga` y `.../esperas` | proveedor **done** · cliente pendiente |
+| 8 | Facturación | `POST /internal/v1/conformidades` | proveedor **done** · cliente pendiente |
+| 9 | Comercial | `GET /internal/v1/ordenes/{id}/snapshot-facturable` | proveedor **done** · cliente pendiente |
+| 10 | Cobranza | `POST /internal/v1/cuentas-por-cobrar` | proveedor **done** · cliente pendiente |
+| 11 | Cobranza | `GET /internal/v1/clientes/{id}/estado-crediticio` | proveedor **done** · cliente pendiente |
+
+### Lo que `S4` cambió de estos contratos
+
+Escribir el lado proveedor con este documento delante destapó que el dominio se había quedado corto en
+tres sitios, y que dos códigos HTTP estaban mal:
+
+| Qué | Dónde |
+|---|---|
+| La parada guardaba la ubicación como un texto suelto; el contrato 4 pide cuatro campos | `Ubicacion` entra como objeto de valor en Programación |
+| La orden no tenía embalaje, naturaleza, distancia, ventana ni tipo de unidad | Cinco campos nuevos en Comercial, y `EsperaRegistrada` para el contrato 7 |
+| Conductores no tenía dónde poner una incidencia de ruta | `Incidencia` entra como entidad hija |
+| CON-02 caía en el `422` por defecto; el contrato 6 dice `409` | Las horas se reponen mañana: es «ahora no» |
+| UNI-03 caía en el `422` por defecto; el contrato 5 dice `409` | Un reporte que llega tarde trae una lectura que ya quedó atrás |
+
+Ninguna de las dos excepciones se alcanzaba desde `S3`, así que su código nunca se había puesto a prueba
+contra el contrato.
