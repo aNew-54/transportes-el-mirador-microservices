@@ -429,6 +429,20 @@ día, no a una hora, y `CuentaCorrienteDelCliente` compara por día. La regla 6 
 instantes; una fecha sin hora es ISO 8601 igual. Lo destapó `CobranzaClientStubTest`, que decodifica el
 ejemplo de este documento con el cliente real: es exactamente para lo que existe.
 
+**Tercera corrección: un cliente del que Cobranza no sabe nada responde `200`, no `404`.** El proveedor
+hacía `findByClienteId(...).orElseThrow(...)`, y **ningún camino de producción construía jamás una
+`CuentaCorrienteDelCliente`**: sólo la fabricaban a mano seis ficheros de prueba. La raíz de agregado de
+Cobranza era inalcanzable desde fuera, así que este contrato respondía `404` a *toda* consulta y el
+contrato 10 a *toda* factura: ningún cliente podía pedir una orden a crédito ni entrar al ledger. Las 109
+pruebas del módulo seguían en verde porque todas parten de un estado que producción no sabía alcanzar.
+Ahora Cobranza **abre la cuenta al primer contacto**, en los dos contratos: quien no debe nada tiene el
+crédito intacto, así que nace `VIGENTE`, sin deuda y sin cuentas vencidas, con `fechaDeCambio` en el día
+en que Cobranza supo del cliente. Se persiste en vez de sintetizarse porque Comercial guarda esa fecha y
+la compara por día: calcularla en cada lectura daría hoy siempre, y eso miente sobre cuándo cambió la
+situación. La regla vive en Cobranza y no en el consumidor a propósito — si Comercial resolviera «sin
+cuenta, luego vigente», se estaría inventando un veredicto crediticio, que es justo lo que este contrato
+existe para impedir.
+
 **Comportamiento ante indisponibilidad — decisión explícita:** si Cobranza no responde, Comercial **rechaza**
 la orden a crédito con `503` y un `problem+json` que indica que el estado crediticio no pudo verificarse. No
 se asume `VIGENTE`. La orden al contado sí procede, porque no depende de este contrato.
