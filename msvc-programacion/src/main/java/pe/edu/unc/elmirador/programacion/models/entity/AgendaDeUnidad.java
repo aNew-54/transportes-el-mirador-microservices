@@ -1,7 +1,16 @@
 package pe.edu.unc.elmirador.programacion.models.entity;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import pe.edu.unc.elmirador.programacion.exceptions.DominioProgramacionException;
 import pe.edu.unc.elmirador.programacion.exceptions.RecursoNoElegibleException;
 import pe.edu.unc.elmirador.programacion.exceptions.ReservaSolapadaException;
@@ -9,10 +18,21 @@ import pe.edu.unc.elmirador.programacion.models.vo.ElegibilidadDeRecurso;
 import pe.edu.unc.elmirador.programacion.models.vo.EstadoDeReserva;
 import pe.edu.unc.elmirador.programacion.models.vo.VentanaDeTiempo;
 
+@Entity
+@Table(name = "agendas_unidades")
 public class AgendaDeUnidad {
 
-    private final String unidadId;
-    private final List<ReservaDeUnidad> reservas;
+    @Id
+    @Column(name = "unidad_id", length = 40, nullable = false)
+    private String unidadId;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "unidad_id", nullable = false)
+    private List<ReservaDeUnidad> reservas = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected AgendaDeUnidad() {
+    }
 
     public AgendaDeUnidad(String unidadId) {
         this(unidadId, new ArrayList<>());
@@ -23,13 +43,16 @@ public class AgendaDeUnidad {
             throw new IllegalArgumentException("El unidadId es obligatorio");
         }
         this.unidadId = unidadId.trim();
-        this.reservas = new ArrayList<>();
         if (reservasIniciales != null) {
             this.reservas.addAll(reservasIniciales);
         }
     }
 
     public String unidadId() {
+        return unidadId;
+    }
+
+    public String getId() {
         return unidadId;
     }
 
@@ -69,7 +92,7 @@ public class AgendaDeUnidad {
                 .anyMatch(r -> r.ventana().seSolapaCon(ventana));
         if (seSolapa) {
             throw new ReservaSolapadaException(
-                "La unidad " + unidadId + " ya tiene una reserva activa que se solapa con la ventana: " + ventana
+                    "La unidad " + unidadId + " ya tiene una reserva activa que se solapa con la ventana: " + ventana
             );
         }
 
@@ -110,7 +133,20 @@ public class AgendaDeUnidad {
                 .filter(r -> r.id().equals(reservaId))
                 .findFirst()
                 .orElseThrow(() -> new DominioProgramacionException(
-                    "No se encontro la reserva " + reservaId + " en la unidad " + unidadId
+                        "No se encontro la reserva " + reservaId + " en la unidad " + unidadId
                 ));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AgendaDeUnidad that = (AgendaDeUnidad) o;
+        return Objects.equals(unidadId, that.unidadId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(unidadId);
     }
 }

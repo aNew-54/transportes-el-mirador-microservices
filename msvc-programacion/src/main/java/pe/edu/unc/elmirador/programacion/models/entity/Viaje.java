@@ -1,7 +1,22 @@
 package pe.edu.unc.elmirador.programacion.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import pe.edu.unc.elmirador.programacion.exceptions.AsignacionIncompletaException;
 import pe.edu.unc.elmirador.programacion.exceptions.CapacidadExcedidaException;
 import pe.edu.unc.elmirador.programacion.exceptions.CargaIncompatibleException;
@@ -20,16 +35,57 @@ import pe.edu.unc.elmirador.programacion.models.vo.HojaDeRuta;
 import pe.edu.unc.elmirador.programacion.models.vo.Ruta;
 import pe.edu.unc.elmirador.programacion.models.vo.VentanaDeTiempo;
 
+@Entity
+@Table(name = "viajes")
 public class Viaje {
 
-    private final String id;
-    private final Ruta ruta;
-    private final VentanaDeTiempo ventana;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "origen", column = @Column(name = "ruta_origen", length = 100, nullable = false)),
+            @AttributeOverride(name = "destino", column = @Column(name = "ruta_destino", length = 100, nullable = false)),
+            @AttributeOverride(name = "corredor", column = @Column(name = "ruta_corredor", length = 50, nullable = false))
+    })
+    private Ruta ruta;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "desde", column = @Column(name = "ventana_desde", nullable = false)),
+            @AttributeOverride(name = "hasta", column = @Column(name = "ventana_hasta", nullable = false))
+    })
+    private VentanaDeTiempo ventana;
+
+    @Embedded
     private CargaConsolidada cargaConsolidada;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "unidadId", column = @Column(name = "unidad_id", length = 40)),
+            @AttributeOverride(name = "conRelevo", column = @Column(name = "con_relevo"))
+    })
     private AsignacionDeRecursos asignacionDeRecursos;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeViaje estado;
+
+    @Embedded
     private HojaDeRuta hojaDeRuta;
-    private final List<String> ordenIds;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "viaje_ordenes",
+            joinColumns = @JoinColumn(name = "viaje_id")
+    )
+    @Column(name = "orden_id", length = 40, nullable = false)
+    private List<String> ordenIds = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Viaje() {
+    }
 
     public Viaje(
             String id,
@@ -57,7 +113,7 @@ public class Viaje {
         this.ruta = ruta;
         this.ventana = ventana;
         this.cargaConsolidada = cargaConsolidada;
-        this.ordenIds = new ArrayList<>(ordenIds);
+        this.ordenIds.addAll(ordenIds);
         this.estado = EstadoDeViaje.PLANIFICADO;
         this.asignacionDeRecursos = null;
         this.hojaDeRuta = null;
@@ -85,7 +141,23 @@ public class Viaje {
         return new Viaje(id, ruta, ventana, cargaConsolidada, ordenIds);
     }
 
+    @PostLoad
+    protected void postLoad() {
+        if (this.hojaDeRuta != null && this.hojaDeRuta.paradas().isEmpty()) {
+            this.hojaDeRuta = null;
+        }
+        if (this.asignacionDeRecursos != null
+                && this.asignacionDeRecursos.unidadId() == null
+                && this.asignacionDeRecursos.conductorIds().isEmpty()) {
+            this.asignacionDeRecursos = null;
+        }
+    }
+
     public String id() {
+        return id;
+    }
+
+    public String getId() {
         return id;
     }
 
@@ -102,6 +174,11 @@ public class Viaje {
     }
 
     public AsignacionDeRecursos asignacionDeRecursos() {
+        if (asignacionDeRecursos != null
+                && asignacionDeRecursos.unidadId() == null
+                && asignacionDeRecursos.conductorIds().isEmpty()) {
+            return null;
+        }
         return asignacionDeRecursos;
     }
 
@@ -110,6 +187,9 @@ public class Viaje {
     }
 
     public HojaDeRuta hojaDeRuta() {
+        if (hojaDeRuta != null && hojaDeRuta.paradas().isEmpty()) {
+            return null;
+        }
         return hojaDeRuta;
     }
 
@@ -136,12 +216,12 @@ public class Viaje {
         }
         if (!this.estado.puedeTransicionarA(EstadoDeViaje.PROGRAMADO)) {
             throw new TransicionDeViajeInvalidaException(
-                "No se puede programar un viaje en estado " + this.estado + ": " + id
+                    "No se puede programar un viaje en estado " + this.estado + ": " + id
             );
         }
         if (this.asignacionDeRecursos == null || !this.asignacionDeRecursos.esCompleta()) {
             throw new AsignacionIncompletaException(
-                "VIA-01: El viaje no puede programarse sin unidad y al menos un conductor asignados: " + id
+                    "VIA-01: El viaje no puede programarse sin unidad y al menos un conductor asignados: " + id
             );
         }
         this.hojaDeRuta = hojaDeRuta;
@@ -151,7 +231,7 @@ public class Viaje {
     public void autorizarDespacho() {
         if (!this.estado.puedeTransicionarA(EstadoDeViaje.DESPACHADO)) {
             throw new TransicionDeViajeInvalidaException(
-                "No se puede despachar un viaje en estado " + this.estado + ": " + id
+                    "No se puede despachar un viaje en estado " + this.estado + ": " + id
             );
         }
         this.estado = EstadoDeViaje.DESPACHADO;
@@ -160,7 +240,7 @@ public class Viaje {
     public void cancelar() {
         if (!this.estado.puedeTransicionarA(EstadoDeViaje.CANCELADO)) {
             throw new TransicionDeViajeInvalidaException(
-                "No se puede cancelar un viaje en estado " + this.estado + ": " + id
+                    "No se puede cancelar un viaje en estado " + this.estado + ": " + id
             );
         }
         this.estado = EstadoDeViaje.CANCELADO;
@@ -175,12 +255,12 @@ public class Viaje {
         // VIA-07: Comprobacion mandatoria en S1a
         if (this.estado == EstadoDeViaje.DESPACHADO) {
             throw new ViajeDespachadoException(
-                "VIA-07: Un viaje despachado no admite nuevas ordenes: " + id
+                    "VIA-07: Un viaje despachado no admite nuevas ordenes: " + id
             );
         }
         if (this.estado == EstadoDeViaje.CANCELADO) {
             throw new DominioProgramacionException(
-                "No se pueden consolidar ordenes en un viaje cancelado: " + id
+                    "No se pueden consolidar ordenes en un viaje cancelado: " + id
             );
         }
         if (carga == null) {
@@ -206,22 +286,22 @@ public class Viaje {
         // VIA-04: el contrato marco de la orden manda sobre la decision del planificador.
         if (!clausulaDelContrato.permitida()) {
             throw new ConsolidacionProhibidaException(
-                "VIA-04: el contrato marco de la orden " + carga.ordenDeServicioId()
-                    + " prohibe consolidarla con otras: " + id
+                    "VIA-04: el contrato marco de la orden " + carga.ordenDeServicioId()
+                            + " prohibe consolidarla con otras: " + id
             );
         }
 
         // VIA-03: mismo corredor y ventanas compatibles. Son dos condiciones, no una.
         if (!this.ruta.mismoCorredorQue(rutaDeLaOrden)) {
             throw new CorredorIncompatibleException(
-                "VIA-03: la orden " + carga.ordenDeServicioId() + " va por el corredor "
-                    + rutaDeLaOrden.corredor() + " y el viaje por " + this.ruta.corredor()
+                    "VIA-03: la orden " + carga.ordenDeServicioId() + " va por el corredor "
+                            + rutaDeLaOrden.corredor() + " y el viaje por " + this.ruta.corredor()
             );
         }
         if (!this.ventana.seSolapaCon(ventanaDeLaOrden)) {
             throw new CorredorIncompatibleException(
-                "VIA-03: la ventana de la orden " + carga.ordenDeServicioId()
-                    + " no se solapa con la del viaje " + id
+                    "VIA-03: la ventana de la orden " + carga.ordenDeServicioId()
+                            + " no se solapa con la del viaje " + id
             );
         }
 
@@ -230,9 +310,9 @@ public class Viaje {
         for (Carga yaConsolidada : this.cargaConsolidada.cargas()) {
             if (!yaConsolidada.esCompatibleCon(carga)) {
                 throw new CargaIncompatibleException(
-                    "VIA-05: la carga " + carga.tipo() + " de la orden " + carga.ordenDeServicioId()
-                        + " no es fisicamente compatible con la carga " + yaConsolidada.tipo()
-                        + " de la orden " + yaConsolidada.ordenDeServicioId()
+                        "VIA-05: la carga " + carga.tipo() + " de la orden " + carga.ordenDeServicioId()
+                                + " no es fisicamente compatible con la carga " + yaConsolidada.tipo()
+                                + " de la orden " + yaConsolidada.ordenDeServicioId()
                 );
             }
         }
@@ -241,10 +321,10 @@ public class Viaje {
         CargaConsolidada resultante = this.cargaConsolidada.agregar(carga);
         if (!resultante.cabeEn(capacidadDeLaUnidad)) {
             throw new CapacidadExcedidaException(
-                "VIA-02: consolidar la orden " + carga.ordenDeServicioId() + " daria "
-                    + resultante.pesoTotal() + " kg y " + resultante.volumenTotal()
-                    + " m3, y la unidad admite " + capacidadDeLaUnidad.pesoMaximoKg() + " kg y "
-                    + capacidadDeLaUnidad.volumenMaximoM3() + " m3"
+                    "VIA-02: consolidar la orden " + carga.ordenDeServicioId() + " daria "
+                            + resultante.pesoTotal() + " kg y " + resultante.volumenTotal()
+                            + " m3, y la unidad admite " + capacidadDeLaUnidad.pesoMaximoKg() + " kg y "
+                            + capacidadDeLaUnidad.volumenMaximoM3() + " m3"
             );
         }
 
@@ -252,5 +332,18 @@ public class Viaje {
         if (!this.ordenIds.contains(carga.ordenDeServicioId())) {
             this.ordenIds.add(carga.ordenDeServicioId());
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Viaje viaje = (Viaje) o;
+        return Objects.equals(id, viaje.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

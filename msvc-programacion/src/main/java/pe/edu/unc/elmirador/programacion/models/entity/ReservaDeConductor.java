@@ -1,15 +1,44 @@
 package pe.edu.unc.elmirador.programacion.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.util.Objects;
 import pe.edu.unc.elmirador.programacion.exceptions.DominioProgramacionException;
 import pe.edu.unc.elmirador.programacion.models.vo.EstadoDeReserva;
 import pe.edu.unc.elmirador.programacion.models.vo.VentanaDeTiempo;
 
+@Entity
+@Table(name = "reservas_conductores")
 public class ReservaDeConductor {
 
-    private final String id;
-    private final String viajeId;
-    private final VentanaDeTiempo ventana;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "viaje_id", length = 40, nullable = false)
+    private String viajeId;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "desde", column = @Column(name = "ventana_desde", nullable = false)),
+            @AttributeOverride(name = "hasta", column = @Column(name = "ventana_hasta", nullable = false))
+    })
+    private VentanaDeTiempo ventana;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeReserva estado;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected ReservaDeConductor() {
+    }
 
     public ReservaDeConductor(String id, String viajeId, VentanaDeTiempo ventana, EstadoDeReserva estado) {
         if (id == null || id.isBlank()) {
@@ -34,7 +63,15 @@ public class ReservaDeConductor {
         return id;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public String viajeId() {
+        return viajeId;
+    }
+
+    public String getViajeId() {
         return viajeId;
     }
 
@@ -42,7 +79,15 @@ public class ReservaDeConductor {
         return ventana;
     }
 
+    public VentanaDeTiempo getVentana() {
+        return ventana;
+    }
+
     public EstadoDeReserva estado() {
+        return estado;
+    }
+
+    public EstadoDeReserva getEstado() {
         return estado;
     }
 
@@ -55,5 +100,18 @@ public class ReservaDeConductor {
 
     public void liberar() {
         this.estado = EstadoDeReserva.LIBERADA;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ReservaDeConductor that = (ReservaDeConductor) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

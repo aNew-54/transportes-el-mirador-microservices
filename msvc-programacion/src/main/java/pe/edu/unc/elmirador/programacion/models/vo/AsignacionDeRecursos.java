@@ -1,34 +1,70 @@
 package pe.edu.unc.elmirador.programacion.models.vo;
 
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Embeddable
-public record AsignacionDeRecursos(String unidadId, List<String> conductorIds, boolean conRelevo) {
+public class AsignacionDeRecursos {
 
-    public AsignacionDeRecursos {
-        unidadId = (unidadId != null && !unidadId.isBlank()) ? unidadId.trim() : null;
+    @Column(name = "unidad_id", length = 40)
+    private String unidadId;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "viaje_conductores",
+            joinColumns = @JoinColumn(name = "viaje_id")
+    )
+    @Column(name = "conductor_id", length = 40, nullable = false)
+    private List<String> conductorIds = new ArrayList<>();
+
+    @Column(name = "con_relevo")
+    private Boolean conRelevo;
+
+    /** Exigido por JPA. No usar: no valida nada. */
+    protected AsignacionDeRecursos() {
+    }
+
+    public AsignacionDeRecursos(String unidadId, List<String> conductorIds, boolean conRelevo) {
+        this.unidadId = (unidadId != null && !unidadId.isBlank()) ? unidadId.trim() : null;
         if (conductorIds != null) {
             for (String cid : conductorIds) {
                 if (cid == null || cid.isBlank()) {
                     throw new IllegalArgumentException("El identificador del conductor no puede ser nulo ni vacio");
                 }
             }
-            conductorIds = List.copyOf(conductorIds);
-        } else {
-            conductorIds = List.of();
+            this.conductorIds.addAll(conductorIds);
         }
 
-        if (conductorIds.size() > 2) {
+        if (this.conductorIds.size() > 2) {
             throw new IllegalArgumentException("No se permiten tres o mas conductores");
         }
-        if (conductorIds.size() == 2 && !conRelevo) {
+        if (this.conductorIds.size() == 2 && !conRelevo) {
             throw new IllegalArgumentException("Un segundo conductor solo se permite en viajes con relevo");
         }
+        this.conRelevo = conRelevo;
     }
 
     public boolean esCompleta() {
         return unidadId != null && !unidadId.isBlank() && !conductorIds.isEmpty();
+    }
+
+    public String unidadId() {
+        return unidadId;
+    }
+
+    public List<String> conductorIds() {
+        return List.copyOf(conductorIds);
+    }
+
+    public boolean conRelevo() {
+        return Boolean.TRUE.equals(conRelevo);
     }
 
     public static AsignacionDeRecursos de(String unidadId, String conductorId) {
@@ -46,5 +82,24 @@ public record AsignacionDeRecursos(String unidadId, List<String> conductorIds, b
             throw new IllegalArgumentException("El conductor de relevo es obligatorio");
         }
         return new AsignacionDeRecursos(unidadId, List.of(conductorPrincipalId, conductorRelevoId), true);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof AsignacionDeRecursos otra)) return false;
+        return Objects.equals(unidadId, otra.unidadId)
+                && Objects.equals(conductorIds, otra.conductorIds)
+                && Objects.equals(conRelevo(), otra.conRelevo());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(unidadId, conductorIds, conRelevo());
+    }
+
+    @Override
+    public String toString() {
+        return "AsignacionDeRecursos[unidadId=" + unidadId + ", conductorIds=" + conductorIds + ", conRelevo=" + conRelevo() + "]";
     }
 }
