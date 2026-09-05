@@ -71,7 +71,7 @@ class PersistenciaFacturacionIT {
 
     private Factura facturaBloqueada(String id, String ordenId) {
         SnapshotComercial snapshot = new SnapshotComercial(
-                ordenId, "CLI-0007", new Dinero(new BigDecimal("1821.60"), "PEN"), "PEN", momento);
+                ordenId, "CLI-0007", new Dinero(new BigDecimal("1821.60"), "PEN"), "PEN", momento, "CREDITO", 30);
         Detraccion detraccion = new Detraccion(
                 new BigDecimal("4.00"), new Dinero(new BigDecimal("72.86"), "PEN"), "00-123-456789");
         Factura factura = Factura.abrir(id, ordenId, "CLI-0007", snapshot, detraccion);

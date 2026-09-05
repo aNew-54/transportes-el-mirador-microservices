@@ -47,7 +47,7 @@ class NotaDeCreditoServiceTest {
     @Test
     @DisplayName("emitir nota de credito")
     void emitirNC() {
-        SnapshotComercial snap = new SnapshotComercial("ord-1", "cli-1", new Dinero(new BigDecimal("100.00"), "PEN"), "PEN", OffsetDateTime.now());
+        SnapshotComercial snap = new SnapshotComercial("ord-1", "cli-1", new Dinero(new BigDecimal("100.00"), "PEN"), "PEN", OffsetDateTime.now(), "CREDITO", 30);
         Detraccion det = Detraccion.sinDetraccion("PEN");
         Factura factura = Factura.abrir("f-1", snap, det);
         factura.agregarLinea(new LineaDeFactura("l-1", "ord-1", ConceptoFacturable.FLETE, "", new Dinero(new BigDecimal("100.00"), "PEN")));
