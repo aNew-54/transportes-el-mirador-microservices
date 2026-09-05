@@ -10,7 +10,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import pe.edu.unc.elmirador.programacion.controllers.AgendaController;
 import pe.edu.unc.elmirador.programacion.controllers.ManejadorDeErrores;
 import pe.edu.unc.elmirador.programacion.controllers.ViajeController;
-import pe.edu.unc.elmirador.programacion.controllers.ViajeInternalController;
 import pe.edu.unc.elmirador.programacion.repositories.AgendaDeConductorRepository;
 import pe.edu.unc.elmirador.programacion.repositories.AgendaDeUnidadRepository;
 import pe.edu.unc.elmirador.programacion.repositories.ViajeRepository;
@@ -39,8 +38,6 @@ class MsvcProgramacionApplicationTests {
     @Autowired
     private ViajeController viajeController;
 
-    @Autowired
-    private ViajeInternalController viajeInternalController;
 
     @Autowired
     private AgendaController agendaController;
@@ -57,7 +54,6 @@ class MsvcProgramacionApplicationTests {
     @Test
     void elGrafoDeBeansEstaCompleto() {
         assertThat(viajeController).isNotNull();
-        assertThat(viajeInternalController).isNotNull();
         assertThat(agendaController).isNotNull();
         assertThat(viajeService).isNotNull();
         assertThat(agendaService).isNotNull();
