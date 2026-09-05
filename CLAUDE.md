@@ -94,6 +94,14 @@ Sin Docker, sólo las pruebas de contexto:
 docker compose up -d && ./scripts/smoke-test.sh
 ```
 
+Recorrido de extremo a extremo: una orden a crédito desde el alta del cliente hasta la cuenta por
+cobrar, 23 llamadas reales sobre los siete servicios. Es el único gate que puede fallar por una razón
+que los otros no ven: los cinco defectos que destapó vivían todos en el tramo entre dos contextos.
+
+```bash
+docker compose up -d && ./scripts/flujo-vertical.sh
+```
+
 Aislamiento entre contextos — debe devolver 0 líneas:
 
 ```bash

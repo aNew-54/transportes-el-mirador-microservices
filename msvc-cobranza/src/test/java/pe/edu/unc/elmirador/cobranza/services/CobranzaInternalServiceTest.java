@@ -187,6 +187,59 @@ class CobranzaInternalServiceTest {
     }
 
     @Test
+    @DisplayName("[contrato 10] Una factura sin detraccion se registra: no hay cuenta que exigir")
+    void crearCuenta_SinDetraccion_NoExigeCuentaBancaria() {
+        String clave = "FAC-2026-000777";
+        when(idempotencia.findById(clave)).thenReturn(Optional.empty());
+        when(repositorio.findByClienteId("CLI-0007")).thenReturn(Optional.of(
+                new CuentaCorrienteDelCliente("CLI-0007", EstadoCrediticio.vigente(hoy))));
+
+        // La detraccion solo aplica por encima de un umbral; por debajo no hay monto ni cuenta donde
+        // depositarlo. cuentaBancaria llevaba @NotBlank, asi que estas facturas —que Facturacion
+        // emite sin problema— salian con un 400 y no podian entrar nunca a la cartera.
+        CrearCuentaPorCobrarRequest peticion = new CrearCuentaPorCobrarRequest(
+                "FAC-2026-000777",
+                "F001-00000777",
+                "CLI-0007",
+                new ImporteRequest("1500.00", "PEN"),
+                new DetraccionRequest(BigDecimal.ZERO, "0.00", "PEN", ""),
+                new ImporteRequest("1500.00", "PEN"),
+                OffsetDateTime.now(reloj),
+                OffsetDateTime.now(reloj),
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
+        );
+
+        ResultadoIdempotente<CuentaPorCobrarCreadaResponse> resultado =
+                servicio.crearCuentaPorCobrar(clave, peticion);
+
+        assertThat(resultado.repetida()).isFalse();
+    }
+
+    @Test
+    @DisplayName("[contrato 10] Si se detrajo dinero, hay que decir a que cuenta fue")
+    void crearCuenta_ConDetraccionSinCuenta_Rechaza() {
+        String clave = "FAC-2026-000778";
+        when(idempotencia.findById(clave)).thenReturn(Optional.empty());
+
+        CrearCuentaPorCobrarRequest peticion = new CrearCuentaPorCobrarRequest(
+                "FAC-2026-000778",
+                "F001-00000778",
+                "CLI-0007",
+                new ImporteRequest("1821.60", "PEN"),
+                new DetraccionRequest(BigDecimal.valueOf(4), "72.86", "PEN", "  "),
+                new ImporteRequest("1748.74", "PEN"),
+                OffsetDateTime.now(reloj),
+                OffsetDateTime.now(reloj),
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
+        );
+
+        assertThat(catchThrowable(() -> servicio.crearCuentaPorCobrar(clave, peticion)))
+                .isInstanceOf(ImportesInconsistentesException.class)
+                .hasMessageContaining("cuenta bancaria");
+        verify(repositorio, never()).save(any());
+    }
+
+    @Test
     void crearCuenta_Contado_NaceCancelada() {
         String clave = "FAC-2026-000310";
         when(idempotencia.findById(clave)).thenReturn(Optional.empty());

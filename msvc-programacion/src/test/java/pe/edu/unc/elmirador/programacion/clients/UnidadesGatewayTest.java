@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,7 @@ class UnidadesGatewayTest {
                 new CapacidadRemota(10000, new BigDecimal("32.0")),
                 "FURGON", "INOPERATIVA"
         );
-        when(cliente.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL"))
+        when(cliente.consultarElegibilidad("UNI-004", desde.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), hasta.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), 1000, new BigDecimal("2.5"), "GENERAL"))
             .thenReturn(remota);
 
         EvaluacionDeUnidad eval = pasarela.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL");
@@ -59,7 +60,7 @@ class UnidadesGatewayTest {
 
     @Test
     void unErrorDelServidorRemotoEsUnFalloDeIntegracion() {
-        when(cliente.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL"))
+        when(cliente.consultarElegibilidad("UNI-004", desde.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), hasta.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), 1000, new BigDecimal("2.5"), "GENERAL"))
                 .thenThrow(new FeignException.InternalServerError("boom", peticionFalsa(), null, null));
 
         assertThatThrownBy(() -> pasarela.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL"))
@@ -68,7 +69,7 @@ class UnidadesGatewayTest {
 
     @Test
     void unCuatrocientosCuatroRemotoNoSeConvierteEnUnCuatrocientosCuatroPropio() {
-        when(cliente.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL"))
+        when(cliente.consultarElegibilidad("UNI-004", desde.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), hasta.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), 1000, new BigDecimal("2.5"), "GENERAL"))
                 .thenThrow(new FeignException.NotFound("no esta", peticionFalsa(), null, null));
 
         assertThatThrownBy(() -> pasarela.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL"))
@@ -77,7 +78,7 @@ class UnidadesGatewayTest {
 
     @Test
     void siUnidadesNoContestaTambienEsUnFalloDeIntegracion() {
-        when(cliente.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL")).thenThrow(new RetryableException(
+        when(cliente.consultarElegibilidad("UNI-004", desde.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), hasta.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), 1000, new BigDecimal("2.5"), "GENERAL")).thenThrow(new RetryableException(
                 -1, "Connection refused", Request.HttpMethod.GET, (Long) null, peticionFalsa()));
 
         assertThatThrownBy(() -> pasarela.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL"))
@@ -86,7 +87,7 @@ class UnidadesGatewayTest {
 
     @Test
     void unCuerpoIncompletoEsUnFalloDeIntegracion() {
-        when(cliente.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL")).thenReturn(new ElegibilidadUnidadRemota(
+        when(cliente.consultarElegibilidad("UNI-004", desde.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), hasta.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), 1000, new BigDecimal("2.5"), "GENERAL")).thenReturn(new ElegibilidadUnidadRemota(
                 "UNI-004", true, null, null, null, null));
 
         assertThatThrownBy(() -> pasarela.consultarElegibilidad("UNI-004", desde, hasta, 1000, new BigDecimal("2.5"), "GENERAL"))

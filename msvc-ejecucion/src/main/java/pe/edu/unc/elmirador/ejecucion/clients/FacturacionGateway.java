@@ -25,7 +25,7 @@ public class FacturacionGateway {
                     "Facturacion no respondio al registrar conformidad para el viaje " + peticion.viajeId(), fallo);
         } catch (FeignException fallo) {
             throw new FacturacionIntegrationException(
-                    "Facturacion respondio " + fallo.status() + " al registrar conformidad para el viaje " + peticion.viajeId(), fallo);
+                    "Facturacion respondio " + fallo.status() + " al registrar conformidad para el viaje " + peticion.viajeId() + ": " + fallo.contentUTF8(), fallo);
         }
     }
 

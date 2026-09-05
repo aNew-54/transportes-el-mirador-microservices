@@ -583,11 +583,11 @@
   <div class="cifras">
     <div class="cifra"><span class="n completo">48/48</span><span class="et">Invariantes cubiertas</span></div>
     <div class="cifra"><span class="n">7</span><span class="et">Bounded contexts</span></div>
-    <div class="cifra"><span class="n">868</span><span class="et">Pruebas en verde</span></div>
+    <div class="cifra"><span class="n">874</span><span class="et">Pruebas en verde</span></div>
     <div class="cifra"><span class="n">11</span><span class="et">Contratos de integración</span></div>
     <div class="cifra"><span class="n completo">33/33</span><span class="et">Slices integrados</span></div>
     <div class="cifra"><span class="n">0</span><span class="et">Imports entre contextos</span></div>
-    <div class="cifra"><span class="n">46</span><span class="et">Defectos hallados en revisión</span></div>
+    <div class="cifra"><span class="n">51</span><span class="et">Defectos hallados en revisión</span></div>
   </div>
 
   <!-- ===================================================== -->
@@ -809,11 +809,13 @@
     <span class="num-seccion">03 — Verificación</span>
     <h2>Lo que el gate comprueba de verdad</h2>
     <p class="entradilla">
-      <code>./mvnw clean verify</code> sobre los ocho módulos: 868 pruebas unitarias y 47 de
+      <code>./mvnw clean verify</code> sobre los ocho módulos: 874 pruebas unitarias y 48 de
       integración, salida cero. Failsafe levanta un MySQL 8.4 real con Testcontainers, así que un mapeo
-      JPA roto no puede pasar en verde. Y <code>./scripts/smoke-test.sh</code> levanta los siete
-      servicios contra un MySQL de <code>docker compose</code>: los siete responden
-      <span class="mono">UP</span>.
+      JPA roto no puede pasar en verde. <code>./scripts/smoke-test.sh</code> levanta los siete servicios
+      contra un MySQL de <code>docker compose</code> y los siete responden <span class="mono">UP</span>.
+      Y <code>./scripts/flujo-vertical.sh</code> lleva una orden a crédito desde el alta del cliente
+      hasta la cuenta por cobrar: veintitrés llamadas reales, siete contextos, once contratos. Es el
+      único de los tres que puede fallar por una razón que los otros dos no ven.
     </p>
 
     <div class="scroll">
@@ -822,12 +824,12 @@
           <tr><th>Módulo</th><th class="num">Pruebas</th><th class="num">IT</th><th>Invariantes</th><th class="num">Provee</th><th class="num">Consume</th></tr>
         </thead>
         <tbody>
-          <tr><td>msvc-ejecucion</td><td class="num">165</td><td class="num">8</td><td class="cod">EJV · LIQ</td><td class="num">—</td><td class="num">4, 5, 6, 7 y 8</td></tr>
-          <tr><td>msvc-programacion</td><td class="num">132</td><td class="num">7</td><td class="cod">VIA · AGU · AGC</td><td class="num">4</td><td class="num">1, 2 y 3</td></tr>
-          <tr><td>msvc-unidades</td><td class="num">130</td><td class="num">7</td><td class="cod">UNI · OMT · REP</td><td class="num">2 y 5</td><td class="num">—</td></tr>
+          <tr><td>msvc-ejecucion</td><td class="num">167</td><td class="num">8</td><td class="cod">EJV · LIQ</td><td class="num">—</td><td class="num">4, 5, 6, 7 y 8</td></tr>
+          <tr><td>msvc-programacion</td><td class="num">134</td><td class="num">7</td><td class="cod">VIA · AGU · AGC</td><td class="num">4</td><td class="num">1, 2 y 3</td></tr>
+          <tr><td>msvc-unidades</td><td class="num">130</td><td class="num">8</td><td class="cod">UNI · OMT · REP</td><td class="num">2 y 5</td><td class="num">—</td></tr>
           <tr><td>msvc-comercial</td><td class="num">125</td><td class="num">9</td><td class="cod">CLI · COT · ORD · CTM · TAR</td><td class="num">1, 7 y 9</td><td class="num">11</td></tr>
           <tr><td>msvc-conductores</td><td class="num">118</td><td class="num">5</td><td class="cod">CON</td><td class="num">3 y 6</td><td class="num">—</td></tr>
-          <tr><td>msvc-cobranza</td><td class="num">111</td><td class="num">5</td><td class="cod">CCC · PAG</td><td class="num">10 y 11</td><td class="num">—</td></tr>
+          <tr><td>msvc-cobranza</td><td class="num">113</td><td class="num">5</td><td class="cod">CCC · PAG</td><td class="num">10 y 11</td><td class="num">—</td></tr>
           <tr><td>msvc-facturacion</td><td class="num">87</td><td class="num">6</td><td class="cod">FAC · NCR</td><td class="num">8</td><td class="num">9 y 10</td></tr>
         </tbody>
       </table>
@@ -890,6 +892,7 @@
           <tr><td class="cod">S4</td><td class="num">8</td><td>Un <span class="mono">201&nbsp;Created</span> con un identificador detrás del cual no había nada</td></tr>
           <tr><td class="cod">S5</td><td class="num">6</td><td>Dos invariantes se comprobaban contra datos que aportaba quien llamaba</td></tr>
           <tr><td class="cod">S6</td><td class="num">11</td><td>La raíz de agregado de Cobranza no la construía nadie en producción</td></tr>
+          <tr><td class="cod">Flujo vertical</td><td class="num">5</td><td>Cinco caminos que ninguna prueba de módulo recorría, y tres bastaban para tumbar el sistema</td></tr>
         </tbody>
       </table>
     </div>
@@ -1256,20 +1259,38 @@
       <div class="barra-pie"><span>Slices integrados en <span class="mono">main</span></span><span>completo</span></div>
     </div>
 
-    <h3>Lo que el sistema no sabía hacer hasta que se encadenó</h3>
+    <h3>Los seis defectos que sólo se vieron encadenando los contextos</h3>
     <p>
-      Con los once contratos escritos y sus veintidós pruebas en verde, encadenar la orden con la
-      factura destapó que <strong>nadie construía nunca una <span class="mono">CuentaCorrienteDelCliente</span></strong>
-      fuera de las pruebas. Los dos contratos que Cobranza publica resolvían la cuenta con un
-      <span class="mono">orElseThrow</span>, así que respondían <span class="mono">404</span> siempre: ningún cliente
-      podía pedir una orden a crédito y ninguna factura podía entrar al ledger. Las ciento nueve pruebas del
-      módulo seguían en verde porque las seis que tocan el agregado lo fabrican a mano, y ninguna preguntaba
-      quién lo construye en producción.
+      <span class="mono">scripts/flujo-vertical.sh</span> recorre una orden a crédito desde el alta del
+      cliente hasta la cuenta por cobrar: veintitrés pasos, siete contextos, once contratos. Hicieron falta
+      nueve pasadas para llegar al final, y cada parada era un defecto real de producción sobre una suite
+      que estaba entera en verde.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th class="num">#</th><th>Qué estaba roto</th><th>Consecuencia en producción</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td><span class="mono">CuentaCorrienteDelCliente</span> no la construía nadie</td><td>Ningún cliente podía pedir a crédito ni entrar al ledger</td></tr>
+          <tr><td class="num">2</td><td>El id derivado del documento no cabía en su columna</td><td>Ninguna unidad podía tener SOAT, luego ninguna era elegible</td></tr>
+          <tr><td class="num">3</td><td>Feign mandaba las fechas con el <em>locale</em> del JVM</td><td>Los contratos 2 y 3 respondían <span class="mono">400</span> a toda consulta</td></tr>
+          <tr><td class="num">4</td><td>Los gateways tiraban el cuerpo del fallo remoto</td><td>Todo fallo de integración era indiagnosticable</td></tr>
+          <tr><td class="num">5</td><td>Ejecución no exponía <span class="mono">marcarEntregada</span></td><td>Ninguna ejecución podía cerrarse nunca</td></tr>
+          <tr><td class="num">6</td><td><span class="mono">detraccion.cuentaBancaria</span> era obligatoria</td><td>Ninguna factura sin detracción entraba a la cartera</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Ninguno se ve con una prueba de módulo, y no por descuido: una prueba de stub responde lo que el
+      contrato dice, y una prueba de dominio parte del estado que le convenga. Ninguna de las dos pregunta
+      <em>quién construye el primer objeto</em>, ni <em>qué sale por el cable</em>, ni <em>si existe un
+      camino desde el alta hasta el cobro</em>. Cinco de los seis vivían en el tramo entre dos contextos;
+      el sexto sólo aparece cuando el identificador lo genera producción y no la prueba.
     </p>
     <p>
-      Es el único defecto del proyecto que no se ve dentro de un módulo ni en un contrato aislado. Una prueba
-      de stub responde lo que el contrato dice; una prueba de dominio parte del estado que le convenga. Sólo
-      recorrer el camino entero pregunta quién crea el primer objeto.
+      Los tres primeros bastaban, cada uno por su cuenta, para que el sistema completo no sirviera para
+      nada. Y los tres convivían con ochocientas setenta y cuatro pruebas verdes.
     </p>
 
     <h3>La mitad de contrato que sigue sin cablear</h3>
@@ -1291,6 +1312,7 @@
           <tr><td class="cod">S4-api-interna</td><td>Endpoints <code>/internal/v1</code> de los contratos que publica</td><td class="num">6 de 6</td></tr>
           <tr><td class="cod">S5-clientes</td><td>Clientes Feign, timeouts, traducción de error, pruebas con stub</td><td class="num">4 de 4</td></tr>
           <tr><td class="cod">S6-cierre</td><td>Los reportes que Ejecución empuja al cerrar: contratos 5, 6, 7 y 8</td><td class="num">1 de 1</td></tr>
+          <tr><td class="cod">Flujo vertical</td><td>Una orden a crédito de extremo a extremo, con los siete servicios en pie</td><td class="num">completo</td></tr>
         </tbody>
       </table>
     </div>

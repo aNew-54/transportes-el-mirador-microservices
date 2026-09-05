@@ -33,6 +33,7 @@ import pe.edu.unc.elmirador.ejecucion.dto.request.CrearEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ParadaRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.response.EjecucionDeViajeResponse;
 import pe.edu.unc.elmirador.ejecucion.exceptions.ConflictoDeRecursoException;
+import pe.edu.unc.elmirador.ejecucion.exceptions.ConformidadesPendientesException;
 import pe.edu.unc.elmirador.ejecucion.models.entity.EjecucionDeViaje;
 import pe.edu.unc.elmirador.ejecucion.models.entity.Parada;
 import pe.edu.unc.elmirador.ejecucion.models.vo.EstadoConformidad;
@@ -240,6 +241,41 @@ class EjecucionDeViajeServiceTest {
         // Que el DTO ya no lleve el booleano no basta: sin esta llamada el servicio podria estar
         // asumiendo que nunca hay pendientes, que es el mismo defecto con otra cara.
         verify(liquidaciones).findByViajeIdAndEstadoNot("v-1", EstadoDeLiquidacion.APROBADA);
+    }
+
+    @Test
+    @DisplayName("[EJV-03] La ejecucion se puede marcar entregada desde el servicio")
+    void marcarEntregadaDelegaEnElAgregado() {
+        EjecucionDeViaje ejecucion = new EjecucionDeViaje("v-1", "u-1", List.of("c-1"),
+                List.of(new Parada(1, "os-1", "Dir 1")));
+        ejecucion.registrarCheckList(new ResultadoDeCheckList(true, List.of(), OffsetDateTime.now(clock)));
+        ejecucion.iniciar(OffsetDateTime.now(clock));
+        ejecucion.registrarConformidad(1, new ConformidadDeEntrega("conf-1", "os-1",
+                EstadoConformidad.FIRMADA, "Juan", OffsetDateTime.now(clock), ""));
+        when(repository.findById("v-1")).thenReturn(Optional.of(ejecucion));
+
+        // Sin este metodo en el servicio, EJV-03 vivia en el agregado y ningun camino de produccion
+        // lo alcanzaba: la ejecucion se quedaba en EN_RUTA y cerrar respondia «transicion invalida».
+        service.marcarEntregada("v-1");
+
+        assertThat(ejecucion.getEstado()).isEqualTo(EstadoDeEjecucion.ENTREGADA);
+        verify(repository).save(ejecucion);
+    }
+
+    @Test
+    @DisplayName("[EJV-03] No se marca entregada con una parada sin conformidad firmada")
+    void marcarEntregadaConParadaPendienteLanza() {
+        EjecucionDeViaje ejecucion = new EjecucionDeViaje("v-1", "u-1", List.of("c-1"),
+                List.of(new Parada(1, "os-1", "Dir 1"), new Parada(2, "os-2", "Dir 2")));
+        ejecucion.registrarCheckList(new ResultadoDeCheckList(true, List.of(), OffsetDateTime.now(clock)));
+        ejecucion.iniciar(OffsetDateTime.now(clock));
+        ejecucion.registrarConformidad(1, new ConformidadDeEntrega("conf-1", "os-1",
+                EstadoConformidad.FIRMADA, "Juan", OffsetDateTime.now(clock), ""));
+        when(repository.findById("v-1")).thenReturn(Optional.of(ejecucion));
+
+        assertThatThrownBy(() -> service.marcarEntregada("v-1"))
+                .isInstanceOf(ConformidadesPendientesException.class);
+        assertThat(ejecucion.getEstado()).isEqualTo(EstadoDeEjecucion.EN_RUTA);
     }
 
     private EjecucionDeViaje ejecucionEntregadaDeUnaParada() {

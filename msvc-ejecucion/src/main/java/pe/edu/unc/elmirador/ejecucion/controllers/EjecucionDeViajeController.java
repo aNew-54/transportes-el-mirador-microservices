@@ -85,6 +85,11 @@ public class EjecucionDeViajeController {
         return ResponseEntity.created(URI.create("/api/v1/ejecuciones/" + viajeId)).body(respuesta);
     }
 
+    @PostMapping("/{viajeId}/entregar")
+    public ResponseEntity<EjecucionDeViajeResponse> marcarEntregada(@PathVariable String viajeId) {
+        return ResponseEntity.ok(servicio.marcarEntregada(viajeId));
+    }
+
     @PostMapping("/{viajeId}/paradas/{secuencia}/espera")
     public ResponseEntity<EjecucionDeViajeResponse> registrarEspera(
             @PathVariable String viajeId,

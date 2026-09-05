@@ -32,7 +32,7 @@ public class UnidadesGateway {
                             + unidadId + ": es menor al vigente (UNI-03)");
         } catch (FeignException fallo) {
             throw new UnidadesIntegrationException(
-                    "Unidades respondio " + fallo.status() + " al reportar el kilometraje para la unidad " + unidadId, fallo);
+                    "Unidades respondio " + fallo.status() + " al reportar el kilometraje para la unidad " + unidadId + ": " + fallo.contentUTF8(), fallo);
         }
     }
 
@@ -45,7 +45,7 @@ public class UnidadesGateway {
                     "Unidades no respondio al reportar la falla para la unidad " + unidadId, fallo);
         } catch (FeignException fallo) {
             throw new UnidadesIntegrationException(
-                    "Unidades respondio " + fallo.status() + " al reportar la falla para la unidad " + unidadId, fallo);
+                    "Unidades respondio " + fallo.status() + " al reportar la falla para la unidad " + unidadId + ": " + fallo.contentUTF8(), fallo);
         }
     }
 

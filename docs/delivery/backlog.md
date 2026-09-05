@@ -144,7 +144,7 @@ Ejecución no tiene `S4`: no publica endpoints de integración. Es el único ser
 | 48 invariantes cubiertas | Todas con prueba en verde | **done** |
 | 11 contratos implementados | Con prueba de cliente y de proveedor | **done** |
 | Contratos cableados | Un servicio de aplicación llama a cada cliente | **10 de 11** |
-| Flujo vertical | Orden → viaje → ejecución → factura → cobranza, de extremo a extremo | pendiente |
+| Flujo vertical | Orden → viaje → ejecución → factura → cobranza, de extremo a extremo | **done** |
 
 ## Progreso
 
@@ -195,6 +195,24 @@ suite en verde:
 
 El tercero es el que mas dice. No hacia falta ningun contrato para arreglarlo: las liquidaciones son
 del propio contexto y el metodo de repositorio que las cuenta existia desde `S2`. Nadie lo llamaba.
+
+**Los seis defectos que solo se vieron encadenando los contextos.** `scripts/flujo-vertical.sh`
+recorre una orden a credito desde el alta del cliente hasta la cuenta por cobrar: 23 pasos, siete
+contextos, once contratos. Necesito nueve pasadas para llegar al final, y cada parada era un defecto
+real de produccion sobre una suite en verde.
+
+| # | Que estaba roto | Consecuencia en produccion |
+|---|---|---|
+| 1 | `CuentaCorrienteDelCliente` no la construia nadie | Ningun cliente podia pedir a credito ni entrar al ledger |
+| 2 | El id derivado del documento no cabia en su columna | Ninguna unidad podia tener SOAT, luego ninguna era elegible |
+| 3 | Feign mandaba las fechas con el locale del JVM | Los contratos 2 y 3 respondian 400 a toda consulta |
+| 4 | Los gateways tiraban el cuerpo del fallo remoto | Todo fallo de integracion era indiagnosticable |
+| 5 | Ejecucion no exponia `marcarEntregada` | Ninguna ejecucion podia cerrarse nunca |
+| 6 | `detraccion.cuentaBancaria` era obligatoria | Ninguna factura sin detraccion entraba a la cartera |
+
+Ninguno se ve con una prueba de modulo. Cinco de los seis estaban en el camino entre dos contextos, y
+el sexto —el id del documento— solo aparece cuando el identificador lo genera produccion y no la
+prueba. Los tres primeros bastaban, cada uno por su cuenta, para que el sistema no sirviera para nada.
 
 **El defecto que ninguna prueba de modulo podia ver.** Al encadenar la orden con la factura salio que
 `CuentaCorrienteDelCliente` no la construia nadie en produccion: solo la fabricaban a mano seis

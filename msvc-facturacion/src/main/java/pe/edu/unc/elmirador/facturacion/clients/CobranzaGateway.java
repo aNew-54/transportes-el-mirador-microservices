@@ -59,7 +59,7 @@ public class CobranzaGateway {
                     "Cobranza no respondio al crear la cuenta por cobrar para la factura " + factura.id(), fallo);
         } catch (FeignException fallo) {
             throw new CobranzaIntegrationException(
-                    "Cobranza respondio " + fallo.status() + " al crear la cuenta por cobrar para la factura " + factura.id(), fallo);
+                    "Cobranza respondio " + fallo.status() + " al crear la cuenta por cobrar para la factura " + factura.id() + ": " + fallo.contentUTF8(), fallo);
         }
     }
 }

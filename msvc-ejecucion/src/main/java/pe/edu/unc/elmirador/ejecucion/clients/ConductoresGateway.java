@@ -32,7 +32,7 @@ public class ConductoresGateway {
                             + ": superarian el maximo normado (CON-02)");
         } catch (FeignException fallo) {
             throw new ConductoresIntegrationException(
-                    "Conductores respondio " + fallo.status() + " al reportar horas para el conductor " + conductorId, fallo);
+                    "Conductores respondio " + fallo.status() + " al reportar horas para el conductor " + conductorId + ": " + fallo.contentUTF8(), fallo);
         }
     }
 
@@ -45,7 +45,7 @@ public class ConductoresGateway {
                     "Conductores no respondio al reportar la incidencia para el conductor " + conductorId, fallo);
         } catch (FeignException fallo) {
             throw new ConductoresIntegrationException(
-                    "Conductores respondio " + fallo.status() + " al reportar la incidencia para el conductor " + conductorId, fallo);
+                    "Conductores respondio " + fallo.status() + " al reportar la incidencia para el conductor " + conductorId + ": " + fallo.contentUTF8(), fallo);
         }
     }
 
