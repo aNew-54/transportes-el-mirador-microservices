@@ -42,7 +42,9 @@ public class Cotizacion {
     @AttributeOverrides({
         @AttributeOverride(name = "pesoKg", column = @Column(name = "carga_peso_kg", nullable = false)),
         @AttributeOverride(name = "volumenM3", column = @Column(name = "carga_volumen_m3", precision = 10, scale = 2, nullable = false)),
-        @AttributeOverride(name = "tipo", column = @Column(name = "carga_tipo", length = 30, nullable = false))
+        @AttributeOverride(name = "tipo", column = @Column(name = "carga_tipo", length = 30, nullable = false)),
+        @AttributeOverride(name = "embalaje", column = @Column(name = "carga_embalaje", length = 50)),
+        @AttributeOverride(name = "naturaleza", column = @Column(name = "carga_naturaleza", length = 50))
     })
     private Carga carga;
 

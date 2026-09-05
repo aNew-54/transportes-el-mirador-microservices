@@ -43,6 +43,15 @@ public class ClausulaDeConsolidacion {
         this.restricciones.addAll(restricciones);
     }
 
+    /**
+     * Clausula de una orden sin contrato marco: no hay pacto que prohiba consolidar, asi que se
+     * permite sin restricciones. Tiene nombre a proposito —la alternativa era un `true` suelto dentro
+     * del servicio de integracion— porque es una decision de negocio y Programacion la consume ciega.
+     */
+    public static ClausulaDeConsolidacion sinContratoMarco() {
+        return new ClausulaDeConsolidacion(true, List.of());
+    }
+
     public static ClausulaDeConsolidacion permitida(List<String> restricciones) {
         return new ClausulaDeConsolidacion(true, restricciones);
     }

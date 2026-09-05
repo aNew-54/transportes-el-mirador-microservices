@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -44,6 +45,11 @@ import pe.edu.unc.elmirador.comercial.repositories.OrdenDeServicioRepository;
 
 class OrdenDeServicioServiceTest {
 
+    private static final OffsetDateTime VENTANA_INICIO =
+            OffsetDateTime.parse("2026-09-10T06:00:00-05:00");
+    private static final OffsetDateTime VENTANA_FIN =
+            OffsetDateTime.parse("2026-09-10T18:00:00-05:00");
+
     private OrdenDeServicioRepository ordenRepository;
     private ClienteRepository clienteRepository;
     private ContratoMarcoRepository contratoRepository;
@@ -75,7 +81,10 @@ class OrdenDeServicioServiceTest {
     void crear_clienteValido_guardaYDevuelveRespuesta() {
         CrearOrdenRequest request = new CrearOrdenRequest(
                 "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
-                "LIMA", "PIURA", "NORTE", ModalidadDePago.CONTADO, 0);
+                "LIMA", "PIURA", "NORTE",
+                "PALLETS", "ALIMENTARIA", 296,
+                VENTANA_INICIO, VENTANA_FIN,
+                ModalidadDePago.CONTADO, 0);
         
         Cliente cliente = new Cliente(
                 "cli-1", new Ruc("20123456789"), new RazonSocial("Acme S.A."),
@@ -98,7 +107,10 @@ class OrdenDeServicioServiceTest {
     void crear_condicionCreditoParaClienteSuspendido_lanzaExcepcion() {
         CrearOrdenRequest request = new CrearOrdenRequest(
                 "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
-                "LIMA", "PIURA", "NORTE", ModalidadDePago.CREDITO, 30);
+                "LIMA", "PIURA", "NORTE",
+                "PALLETS", "ALIMENTARIA", 296,
+                VENTANA_INICIO, VENTANA_FIN,
+                ModalidadDePago.CREDITO, 30);
         
         Cliente cliente = new Cliente(
                 "cli-1", new Ruc("20123456789"), new RazonSocial("Acme S.A."),
@@ -120,7 +132,10 @@ class OrdenDeServicioServiceTest {
     void crear_tomaElPrecioDeLaTarifaPactadaDelContrato() {
         CrearOrdenRequest request = new CrearOrdenRequest(
                 "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
-                "LIMA", "PIURA", "NORTE", ModalidadDePago.CONTADO, 0);
+                "LIMA", "PIURA", "NORTE",
+                "PALLETS", "ALIMENTARIA", 296,
+                VENTANA_INICIO, VENTANA_FIN,
+                ModalidadDePago.CONTADO, 0);
 
         Cliente cliente = new Cliente(
                 "cli-1", new Ruc("20123456789"), new RazonSocial("Acme S.A."),
@@ -142,7 +157,10 @@ class OrdenDeServicioServiceTest {
     void crear_sinTarifaPactadaParaEsaRuta_es404() {
         CrearOrdenRequest request = new CrearOrdenRequest(
                 "cli-1", "ctm-1", TipoDeUnidad.CAMA_BAJA, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
-                "LIMA", "PIURA", "NORTE", ModalidadDePago.CONTADO, 0);
+                "LIMA", "PIURA", "NORTE",
+                "PALLETS", "ALIMENTARIA", 296,
+                VENTANA_INICIO, VENTANA_FIN,
+                ModalidadDePago.CONTADO, 0);
 
         Cliente cliente = new Cliente(
                 "cli-1", new Ruc("20123456789"), new RazonSocial("Acme S.A."),

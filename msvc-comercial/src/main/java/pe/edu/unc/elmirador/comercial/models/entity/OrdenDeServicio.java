@@ -2,6 +2,13 @@ package pe.edu.unc.elmirador.comercial.models.entity;
 
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
+import java.util.Collections;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
+import pe.edu.unc.elmirador.comercial.models.vo.DecisionDeDiferencia;
+import pe.edu.unc.elmirador.comercial.models.vo.TipoDeUnidad;
+import pe.edu.unc.elmirador.comercial.models.vo.VentanaDeServicio;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -51,7 +58,9 @@ public class OrdenDeServicio {
     @AttributeOverrides({
         @AttributeOverride(name = "pesoKg", column = @Column(name = "carga_peso_kg", nullable = false)),
         @AttributeOverride(name = "volumenM3", column = @Column(name = "carga_volumen_m3", precision = 10, scale = 2, nullable = false)),
-        @AttributeOverride(name = "tipo", column = @Column(name = "carga_tipo", length = 30, nullable = false))
+        @AttributeOverride(name = "tipo", column = @Column(name = "carga_tipo", length = 30, nullable = false)),
+        @AttributeOverride(name = "embalaje", column = @Column(name = "carga_embalaje", length = 50)),
+        @AttributeOverride(name = "naturaleza", column = @Column(name = "carga_naturaleza", length = 50))
     })
     private Carga carga;
 
@@ -96,6 +105,35 @@ public class OrdenDeServicio {
 
     @Column(name = "cancelado_por", length = 100)
     private String canceladoPor;
+
+    // Franja en la que el cliente pide el servicio. La publica el contrato 1 porque VIA-03 exige
+    // ventanas compatibles entre las ordenes que se consolidan en un mismo viaje.
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "inicio", column = @Column(name = "ventana_inicio")),
+        @AttributeOverride(name = "fin", column = @Column(name = "ventana_fin"))
+    })
+    private VentanaDeServicio ventana;
+
+    // Tipo de unidad que la carga exige. Ya se usaba para buscar la tarifa pactada; no se guardaba,
+    // y el contrato 1 lo pide para que Programacion no tenga que deducirlo.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_unidad_requerido", length = 20)
+    private TipoDeUnidad tipoUnidadRequerido;
+
+    // La distancia recorrida va en la orden y NO dentro de Ruta. Una ruta ES su origen, su destino y
+    // su corredor: eso es lo que la identifica, y es como se busca la tarifa pactada del contrato
+    // marco. Meterle la distancia le cambiaria la identidad, y dos rutas iguales medidas distinto
+    // dejarian de encontrarse. El contrato 1 la anida bajo `ruta` en el JSON; el DTO no tiene por que
+    // calcar la forma del objeto de valor.
+    @Column(name = "ruta_distancia_km")
+    private Integer rutaDistanciaKm;
+
+    // Esperas facturables reportadas por Ejecucion (contrato 7). El excedente lo calcula Ejecucion;
+    // aqui se guarda, no se recalcula.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "orden_id", nullable = false)
+    private List<EsperaRegistrada> esperas = new ArrayList<>();
 
     /** Exigido por JPA. No usar: no valida ninguna invariante. */
     protected OrdenDeServicio() {
@@ -159,6 +197,29 @@ public class OrdenDeServicio {
         CondicionDePago condicionDePago,
         EstadoCrediticio estadoCrediticio
     ) {
+        return crear(id, clienteId, contratoId, carga, ruta, tarifa, condicionDePago, estadoCrediticio,
+            null, null, null);
+    }
+
+    /**
+     * Crea la orden con la ventana de servicio y el tipo de unidad que el contrato 1 publica.
+     *
+     * <p>Los dos son opcionales en la firma porque hay ordenes anteriores a {@code S4} que no los
+     * tienen, pero la API los exige al crear: sin ventana, Programacion no puede comprobar VIA-03.
+     */
+    public static OrdenDeServicio crear(
+        String id,
+        String clienteId,
+        String contratoId,
+        Carga carga,
+        Ruta ruta,
+        Tarifa tarifa,
+        CondicionDePago condicionDePago,
+        EstadoCrediticio estadoCrediticio,
+        VentanaDeServicio ventana,
+        TipoDeUnidad tipoUnidadRequerido,
+        Integer rutaDistanciaKm
+    ) {
         if (estadoCrediticio == null) {
             throw new IllegalArgumentException("El estado crediticio es obligatorio para verificar la condicion de pago");
         }
@@ -171,7 +232,7 @@ public class OrdenDeServicio {
                     + estadoCrediticio.situacion()
             );
         }
-        return new OrdenDeServicio(
+        OrdenDeServicio orden = new OrdenDeServicio(
             id,
             clienteId,
             contratoId,
@@ -182,6 +243,76 @@ public class OrdenDeServicio {
             EstadoDeOrden.BORRADOR,
             null
         );
+        orden.ventana = ventana;
+        orden.tipoUnidadRequerido = tipoUnidadRequerido;
+        orden.rutaDistanciaKm = rutaDistanciaKm;
+        return orden;
+    }
+
+    /**
+     * La orden tal como la publica el contrato 1, que solo sirve ordenes confirmadas.
+     *
+     * <p>El {@code 409} del contrato sale de aqui y no de un {@code if} en el controlador: que una
+     * orden en BORRADOR o CANCELADA no sea consultable para programar es una regla del agregado.
+     */
+    public OrdenDeServicio comoOrdenConfirmada() {
+        if (this.estado == EstadoDeOrden.BORRADOR || this.estado == EstadoDeOrden.CANCELADA) {
+            throw new TransicionDeOrdenInvalidaException(
+                "La orden " + this.id + " esta en " + this.estado + " y no esta confirmada");
+        }
+        return this;
+    }
+
+    /**
+     * Registra una espera facturable reportada por Ejecucion (contrato 7).
+     *
+     * <p>El excedente viene calculado: {@code EsperaFacturable.excedente()} vive en Ejecucion, que es
+     * quien midio el tiempo. Recalcularlo aqui produciria dos verdades sobre el mismo hecho.
+     */
+    /**
+     * Registra la diferencia entre la carga declarada y la real que Ejecucion reporta (contrato 7).
+     *
+     * <p>Si la decision fue rechazar, la orden mantiene la carga declarada y no hay nada que
+     * reajustar. Si no, se adopta la carga real y ORD-01 decide: una orden ya programada no admite
+     * cambio de carga sin generar reajuste, y {@code reajustarCarga} se niega si falta el importe.
+     *
+     * <p>La decision la toma Ejecucion con el cliente delante. Aqui se aplica, no se reevalua.
+     */
+    public void registrarDiferenciaDeCarga(
+        Carga cargaReal,
+        DecisionDeDiferencia decision,
+        Dinero importeDelReajuste
+    ) {
+        if (decision == null) {
+            throw new IllegalArgumentException("La decision sobre la diferencia es obligatoria");
+        }
+        if (!decision.cambiaLaCarga()) {
+            return;
+        }
+        reajustarCarga(cargaReal, importeDelReajuste);
+    }
+
+    public void registrarEspera(EsperaRegistrada espera) {
+        if (espera == null) {
+            throw new IllegalArgumentException("La espera es obligatoria");
+        }
+        this.esperas.add(espera);
+    }
+
+    public VentanaDeServicio ventana() {
+        return ventana;
+    }
+
+    public TipoDeUnidad tipoUnidadRequerido() {
+        return tipoUnidadRequerido;
+    }
+
+    public Integer rutaDistanciaKm() {
+        return rutaDistanciaKm;
+    }
+
+    public List<EsperaRegistrada> esperas() {
+        return Collections.unmodifiableList(esperas);
     }
 
     public String id() {
