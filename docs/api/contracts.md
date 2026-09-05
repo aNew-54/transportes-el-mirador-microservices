@@ -74,7 +74,7 @@ Respuesta `200`:
   "ordenId": "ORD-2026-000123",
   "clienteId": "CLI-0007",
   "estado": "CONFIRMADA",
-  "carga": { "pesoKg": 8500, "volumenM3": 24.5, "embalaje": "PALLETS", "naturaleza": "ALIMENTARIA" },
+  "carga": { "pesoKg": 8500, "volumenM3": 24.5, "tipo": "PALETIZADA", "embalaje": "PALLETS", "naturaleza": "ALIMENTARIA" },
   "ruta": { "origen": "Cajamarca", "destino": "Trujillo", "corredor": "COSTA_NORTE", "distanciaKm": 296 },
   "ventana": { "inicio": "2026-09-10T06:00:00-05:00", "fin": "2026-09-10T18:00:00-05:00" },
   "permiteConsolidacion": true,

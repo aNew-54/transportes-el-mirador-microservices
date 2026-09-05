@@ -79,6 +79,7 @@ public class ComercialInternalService {
                 new OrdenConfirmadaResponse.CargaResponse(
                         orden.carga().pesoKg(),
                         orden.carga().volumenM3(),
+                        orden.carga().tipo().name(),
                         orden.carga().embalaje(),
                         orden.carga().naturaleza()),
                 new OrdenConfirmadaResponse.RutaResponse(
