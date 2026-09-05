@@ -1,7 +1,7 @@
 package pe.edu.unc.elmirador.cobranza.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -17,85 +17,123 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import pe.edu.unc.elmirador.cobranza.dto.request.RegistrarCuentaPorCobrarRequest;
 import pe.edu.unc.elmirador.cobranza.dto.response.CuentaCorrienteResponse;
-import pe.edu.unc.elmirador.cobranza.exceptions.ConflictoDeRecursoException;
-import pe.edu.unc.elmirador.cobranza.exceptions.ImportesInconsistentesException;
+import pe.edu.unc.elmirador.cobranza.exceptions.RecursoNoEncontradoException;
 import pe.edu.unc.elmirador.cobranza.exceptions.RehabilitacionInvalidaException;
 import pe.edu.unc.elmirador.cobranza.models.entity.CuentaCorrienteDelCliente;
 import pe.edu.unc.elmirador.cobranza.models.entity.CuentaPorCobrar;
 import pe.edu.unc.elmirador.cobranza.models.vo.Dinero;
 import pe.edu.unc.elmirador.cobranza.models.vo.EstadoCrediticio;
-import pe.edu.unc.elmirador.cobranza.models.vo.SituacionCrediticia;
 import pe.edu.unc.elmirador.cobranza.repositories.CuentaCorrienteDelClienteRepository;
 
 class CuentaCorrienteServiceTest {
 
+    private static final LocalDate HOY = LocalDate.of(2026, 5, 10);
+
     private CuentaCorrienteDelClienteRepository repositorio;
     private CuentaCorrienteService servicio;
-    private Clock relojFijo;
 
     @BeforeEach
-    void setUp() {
+    void preparar() {
         repositorio = mock(CuentaCorrienteDelClienteRepository.class);
-        relojFijo = Clock.fixed(Instant.parse("2026-05-10T10:00:00Z"), ZoneId.of("America/Lima"));
+        Clock relojFijo = Clock.fixed(
+                Instant.parse("2026-05-10T15:00:00Z"), ZoneId.of("America/Lima"));
         servicio = new CuentaCorrienteService(repositorio, relojFijo);
+        when(repositorio.save(any(CuentaCorrienteDelCliente.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    private CuentaPorCobrar cuenta(String id, String total, String moneda, LocalDate vencimiento) {
+        return new CuentaPorCobrar(id, "cli-1", "fac-" + id, "doc-" + id,
+                new Dinero(new BigDecimal(total), moneda), Dinero.cero(moneda),
+                new Dinero(new BigDecimal(total), moneda), vencimiento);
+    }
+
+    /** Con detraccion del 12 %: registrar el deposito solo tiene sentido si la cuenta la tiene. */
+    private CuentaPorCobrar cuentaConDetraccion(String id, String total, String detraccion, String neto) {
+        return new CuentaPorCobrar(id, "cli-1", "fac-" + id, "doc-" + id,
+                new Dinero(new BigDecimal(total), "PEN"), new Dinero(new BigDecimal(detraccion), "PEN"),
+                new Dinero(new BigDecimal(neto), "PEN"), HOY.plusDays(10));
+    }
+
+    private CuentaCorrienteDelCliente clienteCon(EstadoCrediticio estado, CuentaPorCobrar... cuentas) {
+        return new CuentaCorrienteDelCliente("cli-1", estado, new ArrayList<>(List.of(cuentas)));
     }
 
     @Test
-    void registrarCuentaPorCobrar_inconsistente_lanzaExcepcionDominio() {
-        // FAC-04 en la frontera: neto + detraccion != total
-        RegistrarCuentaPorCobrarRequest req = new RegistrarCuentaPorCobrarRequest(
-                "cli-1", "fac-1", "doc-1",
-                new BigDecimal("100.00"), "PEN",
-                new BigDecimal("10.00"), "PEN",
-                new BigDecimal("80.00"), "PEN", // should be 90
-                LocalDate.now(relojFijo)
-        );
+    @DisplayName("un cliente sin cuenta corriente es 404")
+    void clienteInexistente() {
+        when(repositorio.findByClienteId("no-existe")).thenReturn(Optional.empty());
 
-        when(repositorio.findByClienteId("cli-1")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> servicio.porClienteId("no-existe"))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+    }
 
-        Throwable error = catchThrowable(() -> servicio.registrarCuentaPorCobrar(req));
+    /**
+     * {@code deudaTotal(codigoMoneda)} exige la moneda para que nadie la adivine. La respuesta lleva
+     * un total por cada moneda que el cliente debe de verdad, no un unico total en una moneda elegida
+     * por la capa de presentacion.
+     */
+    @Test
+    @DisplayName("la deuda sale desglosada por moneda, sin elegir ninguna por defecto")
+    void deudaPorMoneda() {
+        when(repositorio.findByClienteId("cli-1")).thenReturn(Optional.of(clienteCon(
+                EstadoCrediticio.vigente(HOY),
+                cuenta("cpc-1", "100.00", "PEN", HOY.plusDays(30)),
+                cuenta("cpc-2", "250.00", "USD", HOY.plusDays(15)))));
 
-        assertThat(error).isInstanceOf(ImportesInconsistentesException.class);
+        CuentaCorrienteResponse respuesta = servicio.porClienteId("cli-1");
+
+        assertThat(respuesta.deudaPorMoneda())
+                .extracting(i -> i.moneda() + " " + i.monto().stripTrailingZeros().toPlainString())
+                .containsExactlyInAnyOrder("PEN 100", "USD 250");
     }
 
     @Test
-    void rehabilitar_lanzaRehabilitacionInvalida_siHayCuentasVencidasPorMasDe30Dias() {
-        // CCC-01
-        CuentaPorCobrar cuentaVencida = new CuentaPorCobrar(
-                "cpc-1", "cli-1", "fac-1", "doc-1",
-                new Dinero(new BigDecimal("100.00"), "PEN"),
-                Dinero.cero("PEN"),
-                new Dinero(new BigDecimal("100.00"), "PEN"),
-                LocalDate.now(relojFijo).minusDays(45) // > 30 days
-        );
-        CuentaCorrienteDelCliente cliente = new CuentaCorrienteDelCliente("cli-1", EstadoCrediticio.suspendido("x", LocalDate.now(relojFijo)), new ArrayList<>(List.of(cuentaVencida)));
-        when(repositorio.findByClienteId("cli-1")).thenReturn(Optional.of(cliente));
+    @DisplayName("un cliente sin cuentas debe cero en ninguna moneda, y no revienta")
+    void clienteSinCuentas() {
+        when(repositorio.findByClienteId("cli-1"))
+                .thenReturn(Optional.of(clienteCon(EstadoCrediticio.vigente(HOY))));
 
-        Throwable error = catchThrowable(() -> servicio.rehabilitar("cli-1"));
-
-        assertThat(error).isInstanceOf(RehabilitacionInvalidaException.class);
+        assertThat(servicio.porClienteId("cli-1").deudaPorMoneda()).isEmpty();
     }
 
     @Test
-    void evaluarCredito_suspendeAutomaticamenteSiHayCuentaDeMasDe30Dias() {
-        CuentaPorCobrar cuentaVencida = new CuentaPorCobrar(
-                "cpc-1", "cli-1", "fac-1", "doc-1",
-                new Dinero(new BigDecimal("100.00"), "PEN"),
-                Dinero.cero("PEN"),
-                new Dinero(new BigDecimal("100.00"), "PEN"),
-                LocalDate.now(relojFijo).minusDays(31) // exceeds 30
-        );
-        CuentaCorrienteDelCliente cliente = new CuentaCorrienteDelCliente("cli-1", EstadoCrediticio.vigente(LocalDate.now(relojFijo)), new ArrayList<>(List.of(cuentaVencida)));
-        when(repositorio.findByClienteId("cli-1")).thenReturn(Optional.of(cliente));
-        when(repositorio.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    @DisplayName("rehabilitar con una cuenta de mas de treinta dias de atraso deja subir CCC-01")
+    void rehabilitarConDeudaVencida() {
+        when(repositorio.findByClienteId("cli-1")).thenReturn(Optional.of(clienteCon(
+                EstadoCrediticio.suspendido("mora", HOY),
+                cuenta("cpc-1", "100.00", "PEN", HOY.minusDays(45)))));
 
-        CuentaCorrienteResponse res = servicio.evaluarCredito("cli-1");
+        assertThatThrownBy(() -> servicio.rehabilitar("cli-1"))
+                .isInstanceOf(RehabilitacionInvalidaException.class);
+    }
 
-        assertThat(res.situacion()).isEqualTo(SituacionCrediticia.SUSPENDIDO);
-        verify(repositorio).save(cliente);
+    /**
+     * La detraccion se registra buscando al titular por el id de la cuenta, no recorriendo todos los
+     * clientes: la cuenta por cobrar es entidad hija y no tiene repositorio propio.
+     */
+    @Test
+    @DisplayName("registrar la detraccion busca al titular por el id de la cuenta")
+    void registrarDetraccion() {
+        CuentaPorCobrar objetivo = cuentaConDetraccion("cpc-7", "100.00", "12.00", "88.00");
+        CuentaCorrienteDelCliente titular = clienteCon(EstadoCrediticio.vigente(HOY), objetivo);
+        when(repositorio.findByCuentasId("cpc-7")).thenReturn(Optional.of(titular));
+
+        var respuesta = servicio.registrarDetraccion("cpc-7");
+
+        assertThat(respuesta.detraccionDepositada()).isTrue();
+        verify(repositorio).save(titular);
+    }
+
+    @Test
+    @DisplayName("registrar la detraccion de una cuenta que no existe es 404")
+    void registrarDetraccionInexistente() {
+        when(repositorio.findByCuentasId("no-existe")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> servicio.registrarDetraccion("no-existe"))
+                .isInstanceOf(RecursoNoEncontradoException.class);
     }
 }

@@ -24,19 +24,16 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import tools.jackson.databind.ObjectMapper;
 
-import pe.edu.unc.elmirador.cobranza.dto.request.RegistrarCuentaPorCobrarRequest;
 import pe.edu.unc.elmirador.cobranza.dto.response.CuentaCorrienteResponse;
 import pe.edu.unc.elmirador.cobranza.dto.response.CuentaPorCobrarResponse;
-import pe.edu.unc.elmirador.cobranza.dto.response.EstadoCrediticioResponse;
-import pe.edu.unc.elmirador.cobranza.exceptions.ConflictoDeRecursoException;
-import pe.edu.unc.elmirador.cobranza.exceptions.ImportesInconsistentesException;
+import pe.edu.unc.elmirador.cobranza.dto.response.ImporteResponse;
 import pe.edu.unc.elmirador.cobranza.exceptions.RecursoNoEncontradoException;
 import pe.edu.unc.elmirador.cobranza.exceptions.RehabilitacionInvalidaException;
 import pe.edu.unc.elmirador.cobranza.models.vo.EstadoDeDocumento;
 import pe.edu.unc.elmirador.cobranza.models.vo.SituacionCrediticia;
 import pe.edu.unc.elmirador.cobranza.services.CuentaCorrienteService;
 
-@WebMvcTest(controllers = {CuentaCorrienteController.class, CuentaCorrienteInternalController.class})
+@WebMvcTest(CuentaCorrienteController.class)
 class CuentaCorrienteControllerTest {
 
     @Autowired
@@ -53,7 +50,7 @@ class CuentaCorrienteControllerTest {
     void porId200() throws Exception {
         CuentaCorrienteResponse respuesta = new CuentaCorrienteResponse(
                 "cli-1", SituacionCrediticia.VIGENTE, null, LocalDate.of(2026, 1, 1),
-                new BigDecimal("100.00"), "PEN", 0, 0, List.of()
+                List.of(new ImporteResponse(new BigDecimal("100.00"), "PEN")), 0, 0, List.of()
         );
         when(servicio.porClienteId("cli-1")).thenReturn(respuesta);
 
@@ -110,46 +107,4 @@ class CuentaCorrienteControllerTest {
                 .andExpect(jsonPath("$.type").value("https://elmirador.unc.edu.pe/problems/rehabilitacion-invalida"));
     }
 
-    @Test
-    @DisplayName("POST /internal/v1/cuentas-por-cobrar con importes inconsistentes devuelve 422")
-    void registrarCuentaPorCobrar422() throws Exception {
-        RegistrarCuentaPorCobrarRequest req = new RegistrarCuentaPorCobrarRequest(
-                "cli-1", "fac-1", "doc-1",
-                new BigDecimal("100.00"), "PEN",
-                new BigDecimal("10.00"), "PEN",
-                new BigDecimal("80.00"), "PEN",
-                LocalDate.of(2026, 1, 1)
-        );
-
-        when(servicio.registrarCuentaPorCobrar(any()))
-                .thenThrow(new ImportesInconsistentesException("no iguala el total"));
-
-        mockMvc.perform(post("/internal/v1/cuentas-por-cobrar")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(req)))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.type").value("https://elmirador.unc.edu.pe/problems/importes-inconsistentes"));
-    }
-
-    @Test
-    @DisplayName("POST /internal/v1/cuentas-por-cobrar repetida devuelve 409")
-    void registrarCuentaPorCobrar409() throws Exception {
-        RegistrarCuentaPorCobrarRequest req = new RegistrarCuentaPorCobrarRequest(
-                "cli-1", "fac-1", "doc-1",
-                new BigDecimal("100.00"), "PEN",
-                new BigDecimal("10.00"), "PEN",
-                new BigDecimal("80.00"), "PEN",
-                LocalDate.of(2026, 1, 1)
-        );
-
-        when(servicio.registrarCuentaPorCobrar(any()))
-                .thenThrow(new ConflictoDeRecursoException("Ya registrada"));
-
-        mockMvc.perform(post("/internal/v1/cuentas-por-cobrar")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(req)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.type").value("https://elmirador.unc.edu.pe/problems/conflicto-de-recurso"));
-    }
 }

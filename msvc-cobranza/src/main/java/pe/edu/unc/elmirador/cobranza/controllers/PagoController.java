@@ -35,7 +35,7 @@ public class PagoController {
     public ResponseEntity<PagoResponse> aplicar(
             @PathVariable String id,
             @Valid @RequestBody AplicarPagoRequest peticion) {
-        PagoResponse respuesta = servicio.aplicarPago(id, peticion);
+        PagoResponse respuesta = servicio.aplicar(id, peticion);
         return ResponseEntity.created(URI.create("/api/v1/pagos/" + id + "/aplicaciones")).body(respuesta);
     }
 }

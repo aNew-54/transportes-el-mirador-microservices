@@ -47,8 +47,9 @@ class PagoControllerTest {
     @Test
     @DisplayName("POST /pagos devuelve 201 con Location")
     void registrar201() throws Exception {
-        RegistrarPagoRequest req = new RegistrarPagoRequest("cli-1", new BigDecimal("100.00"), "PEN", ModalidadDePago.EFECTIVO, null);
-        PagoResponse res = new PagoResponse("p-1", "cli-1", new BigDecimal("100.00"), "PEN", ModalidadDePago.EFECTIVO, null, LocalDate.now(), new BigDecimal("0.00"), "PEN", new BigDecimal("100.00"), "PEN", List.of());
+        RegistrarPagoRequest req = new RegistrarPagoRequest("cli-1", new BigDecimal("100.00"), "PEN", ModalidadDePago.EFECTIVO,
+                null, LocalDate.of(2026, 4, 30));
+        PagoResponse res = new PagoResponse("p-1", "cli-1", new BigDecimal("100.00"), "PEN", ModalidadDePago.EFECTIVO, null, LocalDate.of(2026, 4, 30), new BigDecimal("0.00"), "PEN", new BigDecimal("100.00"), "PEN", List.of());
         
         when(servicio.registrar(any())).thenReturn(res);
 
@@ -65,7 +66,7 @@ class PagoControllerTest {
     void aplicar422() throws Exception {
         AplicarPagoRequest req = new AplicarPagoRequest(List.of(new AplicacionRequest("cpc-1", new BigDecimal("100.00"), "PEN")));
 
-        when(servicio.aplicarPago(eq("p-1"), any()))
+        when(servicio.aplicar(eq("p-1"), any()))
                 .thenThrow(new PagoDeOtroClienteException("El pago pertenece al cliente cli-1 pero la cuenta pertenece al cliente cli-2"));
 
         mockMvc.perform(post("/api/v1/pagos/p-1/aplicaciones")
@@ -81,7 +82,7 @@ class PagoControllerTest {
     void aplicarExcedeElPago422() throws Exception {
         AplicarPagoRequest req = new AplicarPagoRequest(List.of(new AplicacionRequest("cpc-1", new BigDecimal("100.00"), "PEN")));
 
-        when(servicio.aplicarPago(eq("p-1"), any()))
+        when(servicio.aplicar(eq("p-1"), any()))
                 .thenThrow(new AplicacionExcedeElPagoException("Excede pago"));
 
         mockMvc.perform(post("/api/v1/pagos/p-1/aplicaciones")
@@ -96,7 +97,7 @@ class PagoControllerTest {
     void aplicarSaldoInsuficiente422() throws Exception {
         AplicarPagoRequest req = new AplicarPagoRequest(List.of(new AplicacionRequest("cpc-1", new BigDecimal("100.00"), "PEN")));
 
-        when(servicio.aplicarPago(eq("p-1"), any()))
+        when(servicio.aplicar(eq("p-1"), any()))
                 .thenThrow(new pe.edu.unc.elmirador.cobranza.exceptions.SaldoInsuficienteException("Excede saldo"));
 
         mockMvc.perform(post("/api/v1/pagos/p-1/aplicaciones")
@@ -111,7 +112,7 @@ class PagoControllerTest {
     void aplicarMonedaIncompatible422() throws Exception {
         AplicarPagoRequest req = new AplicarPagoRequest(List.of(new AplicacionRequest("cpc-1", new BigDecimal("100.00"), "PEN")));
 
-        when(servicio.aplicarPago(eq("p-1"), any()))
+        when(servicio.aplicar(eq("p-1"), any()))
                 .thenThrow(new pe.edu.unc.elmirador.cobranza.exceptions.MonedaIncompatibleException("Moneda incompatible"));
 
         mockMvc.perform(post("/api/v1/pagos/p-1/aplicaciones")

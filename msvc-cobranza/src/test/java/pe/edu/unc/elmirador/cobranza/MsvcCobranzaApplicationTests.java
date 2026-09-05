@@ -9,7 +9,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import pe.edu.unc.elmirador.cobranza.controllers.CarteraController;
 import pe.edu.unc.elmirador.cobranza.controllers.CuentaCorrienteController;
-import pe.edu.unc.elmirador.cobranza.controllers.CuentaCorrienteInternalController;
 import pe.edu.unc.elmirador.cobranza.controllers.ManejadorDeErrores;
 import pe.edu.unc.elmirador.cobranza.controllers.PagoController;
 import pe.edu.unc.elmirador.cobranza.repositories.CuentaCorrienteDelClienteRepository;
@@ -37,9 +36,6 @@ class MsvcCobranzaApplicationTests {
     private CuentaCorrienteController cuentaCorrienteController;
 
     @Autowired
-    private CuentaCorrienteInternalController cuentaCorrienteInternalController;
-
-    @Autowired
     private PagoController pagoController;
 
     @Autowired
@@ -57,7 +53,6 @@ class MsvcCobranzaApplicationTests {
     @Test
     void elGrafoDeBeansEstaCompleto() {
         assertThat(cuentaCorrienteController).isNotNull();
-        assertThat(cuentaCorrienteInternalController).isNotNull();
         assertThat(pagoController).isNotNull();
         assertThat(carteraController).isNotNull();
         assertThat(cuentaService).isNotNull();
