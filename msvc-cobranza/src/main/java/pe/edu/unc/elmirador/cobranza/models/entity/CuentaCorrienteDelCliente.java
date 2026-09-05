@@ -13,6 +13,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import pe.edu.unc.elmirador.cobranza.exceptions.DominioCobranzaException;
@@ -154,11 +155,17 @@ public class CuentaCorrienteDelCliente {
     }
 
     /**
-     * Deuda del cliente en la moneda indicada. Alimenta el contrato 11.
+     * Deuda del cliente <b>en la moneda indicada</b>. Alimenta el contrato 11.
      *
      * <p>La moneda es un parametro y no se deduce de la primera cuenta: un cliente sin cuentas debe
      * responder cero, no reventar, y tomar la moneda de {@code cuentas.get(0)} seria un valor por
      * defecto silencioso en un importe.
+     *
+     * <p>Suma <b>solo</b> las cuentas de esa moneda. Un cliente puede deber en soles y en dolares a
+     * la vez —flete local y flete de exportacion—, y sumarlo todo en un unico importe obligaria a
+     * convertir a un tipo de cambio que este contexto no conoce. Antes se sumaba sin filtrar y ese
+     * cliente hacia reventar el metodo con {@code MonedaIncompatibleException}: no habia forma de
+     * preguntar por su deuda. Quien quiera la posicion completa pide un total por cada moneda.
      */
     public Dinero deudaTotal(String codigoMoneda) {
         if (codigoMoneda == null || codigoMoneda.isBlank()) {
@@ -166,11 +173,26 @@ public class CuentaCorrienteDelCliente {
         }
         Dinero total = Dinero.cero(codigoMoneda);
         for (CuentaPorCobrar cuenta : this.cuentas) {
-            if (!cuenta.estaCancelada()) {
+            if (!cuenta.estaCancelada() && cuenta.saldo().codigoMoneda().equalsIgnoreCase(codigoMoneda)) {
                 total = total.sumar(cuenta.saldo());
             }
         }
         return total;
+    }
+
+    /**
+     * Las monedas en las que el cliente tiene deuda viva, en el orden en que aparecen sus cuentas.
+     * Vacia si no debe nada. Es lo que permite pedir un {@link #deudaTotal(String)} por moneda sin
+     * que nadie tenga que adivinar cuales existen.
+     */
+    public List<String> monedasConDeuda() {
+        List<String> monedas = new ArrayList<>();
+        for (CuentaPorCobrar cuenta : this.cuentas) {
+            if (!cuenta.estaCancelada() && !monedas.contains(cuenta.saldo().codigoMoneda())) {
+                monedas.add(cuenta.saldo().codigoMoneda());
+            }
+        }
+        return Collections.unmodifiableList(monedas);
     }
 
     public int diasDeAtrasoMaximo(LocalDate fecha) {
