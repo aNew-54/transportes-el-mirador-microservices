@@ -45,6 +45,15 @@ class MsvcComercialApplicationTests {
     @MockitoBean
     private TarifarioRepository tarifarioRepository;
 
+    @MockitoBean
+    private pe.edu.unc.elmirador.comercial.repositories.PeticionIdempotenteRepository peticionIdempotenteRepository;
+
+    @Autowired
+    private pe.edu.unc.elmirador.comercial.controllers.ComercialInternalController comercialInternalController;
+
+    @Autowired
+    private pe.edu.unc.elmirador.comercial.services.ComercialInternalService comercialInternalService;
+
     @Test
     void contextLoads() {
         // Si llega aqui, el contexto arranco bien
