@@ -334,3 +334,45 @@ dos copias de una condición derivan.
 
 Las agendas llevan índice por recurso y ventana (`ix_reservas_unidades_solape`), que es lo que hará
 eficiente la comprobación de **AGU-01** y **AGC-01** cuando `S3` la consulte.
+
+## Slice `S3-api-publica` — decisiones de diseño
+
+La receta común está en [§8 del método de trabajo](../README.md#8-receta-de-s3-api-publica) y el módulo
+de referencia, ya terminado, es **`msvc-conductores`**. Se copia su forma exacta: `RelojConfig`,
+`RecursoNoEncontradoException`, `ConflictoDeRecursoException`, `ManejadorDeErrores`, servicios de
+aplicación concretos, DTO `record`, mapeadores estáticos de una sola dirección.
+
+Aquí sólo va lo propio de este contexto.
+
+### Mapa de excepciones a códigos HTTP
+
+`DominioProgramacionException` queda de comodín en `422`. Las demás se listan una a una, y Spring elige siempre
+la más específica.
+
+| Excepción | Código | Por qué |
+|---|---:|---|
+| `TransicionDeViajeInvalidaException` | `409` | El viaje no está en el estado que la operación exige. |
+| `ViajeDespachadoException` | `409` | VIA-07. Despachado no admite órdenes nuevas. |
+| `AsignacionIncompletaException` | `409` | VIA-01. Faltan unidad o conductores; con los recursos asignados la misma petición vale. |
+| `ReservaSolapadaException` | `409` | AGU-01 y AGC-01. La ventana está tomada *ahora*. |
+| `RecursoNoElegibleException` | `409` | AGU-02 y AGC-02. El proveedor dice que no es elegible en esa fecha. |
+| `CapacidadExcedidaException` | `422` | VIA-02. La carga no cabe: el cuerpo está mal. |
+| `CorredorIncompatibleException` | `422` | VIA-03. |
+| `ConsolidacionProhibidaException` | `422` | VIA-04. |
+| `CargaIncompatibleException` | `422` | VIA-05. |
+
+Además, en todos los módulos: `RecursoNoEncontradoException` → `404`, `ConflictoDeRecursoException` →
+`409`, `IllegalArgumentException` → `400`, y la validación de forma → `400` con el detalle campo a campo
+bajo la clave `errores`.
+
+### Servicios de aplicación
+
+Uno por raíz de agregado, con el nombre del agregado: ViajeService, AgendaService.
+Ninguno decide reglas: cargan, llaman al método del agregado y guardan. Las dos únicas comprobaciones
+admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
+
+### El `404` que las tablas de arriba no escriben
+
+Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
+de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
+`S1` y omiten ese caso; el código no lo omite.

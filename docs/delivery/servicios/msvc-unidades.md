@@ -259,3 +259,43 @@ Métodos añadidos a `Unidad`: `marcarEnTaller(String motivo)`, `reactivar(Local
 una orden. Excepción añadida: `ReactivacionInvalidaException`.
 
 Pruebas que guardan estas correcciones: `UnidadCicloDeVidaTest` (9) y `OrdenDeMantenimientoAperturaTest` (2).
+
+## Slice `S3-api-publica` — decisiones de diseño
+
+La receta común está en [§8 del método de trabajo](../README.md#8-receta-de-s3-api-publica) y el módulo
+de referencia, ya terminado, es **`msvc-conductores`**. Se copia su forma exacta: `RelojConfig`,
+`RecursoNoEncontradoException`, `ConflictoDeRecursoException`, `ManejadorDeErrores`, servicios de
+aplicación concretos, DTO `record`, mapeadores estáticos de una sola dirección.
+
+Aquí sólo va lo propio de este contexto.
+
+### Mapa de excepciones a códigos HTTP
+
+`DominioUnidadesException` queda de comodín en `422`. Las demás se listan una a una, y Spring elige siempre
+la más específica.
+
+| Excepción | Código | Por qué |
+|---|---:|---|
+| `PlacaInvalidaException` | `400` | El objeto de valor rechaza el formato de la placa. |
+| `OrdenCerradaException` | `409` | OMT-01. Cerrada es inmutable. |
+| `ReactivacionInvalidaException` | `409` | UNI-01 y UNI-02. Con el documento renovado o el mantenimiento hecho, la misma petición vale. |
+| `KilometrajeRetrocedeException` | `422` | UNI-03. El kilometraje del cuerpo es menor que el registrado. |
+| `KilometrajeDeAtencionInvalidoException` | `422` | OMT-02. |
+| `ExistenciasNegativasException` | `422` | REP-01. El movimiento dejaría el stock por debajo de cero. |
+| `MonedaIncompatibleException` | `422` | Dos importes de distinta moneda en la misma operación. |
+
+Además, en todos los módulos: `RecursoNoEncontradoException` → `404`, `ConflictoDeRecursoException` →
+`409`, `IllegalArgumentException` → `400`, y la validación de forma → `400` con el detalle campo a campo
+bajo la clave `errores`.
+
+### Servicios de aplicación
+
+Uno por raíz de agregado, con el nombre del agregado: UnidadService, OrdenDeMantenimientoService, RepuestoService.
+Ninguno decide reglas: cargan, llaman al método del agregado y guardan. Las dos únicas comprobaciones
+admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
+
+### El `404` que las tablas de arriba no escriben
+
+Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
+de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
+`S1` y omiten ese caso; el código no lo omite.

@@ -292,3 +292,45 @@ Es el contexto con los mapeos más incómodos, y de aquí salieron tres piezas d
 que no exista un campo `saldo`; la de integración lee los metadatos de la tabla `liquidaciones` y exige
 que no exista una columna `saldo`. Una invariante que dice «nunca se almacena» tiene que verificarse
 también donde se almacena.
+
+## Slice `S3-api-publica` — decisiones de diseño
+
+La receta común está en [§8 del método de trabajo](../README.md#8-receta-de-s3-api-publica) y el módulo
+de referencia, ya terminado, es **`msvc-conductores`**. Se copia su forma exacta: `RelojConfig`,
+`RecursoNoEncontradoException`, `ConflictoDeRecursoException`, `ManejadorDeErrores`, servicios de
+aplicación concretos, DTO `record`, mapeadores estáticos de una sola dirección.
+
+Aquí sólo va lo propio de este contexto.
+
+### Mapa de excepciones a códigos HTTP
+
+`DominioEjecucionException` queda de comodín en `422`. Las demás se listan una a una, y Spring elige siempre
+la más específica.
+
+| Excepción | Código | Por qué |
+|---|---:|---|
+| `TransicionDeEjecucionInvalidaException` | `409` | La ejecución no está en el estado que la operación exige. |
+| `EjecucionEntregadaException` | `409` | EJV-04. Entregada no admite hitos nuevos ni reabrir paradas. |
+| `CheckListNoAprobadoException` | `409` | EJV-01. Falta aprobar el check-list; aprobado, la misma petición vale. |
+| `ConformidadesPendientesException` | `409` | EJV-03. |
+| `LiquidacionAprobadaException` | `409` | LIQ-03. Aprobada es inmutable. |
+| `LiquidacionPendienteException` | `409` | LIQ-04. La ejecución no cierra mientras quede una pendiente. |
+| `GastoSinComprobanteException` | `422` | LIQ-01. Al cuerpo le falta el comprobante. |
+| `EvidenciaRequeridaException` | `422` | La incidencia llega sin la evidencia que exige. |
+| `MonedaIncompatibleException` | `422` | Dos importes de distinta moneda en la misma operación. |
+
+Además, en todos los módulos: `RecursoNoEncontradoException` → `404`, `ConflictoDeRecursoException` →
+`409`, `IllegalArgumentException` → `400`, y la validación de forma → `400` con el detalle campo a campo
+bajo la clave `errores`.
+
+### Servicios de aplicación
+
+Uno por raíz de agregado, con el nombre del agregado: EjecucionDeViajeService, LiquidacionDeViajeService.
+Ninguno decide reglas: cargan, llaman al método del agregado y guardan. Las dos únicas comprobaciones
+admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
+
+### El `404` que las tablas de arriba no escriben
+
+Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
+de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
+`S1` y omiten ese caso; el código no lo omite.
