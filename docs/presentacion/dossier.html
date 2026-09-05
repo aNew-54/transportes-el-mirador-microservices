@@ -583,11 +583,11 @@
   <div class="cifras">
     <div class="cifra"><span class="n completo">48/48</span><span class="et">Invariantes cubiertas</span></div>
     <div class="cifra"><span class="n">7</span><span class="et">Bounded contexts</span></div>
-    <div class="cifra"><span class="n">842</span><span class="et">Pruebas en verde</span></div>
+    <div class="cifra"><span class="n">868</span><span class="et">Pruebas en verde</span></div>
     <div class="cifra"><span class="n">11</span><span class="et">Contratos de integración</span></div>
-    <div class="cifra"><span class="n completo">32/32</span><span class="et">Slices integrados</span></div>
+    <div class="cifra"><span class="n completo">33/33</span><span class="et">Slices integrados</span></div>
     <div class="cifra"><span class="n">0</span><span class="et">Imports entre contextos</span></div>
-    <div class="cifra"><span class="n">35</span><span class="et">Defectos hallados en revisión</span></div>
+    <div class="cifra"><span class="n">46</span><span class="et">Defectos hallados en revisión</span></div>
   </div>
 
   <!-- ===================================================== -->
@@ -809,7 +809,7 @@
     <span class="num-seccion">03 — Verificación</span>
     <h2>Lo que el gate comprueba de verdad</h2>
     <p class="entradilla">
-      <code>./mvnw clean verify</code> sobre los ocho módulos: 842 pruebas unitarias y 47 de
+      <code>./mvnw clean verify</code> sobre los ocho módulos: 868 pruebas unitarias y 47 de
       integración, salida cero. Failsafe levanta un MySQL 8.4 real con Testcontainers, así que un mapeo
       JPA roto no puede pasar en verde. Y <code>./scripts/smoke-test.sh</code> levanta los siete
       servicios contra un MySQL de <code>docker compose</code>: los siete responden
@@ -822,12 +822,12 @@
           <tr><th>Módulo</th><th class="num">Pruebas</th><th class="num">IT</th><th>Invariantes</th><th class="num">Provee</th><th class="num">Consume</th></tr>
         </thead>
         <tbody>
-          <tr><td>msvc-ejecucion</td><td class="num">141</td><td class="num">8</td><td class="cod">EJV · LIQ</td><td class="num">—</td><td class="num">4, 5, 6, 7 y 8</td></tr>
+          <tr><td>msvc-ejecucion</td><td class="num">165</td><td class="num">8</td><td class="cod">EJV · LIQ</td><td class="num">—</td><td class="num">4, 5, 6, 7 y 8</td></tr>
           <tr><td>msvc-programacion</td><td class="num">132</td><td class="num">7</td><td class="cod">VIA · AGU · AGC</td><td class="num">4</td><td class="num">1, 2 y 3</td></tr>
           <tr><td>msvc-unidades</td><td class="num">130</td><td class="num">7</td><td class="cod">UNI · OMT · REP</td><td class="num">2 y 5</td><td class="num">—</td></tr>
           <tr><td>msvc-comercial</td><td class="num">125</td><td class="num">9</td><td class="cod">CLI · COT · ORD · CTM · TAR</td><td class="num">1, 7 y 9</td><td class="num">11</td></tr>
           <tr><td>msvc-conductores</td><td class="num">118</td><td class="num">5</td><td class="cod">CON</td><td class="num">3 y 6</td><td class="num">—</td></tr>
-          <tr><td>msvc-cobranza</td><td class="num">109</td><td class="num">5</td><td class="cod">CCC · PAG</td><td class="num">10 y 11</td><td class="num">—</td></tr>
+          <tr><td>msvc-cobranza</td><td class="num">111</td><td class="num">5</td><td class="cod">CCC · PAG</td><td class="num">10 y 11</td><td class="num">—</td></tr>
           <tr><td>msvc-facturacion</td><td class="num">87</td><td class="num">6</td><td class="cod">FAC · NCR</td><td class="num">8</td><td class="num">9 y 10</td></tr>
         </tbody>
       </table>
@@ -888,7 +888,8 @@
           <tr><td class="cod">S1 · S2</td><td class="num">9</td><td>Un camión sin SOAT volvía a ser elegible para viaje</td></tr>
           <tr><td class="cod">S3</td><td class="num">12</td><td>El precio de la orden salía de un literal inventado por el agente</td></tr>
           <tr><td class="cod">S4</td><td class="num">8</td><td>Un <span class="mono">201&nbsp;Created</span> con un identificador detrás del cual no había nada</td></tr>
-          <tr><td class="cod">S5</td><td class="num">6</td><td>Tres invariantes se comprobaban contra datos que aportaba quien llamaba</td></tr>
+          <tr><td class="cod">S5</td><td class="num">6</td><td>Dos invariantes se comprobaban contra datos que aportaba quien llamaba</td></tr>
+          <tr><td class="cod">S6</td><td class="num">11</td><td>La raíz de agregado de Cobranza no la construía nadie en producción</td></tr>
         </tbody>
       </table>
     </div>
@@ -1251,17 +1252,33 @@
     </div>
 
     <div class="avance">
-      <div class="barra"><div class="hecho" style="width: 100%;">32 / 32 slices integrados</div></div>
+      <div class="barra"><div class="hecho" style="width: 100%;">33 / 33 slices integrados</div></div>
       <div class="barra-pie"><span>Slices integrados en <span class="mono">main</span></span><span>completo</span></div>
     </div>
 
-    <h3>Los cuatro clientes que existen y nadie llama todavía</h3>
+    <h3>Lo que el sistema no sabía hacer hasta que se encadenó</h3>
     <p>
-      De los once clientes Feign, siete los invoca un servicio de aplicación y cuatro no. Los cuatro son
-      los reportes que Ejecución empuja al cerrar el viaje —contratos 5, 6, 7 y 8—, y necesitan datos que
-      el agregado aún no lleva: el odómetro final, las horas por conductor, los conceptos facturables.
-      Están escritos, probados y con sus claves de idempotencia; les falta quien los invoque. Decirlo es
-      parte del estado: un cliente probado que nadie llama sigue siendo un contrato sin cerrar.
+      Con los once contratos escritos y sus veintidós pruebas en verde, encadenar la orden con la
+      factura destapó que <strong>nadie construía nunca una <span class="mono">CuentaCorrienteDelCliente</span></strong>
+      fuera de las pruebas. Los dos contratos que Cobranza publica resolvían la cuenta con un
+      <span class="mono">orElseThrow</span>, así que respondían <span class="mono">404</span> siempre: ningún cliente
+      podía pedir una orden a crédito y ninguna factura podía entrar al ledger. Las ciento nueve pruebas del
+      módulo seguían en verde porque las seis que tocan el agregado lo fabrican a mano, y ninguna preguntaba
+      quién lo construye en producción.
+    </p>
+    <p>
+      Es el único defecto del proyecto que no se ve dentro de un módulo ni en un contrato aislado. Una prueba
+      de stub responde lo que el contrato dice; una prueba de dominio parte del estado que le convenga. Sólo
+      recorrer el camino entero pregunta quién crea el primer objeto.
+    </p>
+
+    <h3>La mitad de contrato que sigue sin cablear</h3>
+    <p>
+      De los once contratos, diez los invoca un servicio de aplicación. El que falta es la diferencia de carga
+      del contrato 7: Ejecución no tiene en ningún sitio del agregado lo declarado ni lo real, así que
+      cablearla exige una entidad <span class="mono">DiferenciaDeCarga</span> por parada, con su migración y
+      sus invariantes. Decirlo es parte del estado: un cliente probado que nadie llama sigue siendo un
+      contrato sin cerrar.
     </p>
 
     <div class="scroll" style="margin-top: 26px;">
@@ -1273,6 +1290,7 @@
           <tr><td class="cod">S3-api-publica</td><td>Controladores <code>/api/v1</code>, DTO, validación, Problem Details</td><td class="num">7 de 7</td></tr>
           <tr><td class="cod">S4-api-interna</td><td>Endpoints <code>/internal/v1</code> de los contratos que publica</td><td class="num">6 de 6</td></tr>
           <tr><td class="cod">S5-clientes</td><td>Clientes Feign, timeouts, traducción de error, pruebas con stub</td><td class="num">4 de 4</td></tr>
+          <tr><td class="cod">S6-cierre</td><td>Los reportes que Ejecución empuja al cerrar: contratos 5, 6, 7 y 8</td><td class="num">1 de 1</td></tr>
         </tbody>
       </table>
     </div>
