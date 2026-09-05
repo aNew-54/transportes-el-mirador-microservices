@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,8 +19,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import pe.edu.unc.elmirador.comercial.clients.CobranzaGateway;
 import pe.edu.unc.elmirador.comercial.dto.request.CrearOrdenRequest;
 import pe.edu.unc.elmirador.comercial.dto.response.OrdenDeServicioResponse;
+import pe.edu.unc.elmirador.comercial.exceptions.CobranzaIntegrationException;
 import pe.edu.unc.elmirador.comercial.exceptions.CondicionDePagoInconsistenteException;
 import pe.edu.unc.elmirador.comercial.models.entity.Cliente;
 import pe.edu.unc.elmirador.comercial.models.entity.OrdenDeServicio;
@@ -53,6 +56,7 @@ class OrdenDeServicioServiceTest {
     private OrdenDeServicioRepository ordenRepository;
     private ClienteRepository clienteRepository;
     private ContratoMarcoRepository contratoRepository;
+    private CobranzaGateway cobranza;
     private Clock reloj;
     private OrdenDeServicioService servicio;
 
@@ -61,8 +65,10 @@ class OrdenDeServicioServiceTest {
         ordenRepository = mock(OrdenDeServicioRepository.class);
         clienteRepository = mock(ClienteRepository.class);
         contratoRepository = mock(ContratoMarcoRepository.class);
+        cobranza = mock(CobranzaGateway.class);
         reloj = Clock.fixed(Instant.parse("2026-09-04T10:00:00Z"), ZoneId.of("America/Lima"));
-        servicio = new OrdenDeServicioService(ordenRepository, clienteRepository, contratoRepository, reloj);
+        servicio = new OrdenDeServicioService(
+                ordenRepository, clienteRepository, contratoRepository, cobranza, reloj);
     }
 
     /** Contrato vigente con una tarifa pactada de 100 PEN para LIMA-PIURA en furgon. */
@@ -103,25 +109,90 @@ class OrdenDeServicioServiceTest {
         verify(ordenRepository).save(any(OrdenDeServicio.class));
     }
 
-    @Test
-    void crear_condicionCreditoParaClienteSuspendido_lanzaExcepcion() {
-        CrearOrdenRequest request = new CrearOrdenRequest(
+    private CrearOrdenRequest peticion(ModalidadDePago modalidad, int plazo) {
+        return new CrearOrdenRequest(
                 "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
                 "LIMA", "PIURA", "NORTE",
                 "PALLETS", "ALIMENTARIA", 296,
                 VENTANA_INICIO, VENTANA_FIN,
-                ModalidadDePago.CREDITO, 30);
-        
-        Cliente cliente = new Cliente(
-                "cli-1", new Ruc("20123456789"), new RazonSocial("Acme S.A."),
-                new CondicionDePago(ModalidadDePago.CREDITO, 30),
-                new EstadoCrediticio(SituacionCrediticia.SUSPENDIDO, LocalDate.now(reloj))
-        );
+                modalidad, plazo);
+    }
 
+    private Cliente clienteCon(SituacionCrediticia copiaLocal) {
+        return new Cliente(
+                "cli-1", new Ruc("20123456789"), new RazonSocial("Acme S.A."),
+                new CondicionDePago(ModalidadDePago.CONTADO, 0),
+                new EstadoCrediticio(copiaLocal, LocalDate.now(reloj).minusMonths(2)));
+    }
+
+    /**
+     * ORD-02, y ademas de donde sale el dato. La copia local dice VIGENTE y Cobranza dice SUSPENDIDO:
+     * si la orden se creara, la decision se estaria tomando con la cache y el contrato 11 no serviria
+     * de nada. Antes de S5 esta prueba pasaba mirando la copia local, que es lo mismo que no mirar.
+     */
+    @Test
+    void crear_condicionCreditoParaClienteSuspendido_lanzaExcepcion() {
+        when(clienteRepository.findById("cli-1"))
+                .thenReturn(Optional.of(clienteCon(SituacionCrediticia.VIGENTE)));
+        when(contratoRepository.findById("ctm-1")).thenReturn(Optional.of(contratoConTarifaPactada()));
+        when(cobranza.estadoCrediticioDe("cli-1")).thenReturn(
+                new EstadoCrediticio(SituacionCrediticia.SUSPENDIDO, LocalDate.now(reloj)));
+
+        assertThrows(CondicionDePagoInconsistenteException.class,
+                () -> servicio.crear(peticion(ModalidadDePago.CREDITO, 30)));
+    }
+
+    /**
+     * Contrato 11, comportamiento ante indisponibilidad: si Cobranza no responde, la orden a credito se
+     * rechaza. El gateway lanza y el servicio no la atrapa, asi que sube hasta el 503 del manejador.
+     * No se asume VIGENTE, que es justo lo que la copia local invitaba a hacer.
+     */
+    @Test
+    void crear_aCredito_conCobranzaCaida_rechazaLaOrden() {
+        when(clienteRepository.findById("cli-1"))
+                .thenReturn(Optional.of(clienteCon(SituacionCrediticia.VIGENTE)));
+        when(contratoRepository.findById("ctm-1")).thenReturn(Optional.of(contratoConTarifaPactada()));
+        when(cobranza.estadoCrediticioDe("cli-1"))
+                .thenThrow(new CobranzaIntegrationException("Cobranza no respondio"));
+
+        assertThrows(CobranzaIntegrationException.class,
+                () -> servicio.crear(peticion(ModalidadDePago.CREDITO, 30)));
+        verify(ordenRepository, never()).save(any(OrdenDeServicio.class));
+    }
+
+    /**
+     * La otra mitad de CLI-01, y la que convierte «al contado si procede» en algo comprobado. Cobranza
+     * esta caida y la orden al contado se crea igual, porque no se le llega a preguntar.
+     */
+    @Test
+    void crear_alContado_conCobranzaCaida_procedeIgual() {
+        when(clienteRepository.findById("cli-1"))
+                .thenReturn(Optional.of(clienteCon(SituacionCrediticia.SUSPENDIDO)));
+        when(contratoRepository.findById("ctm-1")).thenReturn(Optional.of(contratoConTarifaPactada()));
+        when(ordenRepository.save(any(OrdenDeServicio.class))).thenAnswer(i -> i.getArgument(0));
+        when(cobranza.estadoCrediticioDe(any()))
+                .thenThrow(new CobranzaIntegrationException("Cobranza no respondio"));
+
+        OrdenDeServicioResponse respuesta = servicio.crear(peticion(ModalidadDePago.CONTADO, 0));
+
+        assertEquals("BORRADOR", respuesta.estado());
+        verify(cobranza, never()).estadoCrediticioDe(any());
+    }
+
+    /** La copia local converge con lo que Cobranza acaba de responder. */
+    @Test
+    void crear_aCredito_refrescaLaCopiaLocalDelEstadoCrediticio() {
+        Cliente cliente = clienteCon(SituacionCrediticia.SUSPENDIDO);
         when(clienteRepository.findById("cli-1")).thenReturn(Optional.of(cliente));
         when(contratoRepository.findById("ctm-1")).thenReturn(Optional.of(contratoConTarifaPactada()));
+        when(ordenRepository.save(any(OrdenDeServicio.class))).thenAnswer(i -> i.getArgument(0));
+        when(cobranza.estadoCrediticioDe("cli-1")).thenReturn(
+                new EstadoCrediticio(SituacionCrediticia.VIGENTE, LocalDate.now(reloj)));
 
-        assertThrows(CondicionDePagoInconsistenteException.class, () -> servicio.crear(request));
+        servicio.crear(peticion(ModalidadDePago.CREDITO, 30));
+
+        assertEquals(SituacionCrediticia.VIGENTE, cliente.estadoCrediticio().situacion());
+        verify(clienteRepository).save(cliente);
     }
 
     /**

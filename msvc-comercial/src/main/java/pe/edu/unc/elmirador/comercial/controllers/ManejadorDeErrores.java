@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import pe.edu.unc.elmirador.comercial.exceptions.CobranzaIntegrationException;
 import pe.edu.unc.elmirador.comercial.exceptions.ConflictoDeRecursoException;
 import pe.edu.unc.elmirador.comercial.exceptions.CotizacionVencidaException;
 import pe.edu.unc.elmirador.comercial.exceptions.DominioComercialException;
@@ -100,6 +101,22 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DominioComercialException.class)
     public ProblemDetail invarianteViolada(DominioComercialException ex) {
         return problema(HttpStatus.UNPROCESSABLE_ENTITY, "invariante-violada", ex.getMessage());
+    }
+
+    /**
+     * Contrato 11. Si Cobranza no responde, Comercial rechaza la orden a credito con {@code 503} y lo
+     * dice: el estado crediticio no se pudo verificar. No se asume {@code VIGENTE}.
+     *
+     * <p>Es {@code 503} y no {@code 500} porque el defecto no esta en esta peticion ni en este modulo,
+     * y la misma peticion puede funcionar dentro de un minuto. Y no es {@code 422} porque el cuerpo
+     * estaba bien: es «ahora no», no «asi no».
+     */
+    @ExceptionHandler(CobranzaIntegrationException.class)
+    public ProblemDetail cobranzaNoDisponible(CobranzaIntegrationException ex) {
+        return problema(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "estado-crediticio-no-verificable",
+                ex.getMessage());
     }
 
     private ProblemDetail problema(HttpStatus estado, String slug, String detalle) {

@@ -385,7 +385,7 @@ Respuesta `200`:
 {
   "clienteId": "CLI-0007",
   "situacion": "SUSPENDIDO",
-  "fechaDeCambio": "2026-08-28T09:00:00-05:00",
+  "fechaDeCambio": "2026-08-28",
   "diasDeAtrasoMaximo": 43,
   "cuentasVencidas": 2,
   "deudaPorMoneda": [ { "monto": "5420.30", "moneda": "PEN" }, { "monto": "800.00", "moneda": "USD" } ]
@@ -401,6 +401,14 @@ exige la moneda justamente para que nadie la adivine, así que el contrato lleva
 moneda con deuda viva, y la lista va vacía cuando el cliente no debe nada.
 
 Lo que sostiene CLI-01 y ORD-02 es `situacion`; la deuda es informativa.
+
+**Segunda corrección: `fechaDeCambio` es una fecha, no una marca de tiempo.** El contrato la escribía
+como `2026-08-28T09:00:00-05:00` y los dos contextos la modelan como `LocalDate`, así que el proveedor
+llevaba desde `S4` publicando `2026-08-28` y nadie lo había mirado: el ejemplo del documento no estaba
+comprobado contra nada. Manda el código, y no por costumbre — una suspensión de crédito se decide un
+día, no a una hora, y `CuentaCorrienteDelCliente` compara por día. La regla 6 pide offset para los
+instantes; una fecha sin hora es ISO 8601 igual. Lo destapó `CobranzaClientStubTest`, que decodifica el
+ejemplo de este documento con el cliente real: es exactamente para lo que existe.
 
 **Comportamiento ante indisponibilidad — decisión explícita:** si Cobranza no responde, Comercial **rechaza**
 la orden a crédito con `503` y un `problem+json` que indica que el estado crediticio no pudo verificarse. No
