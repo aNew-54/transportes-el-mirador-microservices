@@ -1,13 +1,20 @@
 package pe.edu.unc.elmirador.comercial.models.vo;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.math.BigDecimal;
 
 /**
  * Objeto de valor inmutable que representa los datos cuantitativos y cualitativos de la carga.
  */
 @Embeddable
-public record Carga(int pesoKg, BigDecimal volumenM3, TipoDeCarga tipo) {
+public record Carga(
+    int pesoKg,
+    BigDecimal volumenM3,
+    @Enumerated(EnumType.STRING)
+    TipoDeCarga tipo
+) {
 
     public Carga {
         if (pesoKg <= 0) {

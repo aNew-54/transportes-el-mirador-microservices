@@ -1,6 +1,9 @@
 package pe.edu.unc.elmirador.comercial.models.vo;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.math.BigDecimal;
 
 /**
@@ -8,7 +11,14 @@ import java.math.BigDecimal;
  * El porcentaje debe ubicarse en el intervalo (0, 100].
  */
 @Embeddable
-public record Recargo(TipoDeRecargo tipo, BigDecimal porcentaje) {
+public record Recargo(
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo", length = 30, nullable = false)
+    TipoDeRecargo tipo,
+
+    @Column(name = "porcentaje", precision = 5, scale = 2, nullable = false)
+    BigDecimal porcentaje
+) {
 
     public Recargo {
         if (tipo == null) {

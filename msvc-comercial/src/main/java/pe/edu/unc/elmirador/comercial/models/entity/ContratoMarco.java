@@ -1,6 +1,20 @@
 package pe.edu.unc.elmirador.comercial.models.entity;
 
+import jakarta.persistence.AssociationOverride;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import pe.edu.unc.elmirador.comercial.models.vo.ClausulaDeConsolidacion;
@@ -14,14 +28,46 @@ import pe.edu.unc.elmirador.comercial.models.vo.TipoDeUnidad;
  * Raiz del agregado ContratoMarco.
  * Sostiene las invariantes CTM-01 y CTM-02.
  */
+@Entity
+@Table(name = "contratos_marco")
 public class ContratoMarco {
 
-    private final String id;
-    private final String clienteId;
-    private final PeriodoDeVigencia vigencia;
-    private final TiempoLibre tiempoLibre;
-    private final ClausulaDeConsolidacion clausulaDeConsolidacion;
-    private final List<TarifaPactada> tarifasPactadas;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "cliente_id", length = 40, nullable = false)
+    private String clienteId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "desde", column = @Column(name = "vigencia_desde", nullable = false)),
+        @AttributeOverride(name = "hasta", column = @Column(name = "vigencia_hasta", nullable = false))
+    })
+    private PeriodoDeVigencia vigencia;
+
+    @Embedded
+    @AttributeOverride(name = "horas", column = @Column(name = "tiempo_libre_horas", nullable = false))
+    private TiempoLibre tiempoLibre;
+
+    @Embedded
+    @AttributeOverride(name = "permitida", column = @Column(name = "consolidacion_permitida", nullable = false))
+    @AssociationOverride(
+        name = "restricciones",
+        joinTable = @JoinTable(
+            name = "contrato_marco_restricciones",
+            joinColumns = @JoinColumn(name = "contrato_marco_id", nullable = false)
+        )
+    )
+    private ClausulaDeConsolidacion clausulaDeConsolidacion;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "contrato_marco_id", nullable = false)
+    private List<TarifaPactada> tarifasPactadas = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected ContratoMarco() {
+    }
 
     public ContratoMarco(
         String id,
@@ -54,7 +100,7 @@ public class ContratoMarco {
         this.vigencia = vigencia;
         this.tiempoLibre = tiempoLibre;
         this.clausulaDeConsolidacion = clausulaDeConsolidacion;
-        this.tarifasPactadas = List.copyOf(tarifasPactadas);
+        this.tarifasPactadas.addAll(tarifasPactadas);
     }
 
     public String id() {
