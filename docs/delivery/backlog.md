@@ -83,7 +83,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
 | `S4-api-interna` | contratos 1, 7 y 9 | **done** |
-| `S5-clientes` | contrato 11 → Cobranza | pendiente |
+| `S5-clientes` | contrato 11 → Cobranza | **done** |
 
 ---
 
@@ -151,11 +151,11 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total | |
 |---|---:|---:|---|
-| Slices | 28 | 32 | 88 % |
+| Slices | 29 | 32 | 91 % |
 | Invariantes cubiertas | **48** | 48 | 100 % |
 | Contratos con proveedor listo | **11** | 11 | 100 % |
-| Contratos con cliente Feign | 0 | 11 | 0 % |
-| Servicios terminados | 3 | 7 | 43 % |
+| Contratos con cliente Feign | 1 | 11 | 9 % |
+| Servicios terminados | 4 | 7 | 57 % |
 
 Un servicio esta terminado cuando no le queda ningun slice. Unidades, Conductores y Cobranza lo estan:
 la regla 10 no les da flecha saliente, asi que su ultimo slice es `S4` y no tienen `S5` que esperar.
@@ -168,6 +168,7 @@ Los cuatro slices que faltan son todos `S5` y suman los once clientes. No estan 
 | `msvc-ejecucion` | 4, 5, 6, 7, 8 | 5 |
 | `msvc-programacion` | 1, 2, 3 | 3 |
 | `msvc-facturacion` | 9, 10 | 2 |
-| `msvc-comercial` | 11 | 1 |
+| `msvc-comercial` | 11 | ~~1~~ **done** |
 
-Medido en clientes y no en slices, `S5` esta al 0 % y es una cuarta parte larga del trabajo de integracion.
+Medido en clientes y no en slices, `S5` esta al 9 %: Comercial ya lo tiene y quedan los ocho de
+Ejecucion, Programacion y Facturacion.
