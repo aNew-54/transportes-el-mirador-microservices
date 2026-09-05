@@ -388,6 +388,18 @@ Idempotency-Key: <facturaId>
 Sólo las facturas a crédito entran a la cartera. Las facturas al contado se cobran contra entrega y se
 registran ya canceladas.
 
+**Corrección: `detraccion.cuentaBancaria` es condicional, no obligatoria.** El proveedor la exigía con
+`@NotBlank`, y la detracción sólo aplica por encima de un umbral: por debajo no hay ni monto detraído ni
+cuenta donde depositarlo. Facturación emite esas facturas sin problema —su propio DTO deja la cuenta
+opcional—, así que los dos contextos no estaban de acuerdo sobre si la detracción es obligatoria, y
+**ninguna factura sin detracción podía entrar a la cartera**. El ejemplo de arriba es un caso *con*
+detracción, no una exigencia. La regla que sí es real —si se detrajo dinero, el contrato tiene que decir
+a qué cuenta fue— vive ahora como método del DTO, porque una anotación no sabe expresar una condición.
+
+| Estado | Cuándo |
+|---|---|
+| `422` | `detraccion.monto > 0` sin `cuentaBancaria` |
+
 ---
 
 ## 11. Comercial → Cobranza · estado crediticio
