@@ -24,7 +24,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import pe.edu.unc.elmirador.unidades.dto.request.CambiarEstadoRequest;
+import pe.edu.unc.elmirador.unidades.dto.request.MotivoRequest;
 import pe.edu.unc.elmirador.unidades.dto.request.RegistrarUnidadRequest;
 import pe.edu.unc.elmirador.unidades.dto.response.UnidadResponse;
 import pe.edu.unc.elmirador.unidades.exceptions.ConflictoDeRecursoException;
@@ -144,27 +144,56 @@ class UnidadControllerTest {
     }
 
     @Test
-    @DisplayName("POST /unidades/{id}/estado cambia el estado a INOPERATIVA")
-    void cambiarEstado200() throws Exception {
-        when(servicio.cambiarEstado(eq("u-1"), any())).thenReturn(respuestaDeEjemplo());
+    @DisplayName("POST /unidades/{id}/inoperativa devuelve 200")
+    void marcarInoperativa200() throws Exception {
+        when(servicio.marcarInoperativa(eq("u-1"), any())).thenReturn(respuestaDeEjemplo());
 
-        mockMvc.perform(post("/api/v1/unidades/u-1/estado")
+        mockMvc.perform(post("/api/v1/unidades/u-1/inoperativa")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(new CambiarEstadoRequest(SituacionOperativa.INOPERATIVA, "Falla de motor"))))
+                        .content(json.writeValueAsString(new MotivoRequest("Falla de motor"))))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("POST /unidades/{id}/estado lanza ReactivacionInvalidaException y devuelve 409")
-    void cambiarEstado409() throws Exception {
-        when(servicio.cambiarEstado(eq("u-1"), any()))
-                .thenThrow(new pe.edu.unc.elmirador.unidades.exceptions.ReactivacionInvalidaException("No se puede reactivar"));
+    @DisplayName("POST /unidades/{id}/inoperativa sin motivo devuelve 400")
+    void marcarInoperativa400() throws Exception {
+        mockMvc.perform(post("/api/v1/unidades/u-1/inoperativa")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.motivo").exists());
+    }
 
-        mockMvc.perform(post("/api/v1/unidades/u-1/estado")
+    @Test
+    @DisplayName("POST /unidades/{id}/taller devuelve 200")
+    void marcarEnTaller200() throws Exception {
+        when(servicio.marcarEnTaller(eq("u-1"), any())).thenReturn(respuestaDeEjemplo());
+
+        mockMvc.perform(post("/api/v1/unidades/u-1/taller")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(new CambiarEstadoRequest(SituacionOperativa.OPERATIVA, null))))
+                        .content(json.writeValueAsString(new MotivoRequest("Mantenimiento preventivo"))))
+                .andExpect(status().isOk());
+    }
+
+    /** UNI-01 y UNI-02: con un documento vencido la unidad no se reactiva. Es «ahora no»: 409. */
+    @Test
+    @DisplayName("POST /unidades/{id}/reactivar con un documento vencido devuelve 409")
+    void reactivar409() throws Exception {
+        when(servicio.reactivar("u-1"))
+                .thenThrow(new pe.edu.unc.elmirador.unidades.exceptions.ReactivacionInvalidaException(
+                        "No se puede reactivar: el SOAT esta vencido"));
+
+        mockMvc.perform(post("/api/v1/unidades/u-1/reactivar"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.type").value("https://elmirador.unc.edu.pe/problems/reactivacion-invalida"));
+    }
+
+    @Test
+    @DisplayName("POST /unidades/{id}/reactivar devuelve 200")
+    void reactivar200() throws Exception {
+        when(servicio.reactivar("u-1")).thenReturn(respuestaDeEjemplo());
+
+        mockMvc.perform(post("/api/v1/unidades/u-1/reactivar"))
+                .andExpect(status().isOk());
     }
 
     @Test

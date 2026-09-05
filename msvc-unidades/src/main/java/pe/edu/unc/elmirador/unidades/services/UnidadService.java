@@ -9,13 +9,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import pe.edu.unc.elmirador.unidades.dto.request.ActualizarKilometrajeRequest;
-import pe.edu.unc.elmirador.unidades.dto.request.CambiarEstadoRequest;
+import pe.edu.unc.elmirador.unidades.dto.request.MotivoRequest;
 import pe.edu.unc.elmirador.unidades.dto.request.RegistrarDocumentoRequest;
-import pe.edu.unc.elmirador.unidades.dto.request.RegistrarFallaRequest;
 import pe.edu.unc.elmirador.unidades.dto.request.RegistrarUnidadRequest;
 import pe.edu.unc.elmirador.unidades.dto.response.AlertaResponse;
-import pe.edu.unc.elmirador.unidades.dto.response.ElegibilidadResponse;
 import pe.edu.unc.elmirador.unidades.dto.response.UnidadResponse;
 import pe.edu.unc.elmirador.unidades.exceptions.ConflictoDeRecursoException;
 import pe.edu.unc.elmirador.unidades.exceptions.RecursoNoEncontradoException;
@@ -85,40 +82,34 @@ public class UnidadService {
         return UnidadMapper.aResponse(unidadRepository.save(unidad));
     }
 
+    /**
+     * Tres operaciones, tres metodos. Un unico endpoint con un campo {@code situacion} obligaria a
+     * despachar sobre ese campo dentro del servicio, y un {@code if} de negocio en un servicio de
+     * aplicacion es un defecto: la regla de a que estado se puede pasar vive en el agregado.
+     */
     @Transactional
-    public UnidadResponse cambiarEstado(String id, CambiarEstadoRequest request) {
+    public UnidadResponse marcarInoperativa(String id, MotivoRequest peticion) {
         Unidad unidad = buscarUnidad(id);
-        if (request.situacion() == SituacionOperativa.INOPERATIVA) {
-            unidad.marcarInoperativa(request.motivo());
-        } else if (request.situacion() == SituacionOperativa.EN_TALLER) {
-            unidad.marcarEnTaller(request.motivo());
-        } else if (request.situacion() == SituacionOperativa.OPERATIVA) {
-            unidad.reactivar(LocalDate.now(reloj));
-        }
+        unidad.marcarInoperativa(peticion.motivo());
         return UnidadMapper.aResponse(unidadRepository.save(unidad));
     }
 
-    @Transactional(readOnly = true)
-    public ElegibilidadResponse verificarElegibilidad(String id, int pesoKg, BigDecimal volumenM3, TipoDeCarga carga) {
+    @Transactional
+    public UnidadResponse marcarEnTaller(String id, MotivoRequest peticion) {
         Unidad unidad = buscarUnidad(id);
-        List<String> motivos = unidad.motivosDeNoElegibilidad(LocalDate.now(reloj), pesoKg, volumenM3, carga);
-        return new ElegibilidadResponse(motivos.isEmpty(), motivos);
+        unidad.marcarEnTaller(peticion.motivo());
+        return UnidadMapper.aResponse(unidadRepository.save(unidad));
     }
 
+    /**
+     * UNI-01 y UNI-02 viven dentro de {@code reactivar}: con un documento vencido o el mantenimiento
+     * preventivo pasado, el agregado se niega y el manejador lo traduce a {@code 409}.
+     */
     @Transactional
-    public void actualizarKilometraje(String id, ActualizarKilometrajeRequest request) {
+    public UnidadResponse reactivar(String id) {
         Unidad unidad = buscarUnidad(id);
-        unidad.actualizarKilometraje(new Kilometraje(request.kilometraje()));
-        unidadRepository.save(unidad);
-    }
-
-    @Transactional
-    public void registrarFalla(String id, RegistrarFallaRequest request) {
-        Unidad unidad = buscarUnidad(id);
-        if (request.dejaInoperativa()) {
-            unidad.marcarInoperativa(request.motivo());
-            unidadRepository.save(unidad);
-        }
+        unidad.reactivar(LocalDate.now(reloj));
+        return UnidadMapper.aResponse(unidadRepository.save(unidad));
     }
 
     @Transactional(readOnly = true)

@@ -20,7 +20,7 @@ public final class OrdenDeMantenimientoMapper {
         return new OrdenDeMantenimientoResponse(
                 orden.getId(),
                 orden.getUnidadId(),
-                orden.getTipoMantenimiento(),
+                orden.getTipo(),
                 orden.getKmAtencion().valor(),
                 orden.getEstado(),
                 orden.getFechaApertura(),

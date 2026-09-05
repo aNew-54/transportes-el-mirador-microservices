@@ -13,12 +13,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
-import pe.edu.unc.elmirador.unidades.dto.request.ActualizarKilometrajeRequest;
-import pe.edu.unc.elmirador.unidades.dto.request.CambiarEstadoRequest;
+import pe.edu.unc.elmirador.unidades.dto.request.MotivoRequest;
 import pe.edu.unc.elmirador.unidades.dto.request.RegistrarDocumentoRequest;
-import pe.edu.unc.elmirador.unidades.dto.request.RegistrarFallaRequest;
 import pe.edu.unc.elmirador.unidades.dto.request.RegistrarUnidadRequest;
-import pe.edu.unc.elmirador.unidades.dto.response.ElegibilidadResponse;
 import pe.edu.unc.elmirador.unidades.dto.response.UnidadResponse;
 import pe.edu.unc.elmirador.unidades.models.vo.SituacionOperativa;
 import pe.edu.unc.elmirador.unidades.models.vo.TipoDeCarga;
@@ -57,35 +54,23 @@ public class UnidadController {
         return ResponseEntity.created(URI.create("/api/v1/unidades/" + id + "/documentos")).body(actualizada);
     }
 
-    @PostMapping("/api/v1/unidades/{id}/estado")
-    public UnidadResponse cambiarEstado(
+    @PostMapping("/api/v1/unidades/{id}/inoperativa")
+    public UnidadResponse marcarInoperativa(
             @PathVariable String id,
-            @Valid @RequestBody CambiarEstadoRequest peticion) {
-        return servicio.cambiarEstado(id, peticion);
+            @Valid @RequestBody MotivoRequest peticion) {
+        return servicio.marcarInoperativa(id, peticion);
     }
 
-    // INTERNAL API
-
-    @GetMapping("/internal/v1/unidades/{id}/elegibilidad")
-    public ElegibilidadResponse elegibilidad(
+    @PostMapping("/api/v1/unidades/{id}/taller")
+    public UnidadResponse marcarEnTaller(
             @PathVariable String id,
-            @RequestParam int pesoKg,
-            @RequestParam java.math.BigDecimal volumenM3,
-            @RequestParam(required = false) TipoDeCarga carga) {
-        return servicio.verificarElegibilidad(id, pesoKg, volumenM3, carga);
+            @Valid @RequestBody MotivoRequest peticion) {
+        return servicio.marcarEnTaller(id, peticion);
     }
 
-    @PostMapping("/internal/v1/unidades/{id}/kilometraje")
-    public void actualizarKilometraje(
-            @PathVariable String id,
-            @Valid @RequestBody ActualizarKilometrajeRequest peticion) {
-        servicio.actualizarKilometraje(id, peticion);
+    @PostMapping("/api/v1/unidades/{id}/reactivar")
+    public UnidadResponse reactivar(@PathVariable String id) {
+        return servicio.reactivar(id);
     }
 
-    @PostMapping("/internal/v1/unidades/{id}/fallas")
-    public void registrarFalla(
-            @PathVariable String id,
-            @Valid @RequestBody RegistrarFallaRequest peticion) {
-        servicio.registrarFalla(id, peticion);
-    }
 }
