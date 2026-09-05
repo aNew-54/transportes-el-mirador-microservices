@@ -20,6 +20,7 @@ import pe.edu.unc.elmirador.comercial.models.vo.Carga;
 import pe.edu.unc.elmirador.comercial.models.vo.CondicionDePago;
 import pe.edu.unc.elmirador.comercial.models.vo.Dinero;
 import pe.edu.unc.elmirador.comercial.models.vo.Ruta;
+import pe.edu.unc.elmirador.comercial.models.vo.VentanaDeServicio;
 import pe.edu.unc.elmirador.comercial.models.vo.Tarifa;
 import pe.edu.unc.elmirador.comercial.repositories.ClienteRepository;
 import pe.edu.unc.elmirador.comercial.repositories.ContratoMarcoRepository;
@@ -68,11 +69,15 @@ public class OrdenDeServicioService {
                 UUID.randomUUID().toString(),
                 cliente.id(),
                 contrato.id(),
-                new Carga(peticion.cargaPesoKg(), peticion.cargaVolumenM3(), peticion.cargaTipo()),
+                new Carga(peticion.cargaPesoKg(), peticion.cargaVolumenM3(), peticion.cargaTipo(),
+                        peticion.cargaEmbalaje(), peticion.cargaNaturaleza()),
                 ruta,
                 new Tarifa(precioPactado),
                 new CondicionDePago(peticion.modalidadDePago(), peticion.plazoEnDias()),
-                cliente.estadoCrediticio()
+                cliente.estadoCrediticio(),
+                new VentanaDeServicio(peticion.ventanaInicio(), peticion.ventanaFin()),
+                peticion.tipoUnidad(),
+                peticion.rutaDistanciaKm()
         );
 
         return OrdenDeServicioMapper.aRespuesta(ordenRepository.save(orden));

@@ -1,6 +1,7 @@
 package pe.edu.unc.elmirador.comercial.dto.request;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -26,6 +27,14 @@ public record CrearOrdenRequest(
         @NotBlank String rutaOrigen,
         @NotBlank String rutaDestino,
         @NotBlank String rutaCorredor,
+        @NotNull String cargaEmbalaje,
+        String cargaNaturaleza,
+        Integer rutaDistanciaKm,
+
+        /** Franja en la que el cliente pide el servicio. Sin ella Programacion no puede ver VIA-03. */
+        @NotNull OffsetDateTime ventanaInicio,
+        @NotNull OffsetDateTime ventanaFin,
+
         @NotNull ModalidadDePago modalidadDePago,
         @Min(0) int plazoEnDias
 ) {

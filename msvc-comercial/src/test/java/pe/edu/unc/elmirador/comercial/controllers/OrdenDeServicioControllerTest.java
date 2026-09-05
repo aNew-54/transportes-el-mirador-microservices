@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,11 @@ import pe.edu.unc.elmirador.comercial.services.OrdenDeServicioService;
 @WebMvcTest(OrdenDeServicioController.class)
 class OrdenDeServicioControllerTest {
 
+    private static final OffsetDateTime VENTANA_INICIO =
+            OffsetDateTime.parse("2026-09-10T06:00:00-05:00");
+    private static final OffsetDateTime VENTANA_FIN =
+            OffsetDateTime.parse("2026-09-10T18:00:00-05:00");
+
     @Autowired
     private MockMvc mvc;
 
@@ -47,7 +53,10 @@ class OrdenDeServicioControllerTest {
     void crear_ordenValida_devuelve201() throws Exception {
         CrearOrdenRequest request = new CrearOrdenRequest(
                 "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
-                "LIMA", "PIURA", "NORTE", ModalidadDePago.CONTADO, 0);
+                "LIMA", "PIURA", "NORTE",
+                "PALLETS", "ALIMENTARIA", 296,
+                VENTANA_INICIO, VENTANA_FIN,
+                ModalidadDePago.CONTADO, 0);
 
         OrdenDeServicioResponse response = new OrdenDeServicioResponse(
                 "ord-1", "cli-1", null, 1000, new BigDecimal("10.00"), "GENERAL",
@@ -70,7 +79,10 @@ class OrdenDeServicioControllerTest {
     void crear_condicionDePagoInconsistente_devuelve422() throws Exception {
         CrearOrdenRequest request = new CrearOrdenRequest(
                 "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
-                "LIMA", "PIURA", "NORTE", ModalidadDePago.CREDITO, 30);
+                "LIMA", "PIURA", "NORTE",
+                "PALLETS", "ALIMENTARIA", 296,
+                VENTANA_INICIO, VENTANA_FIN,
+                ModalidadDePago.CREDITO, 30);
 
         when(servicio.crear(any())).thenThrow(new CondicionDePagoInconsistenteException("Cliente suspendido"));
 

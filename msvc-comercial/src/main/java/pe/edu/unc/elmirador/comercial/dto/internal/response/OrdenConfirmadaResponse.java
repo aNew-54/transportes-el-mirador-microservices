@@ -3,7 +3,11 @@ package pe.edu.unc.elmirador.comercial.dto.internal.response;
 import java.util.List;
 
 /**
- * Contrato 1: Orden Confirmada
+ * Contrato 1 · Programacion → Comercial. Sostiene VIA-04.
+ *
+ * <p>{@code permiteConsolidacion} y {@code restriccionesConsolidacion} salen de la clausula del
+ * contrato marco, ya resuelta por Comercial: Programacion consume la decision y no reinterpreta el
+ * contrato marco.
  */
 public record OrdenConfirmadaResponse(
         String ordenId,
@@ -30,8 +34,9 @@ public record OrdenConfirmadaResponse(
             Integer distanciaKm
     ) {}
 
+    /** Instantes ISO 8601 con offset, como pide la regla 2 de los contratos. */
     public record VentanaResponse(
-            String inicio,
-            String fin
+            java.time.OffsetDateTime inicio,
+            java.time.OffsetDateTime fin
     ) {}
 }

@@ -7,6 +7,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
+import pe.edu.unc.elmirador.comercial.dto.internal.request.ImporteRequest;
+import pe.edu.unc.elmirador.comercial.models.vo.DecisionDeDiferencia;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -96,7 +99,10 @@ class ComercialInternalServiceTest {
         String clave = "k-diff";
         DiferenciaDeCargaRequest pet = new DiferenciaDeCargaRequest(
                 "VIA-1", new DiferenciaDeCargaRequest.CargaInfo(1, BigDecimal.ONE, "s"),
-                new DiferenciaDeCargaRequest.CargaInfo(2, BigDecimal.ONE, "s"), "ACEPTADA", OffsetDateTime.now());
+                new DiferenciaDeCargaRequest.CargaInfo(2, BigDecimal.ONE, "s"),
+                DecisionDeDiferencia.ACEPTADA_CON_REAJUSTE,
+                new ImporteRequest(new BigDecimal("320.00"), "PEN"),
+                OffsetDateTime.now());
 
         var res1 = servicio.reportarDiferencia("ORD-1", clave, pet);
         assertThat(res1.repetida()).isFalse();

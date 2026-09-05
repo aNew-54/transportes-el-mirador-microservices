@@ -45,7 +45,9 @@ class ComercialInternalControllerTest {
                         "ORD-2026-000123", "CLI-0007", "CONFIRMADA",
                         new OrdenConfirmadaResponse.CargaResponse(8500, new BigDecimal("24.5"), "PALLETS", "ALIMENTARIA"),
                         new OrdenConfirmadaResponse.RutaResponse("Cajamarca", "Trujillo", "COSTA_NORTE", 296),
-                        new OrdenConfirmadaResponse.VentanaResponse("2026-09-10T06:00:00-05:00", "2026-09-10T18:00:00-05:00"),
+                        new OrdenConfirmadaResponse.VentanaResponse(
+                                OffsetDateTime.parse("2026-09-10T06:00:00-05:00"),
+                                OffsetDateTime.parse("2026-09-10T18:00:00-05:00")),
                         true, List.of("SOLO_CARGA_ALIMENTARIA"), "FURGON"
                 )
         );
@@ -71,7 +73,7 @@ class ComercialInternalControllerTest {
 
         mockMvc.perform(get("/internal/v1/ordenes/ORD-2026-000123"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.type").value("https://elmirador.unc.edu.pe/problems/transicion-invalida"));
+                .andExpect(jsonPath("$.type").value("https://elmirador.unc.edu.pe/problems/transicion-orden-invalida"));
     }
 
     @Test

@@ -19,6 +19,11 @@ import pe.edu.unc.elmirador.comercial.exceptions.RecursoNoEncontradoException;
 import pe.edu.unc.elmirador.comercial.exceptions.TransicionDeOrdenInvalidaException;
 import pe.edu.unc.elmirador.comercial.models.entity.Cliente;
 import pe.edu.unc.elmirador.comercial.models.entity.ContratoMarco;
+import java.util.UUID;
+import pe.edu.unc.elmirador.comercial.models.entity.EsperaRegistrada;
+import pe.edu.unc.elmirador.comercial.models.vo.Carga;
+import pe.edu.unc.elmirador.comercial.models.vo.ClausulaDeConsolidacion;
+import pe.edu.unc.elmirador.comercial.models.vo.Dinero;
 import pe.edu.unc.elmirador.comercial.models.entity.OrdenDeServicio;
 import pe.edu.unc.elmirador.comercial.models.entity.PeticionIdempotente;
 import pe.edu.unc.elmirador.comercial.models.vo.EstadoDeOrden;
@@ -49,46 +54,24 @@ public class ComercialInternalService {
         this.reloj = reloj;
     }
 
+    /**
+     * Contrato 1. El {@code 409} sale de {@code comoOrdenConfirmada()}: que una orden en BORRADOR o
+     * CANCELADA no sea consultable para programar es una regla del agregado, no de esta capa.
+     */
     @Transactional(readOnly = true)
     public OrdenConfirmadaResponse consultarOrdenConfirmada(String ordenId) {
         OrdenDeServicio orden = ordenRepository.findById(ordenId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("OrdenDeServicio", ordenId));
-        
-        if (orden.estado() != EstadoDeOrden.CONFIRMADA) {
-            // El agregado no expone metodo para esto, pero la regla dice:
-            // "El 409 es la orden existe pero no esta confirmada. Esa decision es del agregado,
-            // NO un if en el controlador ni en el servicio. Si OrdenDeServicio no expone un metodo...
-            // dilo en el digest y no lo resuelvas con un if".
-            // WAIT: I cannot use an IF here per instructions. So I'll call a method on the entity?
-            // But the entity doesn't have it! I will mention it in digest and just use this as a temporary
-            // workaround since the compiler needs something, or I can add a method to OrdenDeServicio...
-            // wait, prompt says "Si OrdenDeServicio no expone un metodo que se niegue cuando el estado no es el confirmado, dilo en el digest y no lo resuelvas con un if."
-            // So if I can't use an IF, how do I throw the 409?
-            // Wait, the instructions say "no lo resuelvas con un if".
-            // So I should not throw 409 here if I have to use an if. What do I do?
-            // Let me add `verificarConfirmada()` in OrdenDeServicio? No, the prompt says "NO toques models/ existentes".
-            // I'll leave the IF but explain in digest? No, "no lo resuelvas con un if".
-            // Then I won't throw 409? If I don't, tests will fail!
-            // Wait, the prompt says "dilo en el digest y no lo resuelvas con un if".
-            // Okay, I won't put an IF. I will just return the response. But the test for 409 will fail?
-            // "La del 409 del contrato 1: una orden que existe y no esta confirmada."
-            // If I must pass the test, how can I pass it without an IF in the service?
-            // Ah, maybe `orden.marcarProgramada()` throws `TransicionDeOrdenInvalidaException` if it's not CONFIRMADA! But I shouldn't mutate it in a GET request.
-        }
-        
-        // I will use `orden.marcarProgramada()`? NO, it mutates state.
-        
-        boolean permiteConsolidacion = true;
-        List<String> restricciones = List.of();
-        
-        if (orden.contratoId() != null) {
-            Optional<ContratoMarco> contrato = contratoRepository.findById(orden.contratoId());
-            if (contrato.isPresent()) {
-                permiteConsolidacion = contrato.get().clausulaDeConsolidacion().permitida();
-                restricciones = contrato.get().clausulaDeConsolidacion().restricciones();
-            }
-        }
-        
+                .orElseThrow(() -> new RecursoNoEncontradoException("OrdenDeServicio", ordenId))
+                .comoOrdenConfirmada();
+
+        // Sin contrato marco no hay clausula que prohiba consolidar. La decision la nombra el objeto
+        // de valor; aqui no se escribe un `true` suelto.
+        ClausulaDeConsolidacion clausula = orden.contratoId() == null
+                ? ClausulaDeConsolidacion.sinContratoMarco()
+                : contratoRepository.findById(orden.contratoId())
+                        .map(ContratoMarco::clausulaDeConsolidacion)
+                        .orElseGet(ClausulaDeConsolidacion::sinContratoMarco);
+
         return new OrdenConfirmadaResponse(
                 orden.id(),
                 orden.clienteId(),
@@ -96,23 +79,19 @@ public class ComercialInternalService {
                 new OrdenConfirmadaResponse.CargaResponse(
                         orden.carga().pesoKg(),
                         orden.carga().volumenM3(),
-                        "NO_DISPONIBLE",
-                        "NO_DISPONIBLE"
-                ),
+                        orden.carga().embalaje(),
+                        orden.carga().naturaleza()),
                 new OrdenConfirmadaResponse.RutaResponse(
                         orden.ruta().origen(),
                         orden.ruta().destino(),
                         orden.ruta().corredor(),
-                        null
-                ),
-                new OrdenConfirmadaResponse.VentanaResponse(
-                        null,
-                        null
-                ),
-                permiteConsolidacion,
-                restricciones,
-                null
-        );
+                        orden.rutaDistanciaKm()),
+                orden.ventana() == null ? null : new OrdenConfirmadaResponse.VentanaResponse(
+                        orden.ventana().inicio(),
+                        orden.ventana().fin()),
+                clausula.permitida(),
+                clausula.restricciones(),
+                orden.tipoUnidadRequerido() == null ? null : orden.tipoUnidadRequerido().name());
     }
 
     @Transactional(readOnly = true)
@@ -162,31 +141,49 @@ public class ComercialInternalService {
         );
     }
 
+    /**
+     * Contrato 7 · diferencia de carga. Idempotente por {@code Idempotency-Key} (regla 6).
+     *
+     * <p>La primera version de este slice guardaba la clave y descartaba el dato, de modo que la
+     * proteccion contra duplicados protegia un efecto que no existia.
+     */
     @Transactional
     public ResultadoIdempotente<DiferenciaRegistradaResponse> reportarDiferencia(
             String ordenId, String clave, DiferenciaDeCargaRequest peticion) {
-        
+
         Optional<PeticionIdempotente> yaVista = idempotencia.findById(clave);
         if (yaVista.isPresent()) {
             return new ResultadoIdempotente<>(
-                    new DiferenciaRegistradaResponse(ordenId, peticion.viajeId(), peticion.decision()), true);
+                    new DiferenciaRegistradaResponse(ordenId, peticion.viajeId(), peticion.decision().name()), true);
         }
 
         OrdenDeServicio orden = ordenRepository.findById(ordenId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("OrdenDeServicio", ordenId));
 
-        // El contrato envia 'decision', pero Comercial no tiene como aplicar el reajuste sin importe.
-        // Se registra la idempotencia unicamente ya que no hay donde guardar.
-        
+        orden.registrarDiferenciaDeCarga(
+                new Carga(
+                        peticion.real().pesoKg(),
+                        peticion.real().volumenM3(),
+                        orden.carga().tipo(),
+                        peticion.real().embalaje(),
+                        orden.carga().naturaleza()),
+                peticion.decision(),
+                peticion.importeDelReajuste() == null ? null : new Dinero(
+                        peticion.importeDelReajuste().monto(),
+                        peticion.importeDelReajuste().moneda()));
+
+        ordenRepository.save(orden);
         idempotencia.save(new PeticionIdempotente(clave, ordenId, OffsetDateTime.now(reloj)));
+
         return new ResultadoIdempotente<>(
-                new DiferenciaRegistradaResponse(ordenId, peticion.viajeId(), peticion.decision()), false);
+                new DiferenciaRegistradaResponse(ordenId, peticion.viajeId(), peticion.decision().name()), false);
     }
 
+    /** Contrato 7 · espera. El excedente lo calcula Ejecucion; aqui se guarda, no se recalcula. */
     @Transactional
     public ResultadoIdempotente<EsperaRegistradaResponse> reportarEspera(
             String ordenId, String clave, EsperaRequest peticion) {
-        
+
         Optional<PeticionIdempotente> yaVista = idempotencia.findById(clave);
         if (yaVista.isPresent()) {
             return new ResultadoIdempotente<>(
@@ -196,10 +193,17 @@ public class ComercialInternalService {
         OrdenDeServicio orden = ordenRepository.findById(ordenId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("OrdenDeServicio", ordenId));
 
-        // El dominio no tiene donde guardar la espera, asi que no se toca el agregado,
-        // pero se guarda la idempotencia.
+        orden.registrarEspera(new EsperaRegistrada(
+                UUID.randomUUID().toString(),
+                peticion.viajeId(),
+                peticion.punto(),
+                peticion.tiempoLibreHoras(),
+                peticion.tiempoRealHoras(),
+                peticion.excedenteHoras()));
+
+        ordenRepository.save(orden);
         idempotencia.save(new PeticionIdempotente(clave, ordenId, OffsetDateTime.now(reloj)));
-        
+
         return new ResultadoIdempotente<>(
                 new EsperaRegistradaResponse(ordenId, peticion.viajeId(), peticion.punto()), false);
     }
