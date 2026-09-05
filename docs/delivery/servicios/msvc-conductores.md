@@ -52,12 +52,30 @@ la habilitación **no es un booleano global**.
 |---|---|---|---|
 | `POST` | `/conductores` | Registra un conductor con su licencia | `201` `400` `409` |
 | `GET` | `/conductores/{id}` | Consulta el legajo | `200` `404` |
-| `GET` | `/conductores` | Lista con filtro por estado de habilitación | `200` |
-| `POST` | `/conductores/{id}/licencia` | Renueva la licencia o cambia la categoría | `200` `400` |
-| `POST` | `/conductores/{id}/inducciones` | Registra una inducción para un cliente | `201` `400` |
+| `GET` | `/conductores` | Lista con filtro por situación de habilitación | `200` |
+| `POST` | `/conductores/{id}/licencia` | Renueva la licencia o cambia la categoría | `200` `400` `404` |
+| `POST` | `/conductores/{id}/inducciones` | Registra una inducción para un cliente | `201` `400` `404` |
 | `GET` | `/conductores/{id}/horas` | Consulta el acumulado en la ventana vigente | `200` `404` |
-| `POST` | `/conductores/{id}/descanso` | Registra un descanso y libera horas | `200` `409` |
+| `POST` | `/conductores/{id}/descanso` | Registra un descanso y libera horas | `200` `404` |
+| `POST` | `/conductores/{id}/suspender` | Suspende con motivo obligatorio | `200` `400` `404` |
+| `POST` | `/conductores/{id}/rehabilitar` | Rehabilita tras renovar la licencia | `200` `404` `409` (CON-01) |
 | `GET` | `/alertas` | Licencias e inducciones por vencer | `200` |
+
+Dos correcciones sobre la tabla que cerró `S1`, las dos detectadas al escribir `S3`:
+
+- **Faltaba el `404` en las rutas de subrecurso.** Renovar la licencia de un conductor inexistente no es
+  un `400`. El error estaba en el documento, no en el código.
+- **Faltaban `suspender` y `rehabilitar`.** `Conductor.suspender(motivo)` y `Conductor.rehabilitar(fecha)`
+  existen desde `S1` y ningún endpoint los alcanzaba: métodos de dominio muertos, que es la versión de
+  agregado del defecto D7. `rehabilitar` es además el único camino de `S3` hasta
+  `RehabilitacionInvalidaException`, y por tanto el único que ejercita el `409` del contexto.
+
+Son dos endpoints y no un `POST /estado` con un campo `situacion` porque despachar sobre ese campo
+metería un `if` en el servicio de aplicación. Dos rutas, cero ramas.
+
+El `422` de este contexto no se alcanza desde `S3`: la única invariante que lo produce es CON-02, y las
+horas entran por el contrato 6, que es de `S4`. El comodín del manejador se prueba contra el manejador
+directamente, y se dice en el propio test por qué.
 
 ## API interna `/internal/v1`
 

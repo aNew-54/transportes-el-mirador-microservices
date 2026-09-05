@@ -355,7 +355,234 @@ completo, limpia el contexto de persistencia y lo relee**, y verifica que los ob
 embebido anidado y las entidades hijas sobreviven al viaje de ida y vuelta. Sin el `entityManager.clear()`
 la prueba lee de la caché de primer nivel y no demuestra nada.
 
-## 8. Medición
+## 8. Receta de `S3-api-publica`
+
+`S3` envuelve en HTTP un dominio que ya está terminado y probado. **No añade ni una regla de negocio.**
+Si una regla aparece en esta capa, está en el sitio equivocado: pertenece a un objeto de valor o a un
+agregado, y `S1` la dejó fuera por error.
+
+| Capa | Decide | No decide |
+|---|---|---|
+| `controllers` | Ruta, verbo, código de éxito, forma del cuerpo | Nada de negocio |
+| `services` | Qué se carga, en qué orden, qué transacción | Ninguna regla: las delega al agregado |
+| `models` | Todas las reglas | Nada de HTTP |
+| `ManejadorDeErrores` | Qué código HTTP corresponde a cada fallo | Nada más |
+
+### El servicio de aplicación es una clase concreta
+
+`@Service`, sin interfaz. Una interfaz con una sola implementación añade un archivo y ninguna costura:
+la costura que importa en las pruebas es el repositorio, y `@WebMvcTest` sustituye el servicio con
+`@MockitoBean` sea o no una interfaz. Inyección por constructor, campos `final`.
+
+`@Transactional` en los métodos que escriben, `@Transactional(readOnly = true)` en los que leen.
+La transacción la abre el servicio, nunca el controlador ni el agregado.
+
+**Un `if` de negocio dentro de un servicio es un defecto** (regla de `CLAUDE.md`). Se admiten exactamente
+dos comprobaciones, y ninguna es de negocio:
+
+```java
+Conductor conductor = repositorio.findById(id)
+        .orElseThrow(() -> new RecursoNoEncontradoException("Conductor", id));   // existencia
+
+if (repositorio.findByNumeroDeLicenciaValor(licencia.valor()).isPresent()) {
+    throw new ConflictoDeRecursoException("Ya existe un conductor con la licencia " + licencia.valor());
+}                                                                                // unicidad
+```
+
+La unicidad no cabe en el agregado porque requiere mirar a los demás agregados. La existencia tampoco.
+Cualquier otra condición sí cabe, y por tanto no va aquí.
+
+### El reloj vive en la configuración
+
+D1 sigue vigente: **el dominio no lee el reloj**. Quien lo lee es el servicio de aplicación, y lo obtiene
+inyectado para que la prueba pueda fijarlo.
+
+```java
+@Configuration
+public class RelojConfig {
+    /** Hora oficial del Perú. El dominio nunca llama a LocalDate.now() sin reloj. */
+    @Bean
+    public Clock reloj() {
+        return Clock.system(ZoneId.of("America/Lima"));
+    }
+}
+```
+
+En el servicio: `LocalDate hoy = LocalDate.now(reloj);` y esa fecha se pasa al método del agregado.
+Un `LocalDate.now()` sin argumento en cualquier punto del módulo es un defecto.
+
+### Los DTO son `record`, y no son la entidad
+
+Regla 2: ninguna entidad JPA cruza la frontera HTTP. `dto/request` y `dto/response`, ambos `record`,
+ambos con nombres ASCII (regla 13).
+
+El *request* lleva la validación de forma, con `jakarta.validation`. Valida que el JSON tenga sentido
+sintáctico, **no** que respete una invariante:
+
+```java
+public record RegistrarConductorRequest(
+        @NotBlank @Size(max = 200) String nombreCompleto,
+        @NotBlank @Pattern(regexp = "^[A-Za-z]\\d{8}$") String numeroDeLicencia,
+        @NotNull CategoriaDeLicencia categoriaDeLicencia,
+        @NotNull LocalDate licenciaDesde,
+        @NotNull LocalDate licenciaHasta
+) {
+}
+```
+
+El `@Pattern` no sustituye al objeto de valor: `NumeroDeLicencia` sigue rechazando el formato malo, y
+lo seguirá haciendo cuando el valor llegue por otra vía. La anotación sólo adelanta el `400`.
+
+El *response* es plano. Importes con monto y código de moneda; fechas ISO 8601 con offset cuando son
+instantes, `LocalDate` cuando son días de calendario (regla 6).
+
+### El mapper va en un solo sentido
+
+`mappers/<Agregado>Mapper`, métodos `static`, **entidad → response y nada más**. La dirección contraria
+vive en el servicio, porque construir un objeto de valor puede lanzar una excepción de dominio y esa
+decisión le corresponde al dominio, no a un mapper.
+
+### El controlador no atrapa nada
+
+```java
+@RestController
+@RequestMapping("/api/v1/conductores")
+public class ConductorController {
+
+    private final ConductorService servicio;
+
+    @PostMapping
+    public ResponseEntity<ConductorResponse> registrar(@Valid @RequestBody RegistrarConductorRequest peticion) {
+        ConductorResponse creado = servicio.registrar(peticion);
+        return ResponseEntity.created(URI.create("/api/v1/conductores/" + creado.id())).body(creado);
+    }
+}
+```
+
+Sin `try`/`catch`, sin `if` de negocio, sin `Optional` desenvuelto a mano. El `201` lleva `Location`.
+Todo fallo sube y lo traduce el manejador.
+
+### Dos excepciones nuevas, y no heredan del dominio
+
+`RecursoNoEncontradoException` y `ConflictoDeRecursoException` extienden `RuntimeException` **a
+propósito**, no `Dominio<Ctx>Exception`. No son reglas de negocio, y heredar de la raíz del dominio las
+haría caer en el `422` por defecto, que es justo el código equivocado para las dos.
+
+Son genéricas: un módulo con tres agregados no necesita tres excepciones de «no encontrado».
+
+### La tabla de traducción a HTTP
+
+| Causa | Código | Quién lo lanza |
+|---|---|---|
+| El JSON no cumple la validación de forma | `400` | `MethodArgumentNotValidException` |
+| Un objeto de valor rechaza el formato del dato | `400` | El VO en su constructor |
+| Un argumento nulo o fuera de rango | `400` | `IllegalArgumentException` del dominio |
+| El agregado no existe | `404` | `RecursoNoEncontradoException` |
+| Ya existe otro agregado con esa identidad natural | `409` | `ConflictoDeRecursoException` |
+| La operación no cabe en el estado actual | `409` | La excepción de estado del contexto |
+| Los datos son válidos pero rompen una invariante | `422` | Cualquier `Dominio<Ctx>Exception` |
+| Un proveedor no responde | `503` | La excepción de integración (`S5`) |
+
+`409` frente a `422` es la distinción que más se falla. **`409` es «ahora no»** — el mismo cuerpo
+funcionaría si el agregado estuviera en otro estado. **`422` es «así no»** — el cuerpo está mal y
+seguirá estándolo. Emitir sobre una factura ya emitida es `409`; que `montoNeto + detraccion ≠ total`
+es `422`.
+
+### `ManejadorDeErrores`
+
+Uno por módulo, en `controllers`. Es **el único sitio del módulo que sabe de códigos HTTP**.
+
+```java
+@RestControllerAdvice
+public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
+
+    private static final String BASE_TIPO = "https://elmirador.unc.edu.pe/problems/";
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpHeaders cabeceras,
+            HttpStatusCode estado, WebRequest peticion) {
+
+        ProblemDetail problema = problema(HttpStatus.BAD_REQUEST, "validacion",
+                "La peticion no supera la validacion de formato");
+        Map<String, String> errores = new LinkedHashMap<>();
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            errores.put(error.getField(), error.getDefaultMessage());
+        }
+        problema.setProperty("errores", errores);
+
+        HttpHeaders cabecerasProblema = new HttpHeaders();
+        cabecerasProblema.setContentType(MediaType.APPLICATION_PROBLEM_JSON);
+        return new ResponseEntity<>(problema, cabecerasProblema, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ProblemDetail noEncontrado(RecursoNoEncontradoException ex) {
+        return problema(HttpStatus.NOT_FOUND, "recurso-no-encontrado", ex.getMessage());
+    }
+
+    /** Ultimo recurso: una invariante rota que nadie listo arriba sigue siendo 422, nunca 500. */
+    @ExceptionHandler(DominioConductoresException.class)
+    public ProblemDetail invariante(DominioConductoresException ex) {
+        return problema(HttpStatus.UNPROCESSABLE_ENTITY, "invariante-violada", ex.getMessage());
+    }
+
+    private ProblemDetail problema(HttpStatus estado, String slug, String detalle) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, detalle);
+        problema.setType(URI.create(BASE_TIPO + slug));
+        problema.setTitle(estado.getReasonPhrase());
+        return problema;
+    }
+}
+```
+
+El orden importa: Spring elige el `@ExceptionHandler` **más específico**, así que las excepciones que
+merecen `400` o `409` se listan una a una y la raíz del dominio queda de comodín en `422`. Una excepción
+de dominio nueva que nadie recuerde declarar cae en `422`, que es el código correcto por defecto.
+Nunca un `500`, y nunca un `404` genérico para un fallo de integración (regla 5).
+
+### Tres cosas que Spring Boot 4 movió de sitio
+
+Cuestan una hora si se descubren compilando. Están aquí para no descubrirlas siete veces:
+
+| Qué | Dónde estaba | Dónde está en Boot 4 |
+|---|---|---|
+| `@WebMvcTest` | `spring-boot-starter-test` | artefacto propio `spring-boot-starter-webmvc-test` |
+| El paquete de `@WebMvcTest` | `…boot.test.autoconfigure.web.servlet` | `org.springframework.boot.webmvc.test.autoconfigure` |
+| `ObjectMapper` | `com.fasterxml.jackson.databind` | `tools.jackson.databind` (Jackson 3) |
+
+El starter va con `<scope>test</scope>` en los siete módulos, junto al `spring-boot-starter-data-jpa-test`
+que ya añadió `S2`. Es la única dependencia nueva de este slice (regla 8).
+
+### La prueba de contexto deja de mentir
+
+Hasta `S2` `Msvc<Ctx>ApplicationTests` arrancaba el contexto excluyendo la fuente de datos, para poder
+correr sin Docker. Con `S3` eso deja de demostrar nada: el servicio de aplicación pide el repositorio
+por constructor, así que el contexto **no arranca** con JPA excluido, y ampliar la exclusión sería
+quitar justo la mitad que puede fallar.
+
+La versión honesta excluye la fuente de datos **y sustituye el repositorio** con `@MockitoBean`. Lo que
+queda sigue siendo el grafo real: una anotación `@Service` que falta, un `@RestControllerAdvice` que
+nadie registró o un bean pedido que nadie declara hacen fallar la prueba en segundos y sin Docker.
+Levantar MySQL de verdad sigue siendo trabajo de `Persistencia<Ctx>IT`.
+
+### Las pruebas de este slice
+
+Dos clases por agregado, y ninguna levanta MySQL:
+
+- **`<Agregado>ControllerTest`** — `@WebMvcTest(<Agregado>Controller.class)` con el servicio sustituido
+  por `@MockitoBean`. Una prueba por fila de la tabla de la API: el código de éxito, el cuerpo, y cada
+  código de error que la fila declara. Comprueba también que la respuesta de error es
+  `application/problem+json` y trae `type`, `title`, `status` y `detail`.
+- **`<Agregado>ServiceTest`** — JUnit puro con el repositorio y el `Clock` simulados. Verifica que el
+  servicio llama al método del agregado y persiste, y que **no** decide nada: la prueba de una invariante
+  rota comprueba que la excepción del dominio sale sin transformar.
+
+La prueba que no puede faltar es la del **mapa de códigos**: por cada excepción del módulo, una prueba
+que la provoca a través del endpoint y afirma el código de la tabla. Es lo que impide que un `422` se
+degrade a `500` cuando alguien añada una excepción.
+
+## 9. Medición
 
 Cada delegación deja su consumo en `~/.claude/agy-usage.log` (`AGY_USAGE`). Sirve para saber si delegar
 un tipo de slice compensa. Si un slice necesita más de dos rondas de corrección, deja de compensar: la
