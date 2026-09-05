@@ -8,6 +8,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pe.edu.unc.elmirador.facturacion.clients.CobranzaGateway;
+import pe.edu.unc.elmirador.facturacion.clients.ComercialGateway;
 import pe.edu.unc.elmirador.facturacion.dto.request.*;
 import pe.edu.unc.elmirador.facturacion.dto.response.*;
 import pe.edu.unc.elmirador.facturacion.exceptions.*;
@@ -20,10 +22,14 @@ import pe.edu.unc.elmirador.facturacion.repositories.FacturaRepository;
 public class FacturaService {
 
     private final FacturaRepository repositorio;
+    private final ComercialGateway comercialGateway;
+    private final CobranzaGateway cobranzaGateway;
     private final Clock reloj;
 
-    public FacturaService(FacturaRepository repositorio, Clock reloj) {
+    public FacturaService(FacturaRepository repositorio, ComercialGateway comercialGateway, CobranzaGateway cobranzaGateway, Clock reloj) {
         this.repositorio = repositorio;
+        this.comercialGateway = comercialGateway;
+        this.cobranzaGateway = cobranzaGateway;
         this.reloj = reloj;
     }
 
@@ -33,13 +39,7 @@ public class FacturaService {
             throw new ConflictoDeRecursoException("Ya existe una factura para la orden " + req.ordenDeServicioId());
         }
 
-        SnapshotComercial snap = new SnapshotComercial(
-            req.ordenDeServicioId(),
-            req.clienteId(),
-            new Dinero(req.snapshot().tarifaMonto(), req.snapshot().codigoMoneda()),
-            req.snapshot().codigoMoneda(),
-            req.snapshot().obtenidoEn()
-        );
+        SnapshotComercial snap = comercialGateway.snapshotFacturableDe(req.ordenDeServicioId());
 
         Detraccion det = req.detraccion().porcentaje().signum() == 0 
             ? Detraccion.sinDetraccion(snap.codigoMoneda()) 
@@ -57,7 +57,9 @@ public class FacturaService {
     public FacturaResponse emitir(String id, EmitirFacturaRequest req) {
         Factura factura = buscar(id);
         factura.emitir(new NumeroDeComprobante(req.serie(), req.correlativo()), OffsetDateTime.now(reloj));
-        return FacturaMapper.aRespuesta(repositorio.save(factura));
+        Factura guardada = repositorio.save(factura);
+        cobranzaGateway.crearCuentaPorCobrar(guardada);
+        return FacturaMapper.aRespuesta(guardada);
     }
 
     @Transactional
@@ -93,13 +95,7 @@ public class FacturaService {
             throw new ConflictoDeRecursoException("Ya existe una factura para la orden " + req.ordenDeServicioId());
         }
 
-        SnapshotComercial snap = new SnapshotComercial(
-            req.ordenDeServicioId(),
-            req.clienteId(),
-            new Dinero(req.snapshot().tarifaMonto(), req.snapshot().codigoMoneda()),
-            req.snapshot().codigoMoneda(),
-            req.snapshot().obtenidoEn()
-        );
+        SnapshotComercial snap = comercialGateway.snapshotFacturableDe(req.ordenDeServicioId());
 
         Detraccion det = req.detraccion().porcentaje().signum() == 0 
             ? Detraccion.sinDetraccion(snap.codigoMoneda()) 
@@ -118,9 +114,10 @@ public class FacturaService {
             new Dinero(req.importeMonto(), snap.codigoMoneda())
         ));
         factura.emitirFalsoFlete(new NumeroDeComprobante(req.serie(), req.correlativo()), OffsetDateTime.now(reloj));
-        return FacturaMapper.aRespuesta(repositorio.save(factura));
+        Factura guardada = repositorio.save(factura);
+        cobranzaGateway.crearCuentaPorCobrar(guardada);
+        return FacturaMapper.aRespuesta(guardada);
     }
-
 
     private Factura buscar(String id) {
         return repositorio.findById(id).orElseThrow(() -> new RecursoNoEncontradoException("factura", id));

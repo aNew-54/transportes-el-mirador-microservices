@@ -27,7 +27,7 @@ class NotaDeCreditoTest {
     private Factura crearFacturaEmitida(String facturaId, String monto) {
         SnapshotComercial snapshot = new SnapshotComercial(
             "ORD-001", "CLI-001", Dinero.de(monto, "PEN"), "PEN", fechaBase
-        );
+        , "CREDITO", 30);
         Detraccion detraccion = Detraccion.sinDetraccion("PEN");
         Factura factura = Factura.abrir(facturaId, "ORD-001", "CLI-001", snapshot, detraccion);
         factura.agregarLinea(new LineaDeFactura("L1", "ORD-001", ConceptoFacturable.FLETE, "Flete", Dinero.de(monto, "PEN")));

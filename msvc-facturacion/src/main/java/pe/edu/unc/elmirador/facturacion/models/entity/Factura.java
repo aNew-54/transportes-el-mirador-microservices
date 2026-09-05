@@ -67,7 +67,9 @@ public class Factura {
         @AttributeOverride(name = "tarifa.monto", column = @Column(name = "snapshot_tarifa_monto", precision = 15, scale = 2, nullable = false)),
         @AttributeOverride(name = "tarifa.codigoMoneda", column = @Column(name = "snapshot_tarifa_moneda", length = 3, nullable = false)),
         @AttributeOverride(name = "codigoMoneda", column = @Column(name = "snapshot_moneda", length = 3, nullable = false)),
-        @AttributeOverride(name = "obtenidoEn", column = @Column(name = "snapshot_obtenido_en", nullable = false))
+        @AttributeOverride(name = "obtenidoEn", column = @Column(name = "snapshot_obtenido_en", nullable = false)),
+        @AttributeOverride(name = "condicionDePagoModalidad", column = @Column(name = "snapshot_condicion_modalidad", length = 20, nullable = false)),
+        @AttributeOverride(name = "condicionDePagoPlazo", column = @Column(name = "snapshot_condicion_plazo", nullable = false))
     })
     private SnapshotComercial snapshotComercial;
 

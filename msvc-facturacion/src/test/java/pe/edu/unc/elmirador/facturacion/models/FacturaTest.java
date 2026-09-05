@@ -33,7 +33,7 @@ class FacturaTest {
             Dinero.de(monto, "PEN"),
             "PEN",
             fechaBase
-        );
+        , "CREDITO", 30);
     }
 
     private Factura crearFacturaBloqueada(String facturaId, String ordenId, String clienteId) {
