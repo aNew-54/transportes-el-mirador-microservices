@@ -22,6 +22,7 @@ import pe.edu.unc.elmirador.ejecucion.models.vo.TipoDeIncidencia;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,7 +36,7 @@ class EjecucionDeViajeTest {
 
     private EjecucionDeViaje crearEjecucionBasica() {
         Parada parada = new Parada(1, "ORD-001", "Av. Industrial 123");
-        return EjecucionDeViaje.crear("VIA-001", "UNI-001", List.of(parada));
+        return EjecucionDeViaje.crear("VIA-001", "UNI-001", List.of("CON-001"), List.of(parada));
     }
 
     private EjecucionDeViaje crearEjecucionEntregada() {
@@ -134,7 +135,7 @@ class EjecucionDeViajeTest {
     @DisplayName("[EJV-04] Sobre ejecucion CERRADA reportarHito lanza EjecucionEntregadaException")
     void reportarHitoSobreEjecucionCerradaLanzaExcepcion_EJV04() {
         EjecucionDeViaje ejecucion = crearEjecucionEntregada();
-        ejecucion.cerrar(false);
+        ejecucion.cerrar(184320, false, Set.of("CON-001"), Set.of());
 
         Hito hito = new Hito("HITO-02", TipoDeHito.LLEGADA_A_DESTINO, T16_00, "Destino Final");
 
@@ -152,7 +153,7 @@ class EjecucionDeViajeTest {
     void cerrarConLiquidacionesPendientesLanzaExcepcion_LIQ04() {
         EjecucionDeViaje ejecucion = crearEjecucionEntregada();
 
-        assertThatThrownBy(() -> ejecucion.cerrar(true))
+        assertThatThrownBy(() -> ejecucion.cerrar(184320, true, Set.of("CON-001"), Set.of()))
                 .as("[LIQ-04] No se puede cerrar la ejecucion con liquidaciones pendientes")
                 .isInstanceOf(LiquidacionPendienteException.class)
                 .hasMessageContaining("liquidaciones pendientes");
@@ -165,7 +166,7 @@ class EjecucionDeViajeTest {
     void cerrarSinLiquidacionesPendientesPasaACerrada_LIQ04() {
         EjecucionDeViaje ejecucion = crearEjecucionEntregada();
 
-        ejecucion.cerrar(false);
+        ejecucion.cerrar(184320, false, Set.of("CON-001"), Set.of());
 
         assertThat(ejecucion.getEstado()).isEqualTo(EstadoDeEjecucion.CERRADA);
     }
@@ -177,7 +178,7 @@ class EjecucionDeViajeTest {
         ejecucion.registrarCheckList(ResultadoDeCheckList.aprobado(T08_00));
         ejecucion.iniciar(T08_00);
 
-        assertThatThrownBy(() -> ejecucion.cerrar(false))
+        assertThatThrownBy(() -> ejecucion.cerrar(184320, false, Set.of("CON-001"), Set.of()))
                 .isInstanceOf(TransicionDeEjecucionInvalidaException.class);
     }
 

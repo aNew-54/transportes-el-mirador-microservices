@@ -22,7 +22,12 @@ import pe.edu.unc.elmirador.ejecucion.dto.request.ConformidadRequest;
 import static org.mockito.Mockito.never;
 import pe.edu.unc.elmirador.ejecucion.exceptions.ProgramacionIntegrationException;
 import pe.edu.unc.elmirador.ejecucion.clients.HojaDeRutaDeViaje;
+import pe.edu.unc.elmirador.ejecucion.clients.ComercialGateway;
+import pe.edu.unc.elmirador.ejecucion.clients.ConductoresGateway;
+import pe.edu.unc.elmirador.ejecucion.clients.FacturacionGateway;
 import pe.edu.unc.elmirador.ejecucion.clients.ProgramacionGateway;
+import pe.edu.unc.elmirador.ejecucion.clients.UnidadesGateway;
+import pe.edu.unc.elmirador.ejecucion.repositories.LiquidacionDeViajeRepository;
 import pe.edu.unc.elmirador.ejecucion.dto.request.CrearEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ParadaRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.response.EjecucionDeViajeResponse;
@@ -38,6 +43,11 @@ class EjecucionDeViajeServiceTest {
     private EjecucionDeViajeRepository repository;
     private Clock clock;
     private ProgramacionGateway programacionGateway;
+    private LiquidacionDeViajeRepository liquidaciones;
+    private UnidadesGateway unidadesGateway;
+    private ConductoresGateway conductoresGateway;
+    private ComercialGateway comercialGateway;
+    private FacturacionGateway facturacionGateway;
     private EjecucionDeViajeService service;
 
     @BeforeEach
@@ -48,7 +58,13 @@ class EjecucionDeViajeServiceTest {
         when(programacionGateway.obtenerHojaDeRuta(any())).thenReturn(new HojaDeRutaDeViaje(
                 "v-1", "DESPACHADO", "u-1", List.of("c-1"),
                 List.of(new HojaDeRutaDeViaje.ParadaPlanificada(1, "os-1", "Dir 1"))));
-        service = new EjecucionDeViajeService(repository, programacionGateway, clock);
+        liquidaciones = mock(LiquidacionDeViajeRepository.class);
+        unidadesGateway = mock(UnidadesGateway.class);
+        conductoresGateway = mock(ConductoresGateway.class);
+        comercialGateway = mock(ComercialGateway.class);
+        facturacionGateway = mock(FacturacionGateway.class);
+        service = new EjecucionDeViajeService(repository, liquidaciones, programacionGateway,
+                unidadesGateway, conductoresGateway, comercialGateway, facturacionGateway, clock);
     }
 
     @Test
@@ -112,7 +128,7 @@ class EjecucionDeViajeServiceTest {
     @Test
     @DisplayName("registrarConformidad delega al agregado y persiste")
     void registrarConformidad() {
-        EjecucionDeViaje ejecucion = new EjecucionDeViaje("v-1", "u-1", 
+        EjecucionDeViaje ejecucion = new EjecucionDeViaje("v-1", "u-1", List.of("c-1"),
                 List.of(new Parada(1, "os-1", "Dir 1")));
         when(repository.findById("v-1")).thenReturn(Optional.of(ejecucion));
 

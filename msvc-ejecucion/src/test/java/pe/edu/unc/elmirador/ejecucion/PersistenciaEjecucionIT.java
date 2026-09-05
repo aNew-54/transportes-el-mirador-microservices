@@ -73,7 +73,7 @@ class PersistenciaEjecucionIT {
     private final OffsetDateTime momento = OffsetDateTime.of(2026, 9, 10, 6, 30, 0, 0, LIMA);
 
     private EjecucionDeViaje ejecucionDeTresParadas(String viajeId) {
-        return EjecucionDeViaje.crear(viajeId, "UNI-004", List.of(
+        return EjecucionDeViaje.crear(viajeId, "UNI-004", List.of("CON-004"), List.of(
                 new Parada(1, "ORD-001", "Jr. Ayacucho 450, Cajamarca"),
                 new Parada(2, "ORD-002", "Av. España 1200, Trujillo"),
                 new Parada(3, "ORD-003", "Av. Larco 300, Trujillo")));

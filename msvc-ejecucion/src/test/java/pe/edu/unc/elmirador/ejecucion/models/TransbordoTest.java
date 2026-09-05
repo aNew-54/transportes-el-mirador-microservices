@@ -12,6 +12,7 @@ import pe.edu.unc.elmirador.ejecucion.models.vo.ResultadoDeCheckList;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,7 +25,7 @@ class TransbordoTest {
 
     private EjecucionDeViaje crearEjecucionEnRuta() {
         Parada parada = new Parada(1, "ORD-001", "Destino");
-        EjecucionDeViaje ejecucion = EjecucionDeViaje.crear("VIA-2026-00045", "UNI-001", List.of(parada));
+        EjecucionDeViaje ejecucion = EjecucionDeViaje.crear("VIA-2026-00045", "UNI-001", List.of("CON-001"), List.of(parada));
         ejecucion.registrarCheckList(ResultadoDeCheckList.aprobado(T08_00));
         ejecucion.iniciar(T08_00);
         return ejecucion;
@@ -82,7 +83,7 @@ class TransbordoTest {
         ConformidadDeEntrega conformidad = new ConformidadDeEntrega("CONF-01", "ORD-001", EstadoConformidad.FIRMADA, "Receptor", T12_00, "OK");
         ejecucion.registrarConformidad(1, conformidad);
         ejecucion.marcarEntregada(T12_00);
-        ejecucion.cerrar(false);
+        ejecucion.cerrar(184320, false, Set.of("CON-001"), Set.of());
 
         assertThatThrownBy(() -> ejecucion.transbordar("UNI-999"))
                 .as("[EJV-05] No se puede transbordar una ejecucion cerrada")

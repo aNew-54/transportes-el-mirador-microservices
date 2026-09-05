@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import java.time.OffsetDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import feign.FeignException;
@@ -18,6 +19,7 @@ import feign.RetryableException;
 import pe.edu.unc.elmirador.ejecucion.clients.dto.HorasConduccionPeticion;
 import pe.edu.unc.elmirador.ejecucion.clients.dto.IncidenciaPeticion;
 import pe.edu.unc.elmirador.ejecucion.exceptions.ConductoresIntegrationException;
+import pe.edu.unc.elmirador.ejecucion.exceptions.ConflictoDeRecursoException;
 
 class ConductoresGatewayTest {
 
@@ -56,14 +58,18 @@ class ConductoresGatewayTest {
     }
 
     @Test
-    void fallaEnHorasPor409EsFalloDeIntegracion() {
+    @DisplayName("[CON-02] Un 409 de Conductores es un conflicto de dominio, no un fallo de integracion")
+    void fallaEnHorasPor409EsConflictoDeDominio() {
         HorasConduccionPeticion peticion = new HorasConduccionPeticion("VIA-1", 4.5, OffsetDateTime.now(), OffsetDateTime.now());
-        
+
         org.mockito.Mockito.doThrow(new FeignException.Conflict("conflict", peticionFalsa(), null, null))
             .when(cliente).reportarHoras(any(), any(), any());
 
+        // Conductores respondio, y respondio que esas horas superarian el maximo normado.
         assertThatThrownBy(() -> pasarela.reportarHoras("CON-1", peticion))
-                .isInstanceOf(ConductoresIntegrationException.class);
+                .isInstanceOf(ConflictoDeRecursoException.class)
+                .isNotInstanceOf(ConductoresIntegrationException.class)
+                .hasMessageContaining("CON-02");
     }
     
     @Test

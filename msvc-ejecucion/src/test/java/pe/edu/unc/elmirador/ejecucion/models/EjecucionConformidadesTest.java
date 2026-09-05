@@ -36,7 +36,7 @@ class EjecucionConformidadesTest {
         parada2 = new Parada(2, "ORD-102", "Sucursal Huacho");
         parada3 = new Parada(3, "ORD-103", "Planta Barranca");
 
-        ejecucion = EjecucionDeViaje.crear("VIA-999", "UNI-555", List.of(parada1, parada2, parada3));
+        ejecucion = EjecucionDeViaje.crear("VIA-999", "UNI-555", List.of("CON-001"), List.of(parada1, parada2, parada3));
         ejecucion.registrarCheckList(ResultadoDeCheckList.aprobado(T08_00));
         ejecucion.iniciar(T08_00);
     }
