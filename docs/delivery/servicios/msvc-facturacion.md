@@ -224,3 +224,43 @@ Se aceptan las demás decisiones del agente: las tres sobrecargas de `NotaDeCred
 instante y el saldo ajustable, así que no incumplen D1 ni D2; `aplicarNotaDeCredito` mantiene
 `saldoAjustable()` como cálculo y no como campo; y `Factura.emitir()` compara el `montoNeto` recibido sin
 deducirlo, que es lo que D3 exige.
+
+## Slice `S3-api-publica` — decisiones de diseño
+
+La receta común está en [§8 del método de trabajo](../README.md#8-receta-de-s3-api-publica) y el módulo
+de referencia, ya terminado, es **`msvc-conductores`**. Se copia su forma exacta: `RelojConfig`,
+`RecursoNoEncontradoException`, `ConflictoDeRecursoException`, `ManejadorDeErrores`, servicios de
+aplicación concretos, DTO `record`, mapeadores estáticos de una sola dirección.
+
+Aquí sólo va lo propio de este contexto.
+
+### Mapa de excepciones a códigos HTTP
+
+`DominioFacturacionException` queda de comodín en `422`. Las demás se listan una a una, y Spring elige siempre
+la más específica.
+
+| Excepción | Código | Por qué |
+|---|---:|---|
+| `NumeroDeComprobanteInvalidoException` | `400` | El objeto de valor rechaza el formato de la serie y el correlativo. |
+| `FacturaInmutableException` | `409` | FAC-03. Emitida no se toca; se corrige con nota de crédito. |
+| `EmisionSinConformidadException` | `409` | FAC-01. La conformidad llega por el contrato 8: es un «ahora no». |
+| `IncidenciaSinResolverException` | `409` | FAC-05. Resuelta la incidencia, la misma petición vale. |
+| `ImportesInconsistentesException` | `422` | FAC-04. `montoNeto + detraccion` no iguala el total. |
+| `MontoExcedeElSaldoException` | `422` | NCR-01. |
+| `MonedaIncompatibleException` | `422` | Dos importes de distinta moneda en la misma operación. |
+
+Además, en todos los módulos: `RecursoNoEncontradoException` → `404`, `ConflictoDeRecursoException` →
+`409`, `IllegalArgumentException` → `400`, y la validación de forma → `400` con el detalle campo a campo
+bajo la clave `errores`.
+
+### Servicios de aplicación
+
+Uno por raíz de agregado, con el nombre del agregado: FacturaService, NotaDeCreditoService.
+Ninguno decide reglas: cargan, llaman al método del agregado y guardan. Las dos únicas comprobaciones
+admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
+
+### El `404` que las tablas de arriba no escriben
+
+Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
+de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
+`S1` y omiten ese caso; el código no lo omite.
