@@ -691,7 +691,169 @@ no confirmada. Esa decisión pertenece al agregado. Si el agregado no la expone,
 
 `S4` no lleva pruebas de cliente: eso es `S5`.
 
-## 10. Medición
+## 10. Receta de `S5-clientes`
+
+`S5` cierra los once contratos por el lado que falta: el consumidor. Es el único slice donde el módulo
+**depende de que otro esté vivo**, y por eso el trabajo no es declarar un `@FeignClient` — eso son seis
+líneas — sino decidir **qué hace el dominio cuando el otro no contesta**. Esa decisión es de Claude y
+está escrita contrato a contrato en `docs/api/contracts.md`.
+
+### Quién lleva Feign y quién no
+
+Regla 10 de `CLAUDE.md`. Sólo tiene cliente quien tiene flecha saliente en el mapa de contexto:
+
+| Módulo | Contratos que consume | Clientes |
+|---|---|---:|
+| `msvc-ejecucion` | 4, 5, 6, 7, 8 | 5 |
+| `msvc-programacion` | 1, 2, 3 | 3 |
+| `msvc-facturacion` | 9, 10 | 2 |
+| `msvc-comercial` | 11 | 1 |
+
+Unidades, Conductores y Cobranza no aparecen. Son proveedores puros: sin la dependencia, sin
+`@EnableFeignClients` y **sin el paquete `clients`**.
+
+### Tres piezas por contrato, no una
+
+El error de este slice es dejar que la forma del proveedor entre en el dominio. Se evita partiendo el
+cliente en tres:
+
+```
+clients/<Contexto>Client.java     @FeignClient. Habla el idioma del CONTRATO. Devuelve DTO remotos.
+clients/dto/<Cosa>Remoto.java     record espejo del JSON de contracts.md. Nada más.
+clients/<Contexto>Gateway.java    @Component. Traduce DTO → VO propio y fallo remoto → excepción propia.
+```
+
+El servicio de aplicación inyecta el **gateway**, nunca el `@FeignClient`. Así el módulo tiene un solo
+punto que conoce la forma ajena, y el día que el proveedor cambie un campo se cambia un archivo.
+
+Los DTO remotos van en `clients/dto` y **no se reutilizan** los `dto/response` propios aunque el JSON
+coincida hoy. Son dos cosas distintas que se parecen: una es lo que yo publico, otra es lo que otro me
+promete. Ya se pareció una vez en `S4` y no volvió a parecerse.
+
+### El `@FeignClient`
+
+```java
+@FeignClient(name = "cobranza", url = "${clients.cobranza.url}")
+public interface CobranzaClient {
+
+    @GetMapping("/internal/v1/clientes/{clienteId}/estado-crediticio")
+    EstadoCrediticioRemoto estadoCrediticio(@PathVariable("clienteId") String clienteId);
+}
+```
+
+La `url` sale siempre de una propiedad `clients.<contexto>.url`, que ya existe en el
+`application.properties` de cada consumidor desde `S0`. No se pone un host literal ni se usa
+descubrimiento: no hay registro en este despliegue.
+
+Los timeouts no se declaran por cliente. Están en `application.properties` como
+`default`, y la regla 4 de `contracts.md` fija los valores:
+
+```properties
+spring.cloud.openfeign.client.config.default.connect-timeout=${FEIGN_CONNECT_TIMEOUT_MS:3000}
+spring.cloud.openfeign.client.config.default.read-timeout=${FEIGN_READ_TIMEOUT_MS:5000}
+```
+
+### El gateway es el único que atrapa
+
+```java
+@Component
+public class CobranzaGateway {
+
+    private final CobranzaClient cliente;
+
+    public EstadoCrediticio estadoCrediticioDe(String clienteId) {
+        EstadoCrediticioRemoto remoto;
+        try {
+            remoto = cliente.estadoCrediticio(clienteId);
+        } catch (FeignException | RetryableException fallo) {
+            throw new CobranzaIntegrationException(
+                    "No se pudo consultar el estado crediticio del cliente " + clienteId, fallo);
+        }
+        return traducir(clienteId, remoto);
+    }
+}
+```
+
+Tres cosas que este bloque decide y que hay que copiar tal cual:
+
+**Un `404` del proveedor tampoco es «no existe».** Es la regla 5 de `contracts.md` y es la más fácil de
+incumplir, porque `FeignException.NotFound` invita a devolver un `Optional.empty()`. No se hace. Un
+`404` de Cobranza significa que Cobranza y yo discrepamos sobre qué clientes existen, y eso es un fallo
+de integración, no una respuesta.
+
+**`RetryableException` va en el mismo `catch`.** Es la que lanza Feign cuando el socket no abre o el
+`read-timeout` vence, y **no** hereda de `FeignException`. Si sólo se atrapa `FeignException`, el caso
+de «el proveedor está caído» —el único que este slice existe para cubrir— se escapa sin traducir.
+
+**Un cuerpo que no se entiende también es un fallo de integración.** Si `situacion` trae un valor que el
+enumerado propio no tiene, `valueOf` lanza `IllegalArgumentException` y el `500` resultante miente sobre
+de quién es el defecto. La traducción se hace en `traducir(...)` y también se envuelve.
+
+### La excepción de integración
+
+Una por contexto consumido, en `exceptions/`, con el nombre que fija la regla 5:
+
+```java
+public class CobranzaIntegrationException extends RuntimeException { ... }
+```
+
+No hereda de `Dominio<Contexto>Exception`: no es un fallo del dominio, y si heredara, el
+`@ExceptionHandler` genérico del dominio se la comería y devolvería un `422`.
+
+### El código HTTP del fallo remoto lo decide el contrato
+
+`503` con `problem+json`, y el `detail` dice **qué no se pudo verificar**, no «error interno»:
+
+```java
+@ExceptionHandler(CobranzaIntegrationException.class)
+public ProblemDetail cobranzaNoDisponible(CobranzaIntegrationException ex) {
+    return problema(HttpStatus.SERVICE_UNAVAILABLE, "estado-crediticio-no-verificable", ex.getMessage());
+}
+```
+
+Ningún contrato admite un valor por defecto ante indisponibilidad. El contrato 11 lo escribe explícito
+—«no se asume `VIGENTE`»— y el resto se lee igual: **ante silencio, el consumidor rechaza, no supone**.
+
+### No se consulta lo que no hace falta
+
+El contrato 11 sólo hace falta para una orden a crédito. Una orden al contado tiene que poder crearse
+con Cobranza caída, y eso es la segunda mitad de CLI-01. La rama va en el servicio, pero **la condición
+la nombra el objeto de valor**:
+
+```java
+EstadoCrediticio estado = condicion.exigeVerificacionCrediticia()
+        ? cobranza.estadoCrediticioDe(cliente.id())
+        : cliente.estadoCrediticio();
+```
+
+`exigeVerificacionCrediticia()` vive en `CondicionDePago`. El servicio elige a quién llama —eso es
+orquestación y le toca— pero no es él quien decide que el crédito exige verificación.
+
+### La copia local es una caché, no la verdad
+
+Quien guarde una copia del estado ajeno (`Cliente.estadoCrediticio` en Comercial) la refresca con lo que
+acaba de leer, y **decide con lo leído, no con lo guardado**. La copia sirve para las órdenes al contado
+y para no quedarse sin nada si nunca se ha consultado.
+
+### Las pruebas de este slice
+
+Tres, y ninguna sobra:
+
+- **`<Contexto>GatewayTest`** — unitaria, con el `@FeignClient` mockeado. Una prueba por modo de fallo:
+  `500`, `404`, `RetryableException` y cuerpo ininteligible. Las cuatro esperan
+  `<Contexto>IntegrationException`. Es la prueba que demuestra la regla 5.
+- **`<Contexto>ClientStubTest`** — el cliente **real** contra un `HttpServer` del JDK que sirve el JSON
+  **copiado de `contracts.md`**. Es lo único que demuestra que el DTO remoto casa con la forma pactada:
+  un `record` con un campo mal escrito compila, pasa el test del gateway y falla en producción.
+- **La prueba del comportamiento degradado** — en el servicio, con el gateway mockeado lanzando la
+  excepción: la operación que depende del contrato falla con el código que el contrato manda, y **la que
+  no depende de él sigue funcionando**. Sin esta segunda mitad, «al contado sí procede» es una intención.
+
+Se usa el `HttpServer` de `com.sun.net.httpserver` y **no** se añade WireMock. Son quince líneas de
+ayudante, no arrastran dependencia nueva (regla 8) y prueban sobre un socket de verdad, incluido el
+vencimiento del `read-timeout` con un `sleep` en el manejador.
+
+## 11. Medición
 
 Cada delegación deja su consumo en `~/.claude/agy-usage.log` (`AGY_USAGE`). Sirve para saber si delegar
 un tipo de slice compensa. Si un slice necesita más de dos rondas de corrección, deja de compensar: la

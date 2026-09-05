@@ -132,6 +132,26 @@ public class Cliente {
         this.estadoCrediticio = nuevoEstado;
     }
 
+    /**
+     * Refresca la copia local con una lectura del contrato 11, y no hace nada si la lectura es mas
+     * antigua que la guardada.
+     *
+     * <p>Se diferencia de {@link #refrescarEstadoCrediticio} en que no protesta. Aquel protege contra
+     * un dato empujado fuera de orden, donde una lectura vieja pisando a una nueva es un defecto que
+     * hay que ver. Este cubre la consulta sincrona a la fuente de verdad, donde una fecha rara es un
+     * reloj desajustado y no una razon para tumbar la creacion de una orden. La decision de ORD-02 se
+     * toma con lo que Cobranza acaba de responder, no con esta copia.
+     */
+    public void refrescarSiEsMasReciente(EstadoCrediticio lectura) {
+        if (lectura == null) {
+            throw new IllegalArgumentException("La lectura del estado crediticio es obligatoria");
+        }
+        if (lectura.fechaDeCambio().isBefore(this.estadoCrediticio.fechaDeCambio())) {
+            return;
+        }
+        this.estadoCrediticio = lectura;
+    }
+
     public void cambiarCondicionHabitual(CondicionDePago nuevaCondicion) {
         if (nuevaCondicion == null) {
             throw new IllegalArgumentException("La nueva condicion habitual es obligatoria");

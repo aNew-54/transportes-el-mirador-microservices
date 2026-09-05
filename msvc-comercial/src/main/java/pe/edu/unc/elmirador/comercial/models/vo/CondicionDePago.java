@@ -46,4 +46,16 @@ public record CondicionDePago(
     public boolean esAlContado() {
         return this.modalidad == ModalidadDePago.CONTADO;
     }
+
+    /**
+     * Contrato 11: solo el credito obliga a preguntarle a Cobranza por el estado crediticio.
+     *
+     * <p>Hoy coincide con {@link #esACredito()} y aun asi son dos metodos. Uno dice de que modalidad
+     * es esta condicion; el otro, si hace falta salir del contexto antes de aceptarla. El servicio
+     * de aplicacion decide a quien llama, pero no es el quien decide que el credito exige verificarse:
+     * esa regla es CLI-01 y vive aqui.
+     */
+    public boolean exigeVerificacionCrediticia() {
+        return esACredito();
+    }
 }

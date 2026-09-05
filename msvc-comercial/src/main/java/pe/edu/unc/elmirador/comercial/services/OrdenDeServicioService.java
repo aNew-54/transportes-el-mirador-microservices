@@ -8,6 +8,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pe.edu.unc.elmirador.comercial.clients.CobranzaGateway;
 import pe.edu.unc.elmirador.comercial.dto.request.CancelarOrdenRequest;
 import pe.edu.unc.elmirador.comercial.dto.request.CrearOrdenRequest;
 import pe.edu.unc.elmirador.comercial.dto.response.OrdenDeServicioResponse;
@@ -19,6 +20,7 @@ import pe.edu.unc.elmirador.comercial.models.entity.OrdenDeServicio;
 import pe.edu.unc.elmirador.comercial.models.vo.Carga;
 import pe.edu.unc.elmirador.comercial.models.vo.CondicionDePago;
 import pe.edu.unc.elmirador.comercial.models.vo.Dinero;
+import pe.edu.unc.elmirador.comercial.models.vo.EstadoCrediticio;
 import pe.edu.unc.elmirador.comercial.models.vo.Ruta;
 import pe.edu.unc.elmirador.comercial.models.vo.VentanaDeServicio;
 import pe.edu.unc.elmirador.comercial.models.vo.Tarifa;
@@ -32,15 +34,18 @@ public class OrdenDeServicioService {
     private final OrdenDeServicioRepository ordenRepository;
     private final ClienteRepository clienteRepository;
     private final ContratoMarcoRepository contratoRepository;
+    private final CobranzaGateway cobranza;
     private final Clock reloj;
 
-    public OrdenDeServicioService(OrdenDeServicioRepository ordenRepository, 
-                                  ClienteRepository clienteRepository, 
-                                  ContratoMarcoRepository contratoRepository, 
+    public OrdenDeServicioService(OrdenDeServicioRepository ordenRepository,
+                                  ClienteRepository clienteRepository,
+                                  ContratoMarcoRepository contratoRepository,
+                                  CobranzaGateway cobranza,
                                   Clock reloj) {
         this.ordenRepository = ordenRepository;
         this.clienteRepository = clienteRepository;
         this.contratoRepository = contratoRepository;
+        this.cobranza = cobranza;
         this.reloj = reloj;
     }
 
@@ -65,6 +70,8 @@ public class OrdenDeServicioService {
                                 + " y unidad " + peticion.tipoUnidad() + " en el contrato",
                         peticion.contratoId()));
 
+        CondicionDePago condicion = new CondicionDePago(peticion.modalidadDePago(), peticion.plazoEnDias());
+
         OrdenDeServicio orden = OrdenDeServicio.crear(
                 UUID.randomUUID().toString(),
                 cliente.id(),
@@ -73,8 +80,8 @@ public class OrdenDeServicioService {
                         peticion.cargaEmbalaje(), peticion.cargaNaturaleza()),
                 ruta,
                 new Tarifa(precioPactado),
-                new CondicionDePago(peticion.modalidadDePago(), peticion.plazoEnDias()),
-                cliente.estadoCrediticio(),
+                condicion,
+                estadoCrediticioPara(cliente, condicion),
                 new VentanaDeServicio(peticion.ventanaInicio(), peticion.ventanaFin()),
                 peticion.tipoUnidad(),
                 peticion.rutaDistanciaKm()
@@ -101,6 +108,27 @@ public class OrdenDeServicioService {
     @Transactional(readOnly = true)
     public OrdenDeServicioResponse porId(String id) {
         return OrdenDeServicioMapper.aRespuesta(buscar(id));
+    }
+
+    /**
+     * Contrato 11. El estado crediticio que decide ORD-02 lo pone Cobranza, que es la fuente de verdad,
+     * y solo se le pregunta cuando la condicion lo exige: una orden al contado tiene que poder crearse
+     * con Cobranza caida, y eso es la segunda mitad de CLI-01.
+     *
+     * <p>De paso se refresca la copia local, que existe para las ordenes al contado y para no quedarse
+     * sin nada cuando nunca se ha consultado. La decision se toma con lo leido, no con lo guardado.
+     *
+     * <p>Si Cobranza no responde, {@link CobranzaGateway} lanza y esto no devuelve nada: la orden a
+     * credito se rechaza con un 503. No se asume VIGENTE.
+     */
+    private EstadoCrediticio estadoCrediticioPara(Cliente cliente, CondicionDePago condicion) {
+        if (!condicion.exigeVerificacionCrediticia()) {
+            return cliente.estadoCrediticio();
+        }
+        EstadoCrediticio lectura = cobranza.estadoCrediticioDe(cliente.id());
+        cliente.refrescarSiEsMasReciente(lectura);
+        clienteRepository.save(cliente);
+        return lectura;
     }
 
     private OrdenDeServicio buscar(String id) {

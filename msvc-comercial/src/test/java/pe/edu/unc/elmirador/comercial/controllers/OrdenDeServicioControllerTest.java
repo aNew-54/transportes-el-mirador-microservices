@@ -25,6 +25,7 @@ import pe.edu.unc.elmirador.comercial.dto.request.CrearOrdenRequest;
 import pe.edu.unc.elmirador.comercial.dto.response.CondicionDePagoResponse;
 import pe.edu.unc.elmirador.comercial.dto.response.OrdenDeServicioResponse;
 import pe.edu.unc.elmirador.comercial.dto.response.TarifaResponse;
+import pe.edu.unc.elmirador.comercial.exceptions.CobranzaIntegrationException;
 import pe.edu.unc.elmirador.comercial.exceptions.CondicionDePagoInconsistenteException;
 import pe.edu.unc.elmirador.comercial.exceptions.TransicionDeOrdenInvalidaException;
 import pe.edu.unc.elmirador.comercial.models.vo.ModalidadDePago;
@@ -140,6 +141,34 @@ class OrdenDeServicioControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("CANCELADA"));
+    }
+
+    /**
+     * Contrato 11, comportamiento ante indisponibilidad. Es 503 y no 500: el defecto no esta en esta
+     * peticion ni en este modulo. Y el detalle dice que no se pudo verificar, no «error interno»:
+     * quien llama tiene que poder distinguir «no puedo comprobarlo» de «te lo deniego».
+     */
+    @Test
+    void crear_conCobranzaCaida_devuelve503() throws Exception {
+        CrearOrdenRequest request = new CrearOrdenRequest(
+                "cli-1", "ctm-1", TipoDeUnidad.FURGON, 1000, new BigDecimal("10.00"), TipoDeCarga.GENERAL,
+                "LIMA", "PIURA", "NORTE",
+                "PALLETS", "ALIMENTARIA", 296,
+                VENTANA_INICIO, VENTANA_FIN,
+                ModalidadDePago.CREDITO, 30);
+
+        when(servicio.crear(any())).thenThrow(new CobranzaIntegrationException(
+                "Cobranza no respondio al consultar el estado crediticio del cliente cli-1"));
+
+        mvc.perform(post("/api/v1/ordenes")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.type")
+                        .value("https://elmirador.unc.edu.pe/problems/estado-crediticio-no-verificable"))
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.detail").value(
+                        "Cobranza no respondio al consultar el estado crediticio del cliente cli-1"));
     }
 
     @Test
