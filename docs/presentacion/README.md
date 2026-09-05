@@ -13,10 +13,10 @@ del navegador.
 | Las 48 invariantes | Una celda por invariante, agrupadas por bounded context. Es el criterio de éxito del proyecto |
 | Mapa de contexto | Los 11 contratos como matriz de adyacencia. Una fila vacía es un proveedor puro: sin OpenFeign |
 | Verificación | Pruebas por módulo y las cuatro comprobaciones estructurales del gate |
-| Hallazgos | Los treinta y dos defectos que la revisión encontró pese a tener las pruebas en verde, repartidos por slice |
+| Hallazgos | Los treinta y cinco defectos que la revisión encontró pese a tener las pruebas en verde, repartidos por slice |
 | Reglas destiladas | Las ocho reglas de dominio que salieron de esos defectos |
 | Método | El reparto entre quien decide y quien escribe, y qué costó delegar |
-| Estado | 48/48 invariantes, 29/32 slices |
+| Estado | 48/48 invariantes, 32/32 slices, 11/11 contratos |
 
 ## Al actualizar las cifras
 

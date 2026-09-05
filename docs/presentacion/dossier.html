@@ -583,11 +583,11 @@
   <div class="cifras">
     <div class="cifra"><span class="n completo">48/48</span><span class="et">Invariantes cubiertas</span></div>
     <div class="cifra"><span class="n">7</span><span class="et">Bounded contexts</span></div>
-    <div class="cifra"><span class="n">765</span><span class="et">Pruebas en verde</span></div>
+    <div class="cifra"><span class="n">842</span><span class="et">Pruebas en verde</span></div>
     <div class="cifra"><span class="n">11</span><span class="et">Contratos de integración</span></div>
-    <div class="cifra"><span class="n">29/32</span><span class="et">Slices integrados</span></div>
+    <div class="cifra"><span class="n completo">32/32</span><span class="et">Slices integrados</span></div>
     <div class="cifra"><span class="n">0</span><span class="et">Imports entre contextos</span></div>
-    <div class="cifra"><span class="n">32</span><span class="et">Defectos hallados en revisión</span></div>
+    <div class="cifra"><span class="n">35</span><span class="et">Defectos hallados en revisión</span></div>
   </div>
 
   <!-- ===================================================== -->
@@ -722,8 +722,10 @@
     <h2>Quién llama a quién</h2>
     <p class="entradilla">
       Once contratos HTTP y ni una dependencia Maven entre módulos de negocio. Las filas son el consumidor;
-      las columnas, el proveedor. Una fila vacía significa proveedor puro: ese módulo no lleva OpenFeign ni
-      <code>@EnableFeignClients</code>, y eso es verificable con un grep.
+      las columnas, el proveedor. Una fila vacía significa proveedor puro: ese módulo no lleva OpenFeign, ni
+      <code>@EnableFeignClients</code>, ni siquiera el paquete <code>clients</code>, y eso es verificable con
+      un grep. Los once tienen hoy proveedor y cliente, cada uno con su prueba de gateway y su prueba contra
+      un servidor real que sirve el JSON copiado del documento de contratos.
     </p>
 
     <div class="scroll">
@@ -807,7 +809,7 @@
     <span class="num-seccion">03 — Verificación</span>
     <h2>Lo que el gate comprueba de verdad</h2>
     <p class="entradilla">
-      <code>./mvnw clean verify</code> sobre los ocho módulos: 765 pruebas unitarias y 47 de
+      <code>./mvnw clean verify</code> sobre los ocho módulos: 842 pruebas unitarias y 47 de
       integración, salida cero. Failsafe levanta un MySQL 8.4 real con Testcontainers, así que un mapeo
       JPA roto no puede pasar en verde. Y <code>./scripts/smoke-test.sh</code> levanta los siete
       servicios contra un MySQL de <code>docker compose</code>: los siete responden
@@ -817,16 +819,16 @@
     <div class="scroll">
       <table>
         <thead>
-          <tr><th>Módulo</th><th class="num">Pruebas</th><th>Invariantes</th><th class="num">Contratos que provee</th><th class="num">Contratos que consume</th></tr>
+          <tr><th>Módulo</th><th class="num">Pruebas</th><th class="num">IT</th><th>Invariantes</th><th class="num">Provee</th><th class="num">Consume</th></tr>
         </thead>
         <tbody>
-          <tr><td>msvc-unidades</td><td class="num">130</td><td class="cod">UNI · OMT · REP</td><td class="num">2 y 5</td><td class="num">—</td></tr>
-          <tr><td>msvc-comercial</td><td class="num">125</td><td class="cod">CLI · COT · ORD · CTM · TAR</td><td class="num">1, 7 y 9</td><td class="num">11</td></tr>
-          <tr><td>msvc-conductores</td><td class="num">118</td><td class="cod">CON</td><td class="num">3 y 6</td><td class="num">—</td></tr>
-          <tr><td>msvc-cobranza</td><td class="num">109</td><td class="cod">CCC · PAG</td><td class="num">10 y 11</td><td class="num">—</td></tr>
-          <tr><td>msvc-ejecucion</td><td class="num">106</td><td class="cod">EJV · LIQ</td><td class="num">—</td><td class="num">4, 5, 6, 7 y 8</td></tr>
-          <tr><td>msvc-programacion</td><td class="num">105</td><td class="cod">VIA · AGU · AGC</td><td class="num">4</td><td class="num">1, 2 y 3</td></tr>
-          <tr><td>msvc-facturacion</td><td class="num">72</td><td class="cod">FAC · NCR</td><td class="num">8</td><td class="num">9 y 10</td></tr>
+          <tr><td>msvc-ejecucion</td><td class="num">141</td><td class="num">8</td><td class="cod">EJV · LIQ</td><td class="num">—</td><td class="num">4, 5, 6, 7 y 8</td></tr>
+          <tr><td>msvc-programacion</td><td class="num">132</td><td class="num">7</td><td class="cod">VIA · AGU · AGC</td><td class="num">4</td><td class="num">1, 2 y 3</td></tr>
+          <tr><td>msvc-unidades</td><td class="num">130</td><td class="num">7</td><td class="cod">UNI · OMT · REP</td><td class="num">2 y 5</td><td class="num">—</td></tr>
+          <tr><td>msvc-comercial</td><td class="num">125</td><td class="num">9</td><td class="cod">CLI · COT · ORD · CTM · TAR</td><td class="num">1, 7 y 9</td><td class="num">11</td></tr>
+          <tr><td>msvc-conductores</td><td class="num">118</td><td class="num">5</td><td class="cod">CON</td><td class="num">3 y 6</td><td class="num">—</td></tr>
+          <tr><td>msvc-cobranza</td><td class="num">109</td><td class="num">5</td><td class="cod">CCC · PAG</td><td class="num">10 y 11</td><td class="num">—</td></tr>
+          <tr><td>msvc-facturacion</td><td class="num">87</td><td class="num">6</td><td class="cod">FAC · NCR</td><td class="num">8</td><td class="num">9 y 10</td></tr>
         </tbody>
       </table>
     </div>
@@ -856,6 +858,12 @@
             <td class="cod">dependencia y paquete <code>clients</code> ausentes en los tres proveedores puros</td>
             <td class="num">4 de 7</td>
           </tr>
+          <tr>
+            <td>Todo fallo remoto se traduce, y ninguno se vuelve un <code>404</code></td>
+            <td class="cod">gate S5: <code>catch</code> de <code>RetryableException</code>, cero
+              <code>Optional.empty()</code> en <code>clients/</code>, <code>503</code> en el manejador</td>
+            <td class="num">7 de 7</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -864,10 +872,10 @@
   <!-- ===================================================== -->
   <section>
     <span class="num-seccion">04 — Hallazgos</span>
-    <h2>Treinta y dos defectos que las pruebas en verde no atraparon</h2>
+    <h2>Treinta y cinco defectos que las pruebas en verde no atraparon</h2>
     <p class="entradilla">
       Cada slice se delegó a un agente ejecutor y volvió con su suite completa en verde. La revisión del
-      diff contra las invariantes encontró treinta y dos defectos. El patrón se repite en los cinco
+      diff contra las invariantes encontró treinta y cinco defectos. El patrón se repite en los cinco
       slices: <strong>el agente escribe pruebas que confirman lo que programó</strong>, no lo que la
       regla exige. Una suite en verde mide la coherencia interna del código, no su correspondencia con
       el dominio.
@@ -880,7 +888,7 @@
           <tr><td class="cod">S1 · S2</td><td class="num">9</td><td>Un camión sin SOAT volvía a ser elegible para viaje</td></tr>
           <tr><td class="cod">S3</td><td class="num">12</td><td>El precio de la orden salía de un literal inventado por el agente</td></tr>
           <tr><td class="cod">S4</td><td class="num">8</td><td>Un <span class="mono">201&nbsp;Created</span> con un identificador detrás del cual no había nada</td></tr>
-          <tr><td class="cod">S5</td><td class="num">3</td><td>El ejemplo del contrato 11 no casaba con lo que el proveedor publica</td></tr>
+          <tr><td class="cod">S5</td><td class="num">6</td><td>Tres invariantes se comprobaban contra datos que aportaba quien llamaba</td></tr>
         </tbody>
       </table>
     </div>
@@ -1065,6 +1073,51 @@
       </article>
 
       <article class="defecto">
+        <span class="inv-ref">VIA-04 · ORD-02 · FAC-01</span>
+        <div class="cuerpo">
+          <p class="titulo">Tres invariantes se comprobaban contra datos que aportaba quien llamaba</p>
+          <p class="texto">
+            Programación recibía en el cuerpo de la petición la cláusula del contrato marco —la que decide
+            VIA-04— y la elegibilidad de unidad y conductores. Comercial decidía ORD-02 con su copia local
+            del estado crediticio. Facturación recibía la tarifa del snapshot. En los tres casos, quien
+            pedía la operación aportaba también el dato que la autoriza: mandar una cláusula permisiva
+            bastaba para que la invariante no pudiera fallar nunca. Es el defecto que los once contratos
+            existen para cerrar, y sólo se vio al conectarlos.
+          </p>
+          <span class="servicio">msvc-programacion · msvc-comercial · msvc-facturacion · msvc-ejecucion</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">VIA-05</span>
+        <div class="cuerpo">
+          <p class="titulo">El tipo de carga se adivinaba con prefijos de texto. Otra vez</p>
+          <p class="texto">
+            El contrato 1 no publicaba el <span class="mono">TipoDeCarga</span>, así que el gateway lo
+            reconstruía desde el embalaje y la naturaleza, con <span class="mono">GENERAL</span> por defecto
+            para lo no reconocido. VIA-05 se decide con ese campo y la maquinaria pesada es la única que no
+            comparte plataforma con nada: una naturaleza escrita de otra forma la convertía en carga general
+            consolidable con cualquier cosa. Mismo defecto que CTM-02, cuatro slices después.
+          </p>
+          <span class="servicio">msvc-programacion · contrato 1</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">Contrato 10</span>
+        <div class="cuerpo">
+          <p class="titulo">Un <span class="mono">CONTADO</span> por defecto para no romper las pruebas</p>
+          <p class="texto">
+            El snapshot ganó la condición de pago con un constructor en cascada que rellenaba
+            <span class="mono">"CONTADO", 0</span>. Sólo las facturas a crédito entran a la cartera: una
+            factura a crédito construida por esa vía se habría registrado como contado y nunca habría
+            llegado a Cobranza. Nadie la habría reclamado.
+          </p>
+          <span class="servicio">msvc-facturacion</span>
+        </div>
+      </article>
+
+      <article class="defecto">
         <span class="inv-ref">S5</span>
         <div class="cuerpo">
           <p class="titulo">El ejemplo del contrato no casaba con lo que el proveedor publica</p>
@@ -1188,9 +1241,8 @@
     <span class="num-seccion">07 — Estado</span>
     <h2>Lo que queda</h2>
     <p class="entradilla">
-      Los siete contextos están completos de dominio a HTTP: modelo, persistencia con Flyway, API
-      pública y la cara proveedora de los once contratos. Queda la cara consumidora —los clientes
-      Feign— en tres módulos, y el flujo vertical de extremo a extremo.
+      Los 32 slices están integrados y los once contratos tienen las dos caras, cada una con su prueba.
+      Queda el flujo vertical: una orden que llegue de extremo a extremo hasta la cartera de cobranza.
     </p>
 
     <div class="avance">
@@ -1199,9 +1251,18 @@
     </div>
 
     <div class="avance">
-      <div class="barra"><div class="hecho" style="width: 90.6%;">29 / 32</div></div>
-      <div class="barra-pie"><span>Slices integrados en <span class="mono">main</span></span><span>3 pendientes</span></div>
+      <div class="barra"><div class="hecho" style="width: 100%;">32 / 32 slices integrados</div></div>
+      <div class="barra-pie"><span>Slices integrados en <span class="mono">main</span></span><span>completo</span></div>
     </div>
+
+    <h3>Los cuatro clientes que existen y nadie llama todavía</h3>
+    <p>
+      De los once clientes Feign, siete los invoca un servicio de aplicación y cuatro no. Los cuatro son
+      los reportes que Ejecución empuja al cerrar el viaje —contratos 5, 6, 7 y 8—, y necesitan datos que
+      el agregado aún no lleva: el odómetro final, las horas por conductor, los conceptos facturables.
+      Están escritos, probados y con sus claves de idempotencia; les falta quien los invoque. Decirlo es
+      parte del estado: un cliente probado que nadie llama sigue siendo un contrato sin cerrar.
+    </p>
 
     <div class="scroll" style="margin-top: 26px;">
       <table>
@@ -1211,7 +1272,7 @@
           <tr><td class="cod">S2-persistencia</td><td>Mapeo JPA, repositorios y la migración Flyway del esquema</td><td class="num">7 de 7</td></tr>
           <tr><td class="cod">S3-api-publica</td><td>Controladores <code>/api/v1</code>, DTO, validación, Problem Details</td><td class="num">7 de 7</td></tr>
           <tr><td class="cod">S4-api-interna</td><td>Endpoints <code>/internal/v1</code> de los contratos que publica</td><td class="num">6 de 6</td></tr>
-          <tr><td class="cod">S5-clientes</td><td>Clientes Feign, timeouts, traducción de error, pruebas con stub</td><td class="num">1 de 4</td></tr>
+          <tr><td class="cod">S5-clientes</td><td>Clientes Feign, timeouts, traducción de error, pruebas con stub</td><td class="num">4 de 4</td></tr>
         </tbody>
       </table>
     </div>
