@@ -34,7 +34,7 @@ class FacturaEmisionTest {
             total,
             total.codigoMoneda(),
             fechaBase
-        );
+        , "CREDITO", 30);
         Factura factura = Factura.abrir("FAC-001", "ORD-001", "CLI-001", snapshot, detraccion);
         factura.agregarLinea(new LineaDeFactura("L1", "ORD-001", ConceptoFacturable.FLETE, "Flete base", total));
         return factura;
@@ -77,7 +77,7 @@ class FacturaEmisionTest {
         Detraccion detraccion = Detraccion.sinDetraccion("PEN");
         SnapshotComercial snapshot = new SnapshotComercial(
             "ORD-001", "CLI-001", Dinero.de("500.00", "PEN"), "PEN", fechaBase
-        );
+        , "CREDITO", 30);
         Factura factura = Factura.abrir("FAC-FF-001", "ORD-001", "CLI-001", snapshot, detraccion);
         factura.agregarLinea(new LineaDeFactura("L-FF", "ORD-001", ConceptoFacturable.FALSO_FLETE, "Falso flete", Dinero.de("500.00", "PEN")));
 
@@ -97,7 +97,7 @@ class FacturaEmisionTest {
         Detraccion detraccion = Detraccion.sinDetraccion("PEN");
         SnapshotComercial snapshot = new SnapshotComercial(
             "ORD-001", "CLI-001", Dinero.de("500.00", "PEN"), "PEN", fechaBase
-        );
+        , "CREDITO", 30);
         Factura factura = Factura.abrir("FAC-FF-002", "ORD-001", "CLI-001", snapshot, detraccion);
         factura.agregarLinea(new LineaDeFactura("L1", "ORD-001", ConceptoFacturable.FLETE, "Flete regular", Dinero.de("500.00", "PEN")));
 

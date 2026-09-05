@@ -583,10 +583,11 @@
   <div class="cifras">
     <div class="cifra"><span class="n completo">48/48</span><span class="et">Invariantes cubiertas</span></div>
     <div class="cifra"><span class="n">7</span><span class="et">Bounded contexts</span></div>
-    <div class="cifra"><span class="n">512</span><span class="et">Pruebas en verde</span></div>
+    <div class="cifra"><span class="n">765</span><span class="et">Pruebas en verde</span></div>
     <div class="cifra"><span class="n">11</span><span class="et">Contratos de integración</span></div>
+    <div class="cifra"><span class="n">29/32</span><span class="et">Slices integrados</span></div>
     <div class="cifra"><span class="n">0</span><span class="et">Imports entre contextos</span></div>
-    <div class="cifra"><span class="n">9</span><span class="et">Defectos hallados en revisión</span></div>
+    <div class="cifra"><span class="n">32</span><span class="et">Defectos hallados en revisión</span></div>
   </div>
 
   <!-- ===================================================== -->
@@ -806,24 +807,26 @@
     <span class="num-seccion">03 — Verificación</span>
     <h2>Lo que el gate comprueba de verdad</h2>
     <p class="entradilla">
-      <code>./mvnw clean verify</code> sobre los ocho módulos: 1&nbsp;min&nbsp;16&nbsp;s, salida cero.
-      Failsafe levanta un MySQL 8.4 real con Testcontainers para las pruebas de persistencia, así que un
-      mapeo JPA roto no puede pasar en verde.
+      <code>./mvnw clean verify</code> sobre los ocho módulos: 765 pruebas unitarias y 47 de
+      integración, salida cero. Failsafe levanta un MySQL 8.4 real con Testcontainers, así que un mapeo
+      JPA roto no puede pasar en verde. Y <code>./scripts/smoke-test.sh</code> levanta los siete
+      servicios contra un MySQL de <code>docker compose</code>: los siete responden
+      <span class="mono">UP</span>.
     </p>
 
     <div class="scroll">
       <table>
         <thead>
-          <tr><th>Módulo</th><th class="num">Pruebas</th><th class="num">IT</th><th>Invariantes</th><th class="num">VO</th><th class="num">Agregados y entidades</th></tr>
+          <tr><th>Módulo</th><th class="num">Pruebas</th><th>Invariantes</th><th class="num">Contratos que provee</th><th class="num">Contratos que consume</th></tr>
         </thead>
         <tbody>
-          <tr><td>msvc-unidades</td><td class="num">91</td><td class="num">1</td><td class="cod">UNI · OMT · REP</td><td class="num">17</td><td class="num">5</td></tr>
-          <tr><td>msvc-ejecucion</td><td class="num">83</td><td class="num">1</td><td class="cod">EJV · LIQ</td><td class="num">15</td><td class="num">8</td></tr>
-          <tr><td>msvc-programacion</td><td class="num">72</td><td class="num">1</td><td class="cod">VIA · AGU · AGC</td><td class="num">14</td><td class="num">5</td></tr>
-          <tr><td>msvc-conductores</td><td class="num">72</td><td class="num">1</td><td class="cod">CON</td><td class="num">9</td><td class="num">2</td></tr>
-          <tr><td>msvc-cobranza</td><td class="num">71</td><td class="num">1</td><td class="cod">CCC · PAG</td><td class="num">9</td><td class="num">4</td></tr>
-          <tr><td>msvc-comercial</td><td class="num">70</td><td class="num">1</td><td class="cod">CLI · COT · ORD · CTM · TAR</td><td class="num">22</td><td class="num">7</td></tr>
-          <tr><td>msvc-facturacion</td><td class="num">46</td><td class="num">1</td><td class="cod">FAC · NCR</td><td class="num">9</td><td class="num">3</td></tr>
+          <tr><td>msvc-unidades</td><td class="num">130</td><td class="cod">UNI · OMT · REP</td><td class="num">2 y 5</td><td class="num">—</td></tr>
+          <tr><td>msvc-comercial</td><td class="num">125</td><td class="cod">CLI · COT · ORD · CTM · TAR</td><td class="num">1, 7 y 9</td><td class="num">11</td></tr>
+          <tr><td>msvc-conductores</td><td class="num">118</td><td class="cod">CON</td><td class="num">3 y 6</td><td class="num">—</td></tr>
+          <tr><td>msvc-cobranza</td><td class="num">109</td><td class="cod">CCC · PAG</td><td class="num">10 y 11</td><td class="num">—</td></tr>
+          <tr><td>msvc-ejecucion</td><td class="num">106</td><td class="cod">EJV · LIQ</td><td class="num">—</td><td class="num">4, 5, 6, 7 y 8</td></tr>
+          <tr><td>msvc-programacion</td><td class="num">105</td><td class="cod">VIA · AGU · AGC</td><td class="num">4</td><td class="num">1, 2 y 3</td></tr>
+          <tr><td>msvc-facturacion</td><td class="num">72</td><td class="cod">FAC · NCR</td><td class="num">8</td><td class="num">9 y 10</td></tr>
         </tbody>
       </table>
     </div>
@@ -850,7 +853,7 @@
           </tr>
           <tr>
             <td>OpenFeign sólo donde el mapa de contexto lo justifica</td>
-            <td class="cod">dependencia ausente en los tres proveedores puros</td>
+            <td class="cod">dependencia y paquete <code>clients</code> ausentes en los tres proveedores puros</td>
             <td class="num">4 de 7</td>
           </tr>
         </tbody>
@@ -861,13 +864,26 @@
   <!-- ===================================================== -->
   <section>
     <span class="num-seccion">04 — Hallazgos</span>
-    <h2>Nueve defectos que las pruebas en verde no atraparon</h2>
+    <h2>Treinta y dos defectos que las pruebas en verde no atraparon</h2>
     <p class="entradilla">
       Cada slice se delegó a un agente ejecutor y volvió con su suite completa en verde. La revisión del
-      diff contra las invariantes encontró nueve defectos en seis de los siete contextos. El patrón se
-      repite: <strong>el agente escribe pruebas que confirman lo que programó</strong>, no lo que la regla
-      exige.
+      diff contra las invariantes encontró treinta y dos defectos. El patrón se repite en los cinco
+      slices: <strong>el agente escribe pruebas que confirman lo que programó</strong>, no lo que la
+      regla exige. Una suite en verde mide la coherencia interna del código, no su correspondencia con
+      el dominio.
     </p>
+
+    <div class="scroll" style="margin-bottom: 26px;">
+      <table>
+        <thead><tr><th>Slice</th><th class="num">Defectos</th><th>El más caro</th></tr></thead>
+        <tbody>
+          <tr><td class="cod">S1 · S2</td><td class="num">9</td><td>Un camión sin SOAT volvía a ser elegible para viaje</td></tr>
+          <tr><td class="cod">S3</td><td class="num">12</td><td>El precio de la orden salía de un literal inventado por el agente</td></tr>
+          <tr><td class="cod">S4</td><td class="num">8</td><td>Un <span class="mono">201&nbsp;Created</span> con un identificador detrás del cual no había nada</td></tr>
+          <tr><td class="cod">S5</td><td class="num">3</td><td>El ejemplo del contrato 11 no casaba con lo que el proveedor publica</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="defectos">
 
@@ -994,6 +1010,74 @@
         </div>
       </article>
 
+      <article class="defecto">
+        <span class="inv-ref">S3</span>
+        <div class="cuerpo">
+          <p class="titulo">El precio de la orden era un literal, con el comentario del agente al lado</p>
+          <p class="texto">
+            <span class="mono">new Dinero(new BigDecimal("100.00"), "PEN")</span>, precedido de
+            <span class="mono">// But for now, let's just make it up</span>. Cien pruebas en verde porque
+            ninguna miraba el importe. Ahora sale de <span class="mono">contrato.tarifaPara(...)</span>, y
+            una ruta que el contrato no tarifica es un <span class="mono">404</span> explícito.
+          </p>
+          <span class="servicio">msvc-comercial</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">PAG-02</span>
+        <div class="cuerpo">
+          <p class="titulo">La invariante era inalcanzable y su prueba describía un mundo imposible</p>
+          <p class="texto">
+            El servicio buscaba la cuenta dentro del titular del propio pago, así que una cuenta ajena
+            daba <span class="mono">404</span> en vez de <span class="mono">422</span>. La prueba que la
+            «cubría» hacía que el repositorio devolviera la cuenta del cliente 2 al preguntar por la del
+            cliente 1. Verde, y sin poder fallar nunca.
+          </p>
+          <span class="servicio">msvc-cobranza</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">S4</span>
+        <div class="cuerpo">
+          <p class="titulo">Un <span class="mono">201 Created</span> apuntando a nada</p>
+          <p class="texto">
+            <span class="mono">"CONTADO-" + UUID.randomUUID()</span> guardado como clave de idempotencia,
+            sin recurso detrás: la clave protegía un efecto que nunca ocurrió. El contrato ya decía qué
+            hacer —las facturas al contado se registran ya canceladas— y el dominio ya sabía hacerlo.
+          </p>
+          <span class="servicio">msvc-cobranza</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">CON-02 · UNI-03</span>
+        <div class="cuerpo">
+          <p class="titulo">Dos códigos HTTP que nunca se habían puesto a prueba</p>
+          <p class="texto">
+            Las dos excepciones caían en el <span class="mono">422</span> por defecto y sus contratos
+            dicen <span class="mono">409</span>. Los dos tienen razón: las horas se reponen mañana. Nadie
+            lo había visto porque ningún endpoint público llegaba a lanzarlas.
+          </p>
+          <span class="servicio">msvc-conductores · msvc-unidades</span>
+        </div>
+      </article>
+
+      <article class="defecto">
+        <span class="inv-ref">S5</span>
+        <div class="cuerpo">
+          <p class="titulo">El ejemplo del contrato no casaba con lo que el proveedor publica</p>
+          <p class="texto">
+            El contrato 11 escribía <span class="mono">fechaDeCambio</span> como marca de tiempo con
+            offset y los dos contextos la modelan como fecha. Lo destapó la prueba que decodifica el
+            ejemplo del documento con el cliente Feign real: la prueba del gateway no podía verlo, porque
+            construye el objeto a mano.
+          </p>
+          <span class="servicio">msvc-comercial</span>
+        </div>
+      </article>
+
     </div>
   </section>
 
@@ -1104,8 +1188,9 @@
     <span class="num-seccion">07 — Estado</span>
     <h2>Lo que queda</h2>
     <p class="entradilla">
-      Los siete contextos tienen su modelo de dominio completo y probado. Falta la capa de fuera: mapeo JPA
-      con sus migraciones, endpoints y clientes Feign.
+      Los siete contextos están completos de dominio a HTTP: modelo, persistencia con Flyway, API
+      pública y la cara proveedora de los once contratos. Queda la cara consumidora —los clientes
+      Feign— en tres módulos, y el flujo vertical de extremo a extremo.
     </p>
 
     <div class="avance">
@@ -1114,8 +1199,8 @@
     </div>
 
     <div class="avance">
-      <div class="barra"><div class="hecho" style="width: 24.2%;">8 / 33</div></div>
-      <div class="barra-pie"><span>Slices integrados en <span class="mono">main</span></span><span>25 pendientes</span></div>
+      <div class="barra"><div class="hecho" style="width: 90.6%;">29 / 32</div></div>
+      <div class="barra-pie"><span>Slices integrados en <span class="mono">main</span></span><span>3 pendientes</span></div>
     </div>
 
     <div class="scroll" style="margin-top: 26px;">
@@ -1123,10 +1208,10 @@
         <thead><tr><th>Slice</th><th>Qué entrega</th><th class="num">Estado</th></tr></thead>
         <tbody>
           <tr><td class="cod">S1-dominio</td><td>Objetos de valor, agregados, invariantes y sus pruebas</td><td class="num">8 de 8</td></tr>
-          <tr><td class="cod">S2-persistencia</td><td>Mapeo JPA, repositorios y la migración Flyway del esquema</td><td class="num">0 de 7</td></tr>
-          <tr><td class="cod">S3-api-publica</td><td>Controladores <code>/api/v1</code>, DTO, validación, Problem Details</td><td class="num">0 de 7</td></tr>
-          <tr><td class="cod">S4-api-interna</td><td>Endpoints <code>/internal/v1</code> de los contratos que publica</td><td class="num">0 de 6</td></tr>
-          <tr><td class="cod">S5-clientes</td><td>Clientes Feign, timeouts, traducción de error, pruebas con stub</td><td class="num">0 de 4</td></tr>
+          <tr><td class="cod">S2-persistencia</td><td>Mapeo JPA, repositorios y la migración Flyway del esquema</td><td class="num">7 de 7</td></tr>
+          <tr><td class="cod">S3-api-publica</td><td>Controladores <code>/api/v1</code>, DTO, validación, Problem Details</td><td class="num">7 de 7</td></tr>
+          <tr><td class="cod">S4-api-interna</td><td>Endpoints <code>/internal/v1</code> de los contratos que publica</td><td class="num">6 de 6</td></tr>
+          <tr><td class="cod">S5-clientes</td><td>Clientes Feign, timeouts, traducción de error, pruebas con stub</td><td class="num">1 de 4</td></tr>
         </tbody>
       </table>
     </div>
@@ -1135,8 +1220,8 @@
   <footer>
     <span>Java 26 · Spring Boot 4.1.0 · Spring Cloud 2025.1.2</span>
     <span>MySQL 8.4 · Flyway 12.4 · Testcontainers 2.0</span>
-    <span>Monorepo Maven · 8 módulos · 262 ficheros en <span class="mono">src/main</span></span>
-    <span>4 de septiembre de 2026</span>
+    <span>Monorepo Maven · 8 módulos · 534 clases en <span class="mono">src/main</span> · 122 en <span class="mono">src/test</span></span>
+    <span>5 de septiembre de 2026</span>
   </footer>
 
 </div>

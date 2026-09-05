@@ -43,7 +43,7 @@ class ComercialInternalControllerTest {
         when(servicio.consultarOrdenConfirmada("ORD-2026-000123")).thenReturn(
                 new OrdenConfirmadaResponse(
                         "ORD-2026-000123", "CLI-0007", "CONFIRMADA",
-                        new OrdenConfirmadaResponse.CargaResponse(8500, new BigDecimal("24.5"), "PALLETS", "ALIMENTARIA"),
+                        new OrdenConfirmadaResponse.CargaResponse(8500, new BigDecimal("24.5"), "PALETIZADA", "PALLETS", "ALIMENTARIA"),
                         new OrdenConfirmadaResponse.RutaResponse("Cajamarca", "Trujillo", "COSTA_NORTE", 296),
                         new OrdenConfirmadaResponse.VentanaResponse(
                                 OffsetDateTime.parse("2026-09-10T06:00:00-05:00"),
@@ -57,6 +57,8 @@ class ComercialInternalControllerTest {
                 .andExpect(jsonPath("$.ordenId").value("ORD-2026-000123"))
                 .andExpect(jsonPath("$.estado").value("CONFIRMADA"))
                 .andExpect(jsonPath("$.carga.pesoKg").value(8500))
+                // VIA-05 se decide con este campo. Sin el, Programacion lo adivinaba.
+                .andExpect(jsonPath("$.carga.tipo").value("PALETIZADA"))
                 .andExpect(jsonPath("$.carga.embalaje").value("PALLETS"))
                 .andExpect(jsonPath("$.ruta.origen").value("Cajamarca"))
                 .andExpect(jsonPath("$.ventana.inicio").value("2026-09-10T06:00:00-05:00"))

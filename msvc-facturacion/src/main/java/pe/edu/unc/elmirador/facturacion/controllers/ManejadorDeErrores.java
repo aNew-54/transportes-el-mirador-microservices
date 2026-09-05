@@ -96,8 +96,18 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(DominioFacturacionException.class)
-    public ProblemDetail invarianteViolada(DominioFacturacionException ex) {
+    public ProblemDetail invariante(DominioFacturacionException ex) {
         return problema(HttpStatus.UNPROCESSABLE_ENTITY, "invariante-violada", ex.getMessage());
+    }
+
+    @ExceptionHandler(pe.edu.unc.elmirador.facturacion.exceptions.ComercialIntegrationException.class)
+    public ProblemDetail integracionComercial(pe.edu.unc.elmirador.facturacion.exceptions.ComercialIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "falla-integracion-comercial", ex.getMessage());
+    }
+
+    @ExceptionHandler(pe.edu.unc.elmirador.facturacion.exceptions.CobranzaIntegrationException.class)
+    public ProblemDetail integracionCobranza(pe.edu.unc.elmirador.facturacion.exceptions.CobranzaIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "falla-integracion-cobranza", ex.getMessage());
     }
 
     private ProblemDetail problema(HttpStatus estado, String slug, String detalle) {

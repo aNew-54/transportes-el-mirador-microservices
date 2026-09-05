@@ -355,3 +355,58 @@ admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
 Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
 de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
 `S1` y omiten ese caso; el código no lo omite.
+
+## Slice `S5-clientes` — decisiones de diseño
+
+Un solo contrato, el 11, y aun así es el slice que más cambió el comportamiento del módulo: hasta aquí
+Comercial decidía ORD-02 con su propia copia del estado crediticio.
+
+### La copia local pasa a ser una caché
+
+`Cliente.estadoCrediticio` sigue existiendo y sigue persistiéndose. Lo que cambia es quién manda:
+
+| | Antes de `S5` | Después |
+|---|---|---|
+| Quién decide ORD-02 | la copia local | lo que Cobranza acaba de responder |
+| Para qué sirve la copia | para todo | para las órdenes al contado y para no quedarse sin nada |
+| Si Cobranza no responde | no se notaba | la orden a crédito se rechaza con `503` |
+
+`refrescarEstadoCrediticio` no valía para esto: rechaza una lectura con fecha anterior a la guardada, y
+eso protege contra un dato **empujado** fuera de orden. La consulta síncrona es otra cosa —una fecha
+rara ahí es un reloj desajustado, no una razón para tumbar la creación de una orden— así que el
+agregado gana `refrescarSiEsMasReciente`, que no protesta y no pisa hacia atrás.
+
+### Las tres piezas
+
+| Archivo | Qué hace |
+|---|---|
+| `clients/CobranzaClient` | `@FeignClient`. Habla el idioma del contrato. Ningún servicio lo inyecta. |
+| `clients/dto/EstadoCrediticioRemoto`, `ImporteRemoto` | Espejos del JSON. No son los `dto/response` propios. |
+| `clients/CobranzaGateway` | Traduce a `EstadoCrediticio` y a `CobranzaIntegrationException`. |
+
+### La consulta que no se hace
+
+Una orden al contado no consulta a Cobranza. Es la segunda mitad de CLI-01 —«pero sí al contado»— y
+hasta `S5` era una frase del PDF sin nada que la comprobara. La rama vive en el servicio, que es quien
+elige a qué colaborador llama, pero la condición la nombra `CondicionDePago.exigeVerificacionCrediticia()`:
+no es el servicio quien decide que el crédito exige verificarse.
+
+### Lo que destapó la prueba de stub
+
+El ejemplo de `contracts.md` escribía `fechaDeCambio` como `2026-08-28T09:00:00-05:00` y los dos
+contextos la modelan como `LocalDate`. El proveedor llevaba desde `S4` publicando `2026-08-28` y el
+ejemplo del documento no estaba comprobado contra nada. Se corrigió el documento: una suspensión de
+crédito se decide un día, no a una hora.
+
+Es exactamente para lo que existe `CobranzaClientStubTest`. `CobranzaGatewayTest` construye el DTO a
+mano y por eso no podía verlo: un `record` con un campo que no casa con el JSON compila, pasa esa
+prueba y decodifica un `null` en producción.
+
+### Pruebas exigidas por este slice
+
+| Prueba | Qué demuestra |
+|---|---|
+| `CobranzaGatewayTest` | `500`, `404`, `RetryableException`, situación desconocida y cuerpo incompleto son todos `CobranzaIntegrationException`. Ninguno produce un `VIGENTE`. |
+| `CobranzaClientStubTest` | El DTO casa con el JSON del contrato, campo a campo, decodificado por el cliente real. |
+| `OrdenDeServicioServiceTest` | A crédito con Cobranza caída → se rechaza. Al contado con Cobranza caída → procede, y no se le llega a preguntar. |
+| `OrdenDeServicioControllerTest` | El fallo de integración sale como `503`, no como `500` ni como `422`. |

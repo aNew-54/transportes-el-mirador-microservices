@@ -246,7 +246,7 @@ class FacturaControllerTest {
     @DisplayName("una invariante rota que nadie declaro sigue siendo 422 y no 500")
     void comodinEs422() {
         ProblemDetail problema = new ManejadorDeErrores()
-            .invarianteViolada(new DominioFacturacionException("Una regla nueva que nadie declaro"));
+            .invariante(new DominioFacturacionException("Una regla nueva que nadie declaro"));
 
         assertThat(problema.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY.value());
         assertThat(problema.getType()).hasToString("https://elmirador.unc.edu.pe/problems/invariante-violada");

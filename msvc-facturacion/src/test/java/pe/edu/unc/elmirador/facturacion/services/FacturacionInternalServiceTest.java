@@ -58,7 +58,7 @@ class FacturacionInternalServiceTest {
 
     private Factura facturaBloqueada() {
         SnapshotComercial snapshot = new SnapshotComercial(
-                "ORD-2026-000123", "CLI-0007", new Dinero(new BigDecimal("1821.60"), "PEN"), "PEN", FIRMA);
+                "ORD-2026-000123", "CLI-0007", new Dinero(new BigDecimal("1821.60"), "PEN"), "PEN", FIRMA, "CREDITO", 30);
         Detraccion detraccion = new Detraccion(
                 new BigDecimal("4.00"), new Dinero(new BigDecimal("72.86"), "PEN"), "00-123-456789");
         return Factura.abrir("FAC-2026-000310", snapshot, detraccion);
