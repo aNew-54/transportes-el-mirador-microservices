@@ -286,3 +286,21 @@ Se aceptan las demás decisiones del agente:
 
 Los tres `x != null &&` que quedan no son evasiones: dos normalizan un campo opcional y el tercero es la
 rama de `BORRADOR`/`CONFIRMADA`, donde el reajuste no se exige. En `PROGRAMADA` y `DESPACHADA` sí lanza.
+
+### Notas de `S2-persistencia`
+
+**Los recargos de una `Tarifa` no son una `@ElementCollection`.** `Tarifa` se embebe **tres veces** en
+este contexto —en la cotización, en la tarifa de la orden y en su falso flete— y Hibernate **no permite
+redirigir la tabla de una colección declarada dentro de un `@Embeddable`**: el `@AssociationOverride` con
+`joinTable` se ignora en silencio y las tres caen en la misma tabla por defecto `tarifa_recargos`. El gate
+lo cazó con `missing table [tarifa_recargos]`.
+
+Los recargos se guardan serializados en una columna con `RecargosConverter`, en formato legible
+(`COMBUSTIBLE:10.00;PELIGROSIDAD:5.00`). No se pierde nada: son parte del valor de la tarifa y nunca se
+consultan por separado.
+
+**El convertidor propaga el nulo a propósito.** Hibernate decide que un embebido es nulo cuando **todas**
+sus columnas lo son. Devolviendo cadena vacía para un `NULL`, un falso flete inexistente se materializaba
+como una `Tarifa` vacía en vez de como `null`, y la prueba lo pilló: `expected: null but was: Tarifa@747e`.
+
+`Tarifario.recargosEstandar` sí es una `@ElementCollection`, porque está en la entidad y se usa una vez.

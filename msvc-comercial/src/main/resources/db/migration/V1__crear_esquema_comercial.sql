@@ -32,18 +32,14 @@ CREATE TABLE cotizaciones (
     tarifa_base_moneda              VARCHAR(3)    NOT NULL,
     tarifa_descuento_porcentaje     DECIMAL(5,2)  NULL,
     tarifa_descuento_autorizado_por VARCHAR(100)  NULL,
+    -- Los recargos de una tarifa se guardan serializados: son parte de su valor y no se
+    -- consultan por separado. Ver RecargosConverter y por que no es una @ElementCollection.
+    tarifa_recargos                 VARCHAR(500)  NOT NULL,
     vigencia_desde                  DATE          NOT NULL,
     vigencia_hasta                  DATE          NOT NULL,
     estado                          VARCHAR(20)   NOT NULL,
     motivo_de_rechazo               VARCHAR(20)   NULL,
     CONSTRAINT pk_cotizaciones PRIMARY KEY (id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
-
-CREATE TABLE cotizacion_recargos (
-    cotizacion_id VARCHAR(40)  NOT NULL,
-    tipo          VARCHAR(30)  NOT NULL,
-    porcentaje    DECIMAL(5,2) NOT NULL,
-    CONSTRAINT fk_cotizacion_recargos_cotizacion FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE ordenes_de_servicio (
@@ -60,6 +56,7 @@ CREATE TABLE ordenes_de_servicio (
     tarifa_base_moneda                   VARCHAR(3)    NOT NULL,
     tarifa_descuento_porcentaje          DECIMAL(5,2)  NULL,
     tarifa_descuento_autorizado_por      VARCHAR(100)  NULL,
+    tarifa_recargos                      VARCHAR(500)  NOT NULL,
     condicion_pago_modalidad             VARCHAR(10)   NOT NULL,
     condicion_pago_plazo_dias            INT           NOT NULL,
     estado                               VARCHAR(20)   NOT NULL,
@@ -67,22 +64,9 @@ CREATE TABLE ordenes_de_servicio (
     falso_flete_base_moneda              VARCHAR(3)    NULL,
     falso_flete_descuento_porcentaje     DECIMAL(5,2)  NULL,
     falso_flete_descuento_autorizado_por VARCHAR(100)  NULL,
+    falso_flete_recargos                 VARCHAR(500)  NULL,
     cancelado_por                        VARCHAR(100)  NULL,
     CONSTRAINT pk_ordenes_de_servicio PRIMARY KEY (id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
-
-CREATE TABLE orden_de_servicio_recargos (
-    orden_de_servicio_id VARCHAR(40)  NOT NULL,
-    tipo                 VARCHAR(30)  NOT NULL,
-    porcentaje           DECIMAL(5,2) NOT NULL,
-    CONSTRAINT fk_orden_recargos_orden FOREIGN KEY (orden_de_servicio_id) REFERENCES ordenes_de_servicio (id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
-
-CREATE TABLE orden_de_servicio_falso_flete_recargos (
-    orden_de_servicio_id VARCHAR(40)  NOT NULL,
-    tipo                 VARCHAR(30)  NOT NULL,
-    porcentaje           DECIMAL(5,2) NOT NULL,
-    CONSTRAINT fk_falso_flete_recargos_orden FOREIGN KEY (orden_de_servicio_id) REFERENCES ordenes_de_servicio (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE contratos_marco (
@@ -145,11 +129,8 @@ CREATE TABLE tarifario_recargos (
 CREATE INDEX ix_clientes_estado_crediticio ON clientes (estado_crediticio_situacion);
 CREATE INDEX ix_cotizaciones_cliente ON cotizaciones (cliente_id);
 CREATE INDEX ix_cotizaciones_estado ON cotizaciones (estado);
-CREATE INDEX ix_cotizacion_recargos_cotizacion ON cotizacion_recargos (cotizacion_id);
 CREATE INDEX ix_ordenes_de_servicio_cliente ON ordenes_de_servicio (cliente_id);
 CREATE INDEX ix_ordenes_de_servicio_estado ON ordenes_de_servicio (estado);
-CREATE INDEX ix_orden_recargos_orden ON orden_de_servicio_recargos (orden_de_servicio_id);
-CREATE INDEX ix_falso_flete_recargos_orden ON orden_de_servicio_falso_flete_recargos (orden_de_servicio_id);
 CREATE INDEX ix_contratos_marco_cliente ON contratos_marco (cliente_id);
 CREATE INDEX ix_restricciones_contrato ON contrato_marco_restricciones (contrato_marco_id);
 CREATE INDEX ix_tarifas_pactadas_contrato ON tarifas_pactadas (contrato_marco_id);

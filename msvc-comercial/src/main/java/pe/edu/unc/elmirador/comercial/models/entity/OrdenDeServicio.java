@@ -1,6 +1,5 @@
 package pe.edu.unc.elmirador.comercial.models.entity;
 
-import jakarta.persistence.AssociationOverride;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
@@ -10,7 +9,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -70,15 +68,9 @@ public class OrdenDeServicio {
         @AttributeOverride(name = "base.monto", column = @Column(name = "tarifa_base_monto", precision = 15, scale = 2, nullable = false)),
         @AttributeOverride(name = "base.codigoMoneda", column = @Column(name = "tarifa_base_moneda", length = 3, nullable = false)),
         @AttributeOverride(name = "descuento.porcentaje", column = @Column(name = "tarifa_descuento_porcentaje", precision = 5, scale = 2)),
-        @AttributeOverride(name = "descuento.autorizadoPor", column = @Column(name = "tarifa_descuento_autorizado_por", length = 100))
+        @AttributeOverride(name = "descuento.autorizadoPor", column = @Column(name = "tarifa_descuento_autorizado_por", length = 100)),
+        @AttributeOverride(name = "recargos", column = @Column(name = "tarifa_recargos", length = 500, nullable = false))
     })
-    @AssociationOverride(
-        name = "recargos",
-        joinTable = @JoinTable(
-            name = "orden_de_servicio_recargos",
-            joinColumns = @JoinColumn(name = "orden_de_servicio_id", nullable = false)
-        )
-    )
     private Tarifa tarifa;
 
     @Embedded
@@ -97,15 +89,9 @@ public class OrdenDeServicio {
         @AttributeOverride(name = "base.monto", column = @Column(name = "falso_flete_base_monto", precision = 15, scale = 2)),
         @AttributeOverride(name = "base.codigoMoneda", column = @Column(name = "falso_flete_base_moneda", length = 3)),
         @AttributeOverride(name = "descuento.porcentaje", column = @Column(name = "falso_flete_descuento_porcentaje", precision = 5, scale = 2)),
-        @AttributeOverride(name = "descuento.autorizadoPor", column = @Column(name = "falso_flete_descuento_autorizado_por", length = 100))
+        @AttributeOverride(name = "descuento.autorizadoPor", column = @Column(name = "falso_flete_descuento_autorizado_por", length = 100)),
+        @AttributeOverride(name = "recargos", column = @Column(name = "falso_flete_recargos", length = 500))
     })
-    @AssociationOverride(
-        name = "recargos",
-        joinTable = @JoinTable(
-            name = "orden_de_servicio_falso_flete_recargos",
-            joinColumns = @JoinColumn(name = "orden_de_servicio_id", nullable = false)
-        )
-    )
     private Tarifa falsoFlete;
 
     @Column(name = "cancelado_por", length = 100)

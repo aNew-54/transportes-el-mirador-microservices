@@ -2,13 +2,10 @@ package pe.edu.unc.elmirador.comercial.models.vo;
 
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
-import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -34,8 +31,8 @@ public class Tarifa {
     })
     private Dinero base;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "tarifa_recargos", joinColumns = @JoinColumn(name = "tarifa_id"))
+    @Convert(converter = RecargosConverter.class)
+    @Column(name = "recargos", length = 500, nullable = false)
     private List<Recargo> recargos = new ArrayList<>();
 
     @Embedded
