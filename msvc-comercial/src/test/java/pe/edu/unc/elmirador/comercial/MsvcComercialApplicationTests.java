@@ -1,27 +1,52 @@
 package pe.edu.unc.elmirador.comercial;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import pe.edu.unc.elmirador.comercial.repositories.ClienteRepository;
+import pe.edu.unc.elmirador.comercial.repositories.ContratoMarcoRepository;
+import pe.edu.unc.elmirador.comercial.repositories.CotizacionRepository;
+import pe.edu.unc.elmirador.comercial.repositories.OrdenDeServicioRepository;
+import pe.edu.unc.elmirador.comercial.repositories.TarifarioRepository;
 
+/**
+ * Prueba de humo: verifica que el contexto de Spring arranca correctamente.
+ *
+ * <p>Para que la prueba sea util (regla 1), el contexto debe ser el real.
+ * Excluir JPA sin reemplazar los repositorios dejaba el contexto a medias y
+ * escondia fallos de inyeccion en los servicios.
+ * Ahora se sustituyen con {@code @MockitoBean}, probando todo menos la BD.
+ */
 @SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        classes = MsvcComercialApplication.class,
         properties = {
-                "spring.autoconfigure.exclude="
-                        + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
-                        + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration"
+            "spring.autoconfigure.exclude="
+                + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
+                + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration"
         }
 )
 class MsvcComercialApplicationTests {
 
-    @Autowired
-    private ApplicationContext applicationContext;
+    @MockitoBean
+    private ClienteRepository clienteRepository;
+
+    @MockitoBean
+    private ContratoMarcoRepository contratoRepository;
+
+    @MockitoBean
+    private CotizacionRepository cotizacionRepository;
+
+    @MockitoBean
+    private OrdenDeServicioRepository ordenRepository;
+
+    @MockitoBean
+    private TarifarioRepository tarifarioRepository;
 
     @Test
-    void applicationContextStarts() {
-        assertNotNull(applicationContext);
+    void contextLoads() {
+        // Si llega aqui, el contexto arranco bien
     }
 }
