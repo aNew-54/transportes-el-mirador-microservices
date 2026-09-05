@@ -19,6 +19,10 @@ import org.junit.jupiter.api.Test;
 
 import pe.edu.unc.elmirador.ejecucion.dto.request.CerrarEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ConformidadRequest;
+import static org.mockito.Mockito.never;
+import pe.edu.unc.elmirador.ejecucion.exceptions.ProgramacionIntegrationException;
+import pe.edu.unc.elmirador.ejecucion.clients.HojaDeRutaDeViaje;
+import pe.edu.unc.elmirador.ejecucion.clients.ProgramacionGateway;
 import pe.edu.unc.elmirador.ejecucion.dto.request.CrearEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ParadaRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.response.EjecucionDeViajeResponse;
@@ -33,13 +37,18 @@ class EjecucionDeViajeServiceTest {
 
     private EjecucionDeViajeRepository repository;
     private Clock clock;
+    private ProgramacionGateway programacionGateway;
     private EjecucionDeViajeService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(EjecucionDeViajeRepository.class);
         clock = Clock.fixed(Instant.parse("2026-05-01T10:00:00Z"), ZoneId.of("America/Lima"));
-        service = new EjecucionDeViajeService(repository, clock);
+        programacionGateway = mock(ProgramacionGateway.class);
+        when(programacionGateway.obtenerHojaDeRuta(any())).thenReturn(new HojaDeRutaDeViaje(
+                "v-1", "DESPACHADO", "u-1", List.of("c-1"),
+                List.of(new HojaDeRutaDeViaje.ParadaPlanificada(1, "os-1", "Dir 1"))));
+        service = new EjecucionDeViajeService(repository, programacionGateway, clock);
     }
 
     @Test
@@ -47,8 +56,7 @@ class EjecucionDeViajeServiceTest {
     void crear() {
         when(repository.existsById("v-1")).thenReturn(false);
 
-        CrearEjecucionRequest request = new CrearEjecucionRequest("v-1", "u-1", 
-                List.of(new ParadaRequest(1, "os-1", "Dir 1")));
+        CrearEjecucionRequest request = new CrearEjecucionRequest("v-1");
         
         EjecucionDeViajeResponse response = service.crear(request);
         
@@ -57,13 +65,44 @@ class EjecucionDeViajeServiceTest {
         verify(repository).save(any(EjecucionDeViaje.class));
     }
 
+    /**
+     * Contrato 4. La unidad ejecutora y las paradas venian en el cuerpo de la peticion, asi que quien
+     * abria la ejecucion podia declarar una unidad distinta de la programada y unas paradas que nadie
+     * habia planificado. Ahora las trae la hoja de ruta.
+     */
+    @Test
+    @DisplayName("crear toma la unidad y las paradas de la hoja de ruta, no de la peticion")
+    void crearTomaLaHojaDeRutaDeProgramacion() {
+        when(repository.existsById("v-1")).thenReturn(false);
+
+        EjecucionDeViajeResponse respuesta = service.crear(new CrearEjecucionRequest("v-1"));
+
+        verify(programacionGateway).obtenerHojaDeRuta("v-1");
+        // La unidad sale de la hoja de ruta. La peticion ya no la lleva y no puede contradecirla.
+        assertThat(respuesta.unidadEjecutoraId()).isEqualTo("u-1");
+        verify(repository).save(any(EjecucionDeViaje.class));
+    }
+
+    /** Sin hoja de ruta confirmada no se abre la ejecucion. No se ejecuta un viaje a ciegas. */
+    @Test
+    @DisplayName("con Programacion caida no se abre la ejecucion")
+    void crearConProgramacionCaidaNoPersisteNada() {
+        when(repository.existsById("v-1")).thenReturn(false);
+        when(programacionGateway.obtenerHojaDeRuta("v-1"))
+                .thenThrow(new ProgramacionIntegrationException("Programacion no respondio"));
+
+        assertThatThrownBy(() -> service.crear(new CrearEjecucionRequest("v-1")))
+                .isInstanceOf(ProgramacionIntegrationException.class);
+
+        verify(repository, never()).save(any(EjecucionDeViaje.class));
+    }
+
     @Test
     @DisplayName("crear lanza 409 si ya existe")
     void crearConflicto() {
         when(repository.existsById("v-1")).thenReturn(true);
 
-        CrearEjecucionRequest request = new CrearEjecucionRequest("v-1", "u-1", 
-                List.of(new ParadaRequest(1, "os-1", "Dir 1")));
+        CrearEjecucionRequest request = new CrearEjecucionRequest("v-1");
 
         assertThatThrownBy(() -> service.crear(request))
                 .isInstanceOf(ConflictoDeRecursoException.class)
