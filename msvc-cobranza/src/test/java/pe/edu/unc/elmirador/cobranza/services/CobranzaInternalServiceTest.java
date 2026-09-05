@@ -17,7 +17,9 @@ import java.time.ZoneId;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import pe.edu.unc.elmirador.cobranza.models.vo.CondicionDeVenta;
@@ -67,12 +69,41 @@ class CobranzaInternalServiceTest {
     }
 
     @Test
-    void consultarEstadoCrediticio_NoExiste_LanzaException() {
-        when(repositorio.findByClienteId("CLI-007")).thenReturn(Optional.empty());
+    @DisplayName("[CCC] Un cliente del que Cobranza no sabe nada tiene el credito intacto")
+    void consultarEstadoCrediticio_ClienteNuevo_AbreLaCuentaYResponde() {
+        when(repositorio.findByClienteId("CLI-NUEVO")).thenReturn(Optional.empty());
+        when(repositorio.save(any(CuentaCorrienteDelCliente.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
 
-        Throwable error = catchThrowable(() -> servicio.estadoCrediticio("CLI-007"));
+        EstadoCrediticioResponse resp = servicio.estadoCrediticio("CLI-NUEVO");
 
-        assertThat(error).isInstanceOf(RecursoNoEncontradoException.class);
+        // Antes esto lanzaba RecursoNoEncontradoException, y como ningun camino de produccion
+        // construia nunca una CuentaCorrienteDelCliente, el 404 era la unica respuesta posible del
+        // contrato 11: ningun cliente podia pedir una orden a credito.
+        assertThat(resp.situacion()).isEqualTo("VIGENTE");
+        assertThat(resp.deudaPorMoneda()).isEmpty();
+        assertThat(resp.cuentasVencidas()).isZero();
+        assertThat(resp.fechaDeCambio()).isEqualTo(hoy);
+        verify(repositorio).save(any(CuentaCorrienteDelCliente.class));
+    }
+
+    @Test
+    @DisplayName("[CCC] La cuenta se persiste: fechaDeCambio no puede moverse en cada lectura")
+    void consultarEstadoCrediticio_ClienteNuevo_PersisteLaCuenta() {
+        when(repositorio.findByClienteId("CLI-NUEVO")).thenReturn(Optional.empty());
+        when(repositorio.save(any(CuentaCorrienteDelCliente.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        servicio.estadoCrediticio("CLI-NUEVO");
+
+        ArgumentCaptor<CuentaCorrienteDelCliente> captor =
+                ArgumentCaptor.forClass(CuentaCorrienteDelCliente.class);
+        verify(repositorio).save(captor.capture());
+        // Comercial guarda esta fecha y la compara por dia. Sintetizarla en cada lectura daria hoy
+        // siempre, que es mentir sobre cuando cambio la situacion del cliente.
+        assertThat(captor.getValue().clienteId()).isEqualTo("CLI-NUEVO");
+        assertThat(captor.getValue().estado().fechaDeCambio()).isEqualTo(hoy);
+        assertThat(captor.getValue().estado().permiteCredito()).isTrue();
     }
 
     @Test
@@ -121,6 +152,38 @@ class CobranzaInternalServiceTest {
 
         assertThat(error).isInstanceOf(ImportesInconsistentesException.class);
         verify(repositorio, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("[CCC] La primera factura de un cliente nuevo entra al ledger, no responde 404")
+    void crearCuenta_ClienteSinCuentaCorriente_AbreLaCuenta() {
+        String clave = "FAC-2026-000999";
+        when(idempotencia.findById(clave)).thenReturn(Optional.empty());
+        when(repositorio.findByClienteId("CLI-NUEVO")).thenReturn(Optional.empty());
+        when(repositorio.save(any(CuentaCorrienteDelCliente.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        CrearCuentaPorCobrarRequest peticion = new CrearCuentaPorCobrarRequest(
+                "FAC-2026-000999",
+                "F001-00000999",
+                "CLI-NUEVO",
+                new ImporteRequest("1821.60", "PEN"),
+                new DetraccionRequest(BigDecimal.valueOf(4), "72.86", "PEN", "00-123-456789"),
+                new ImporteRequest("1748.74", "PEN"),
+                OffsetDateTime.now(reloj),
+                OffsetDateTime.now(reloj),
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
+        );
+
+        // Antes esto lanzaba RecursoNoEncontradoException. Como nada creaba nunca una cuenta
+        // corriente, la primera factura de cualquier cliente era tambien la ultima: el contrato 10
+        // respondia 404 y Facturacion lo leia como un 503.
+        ResultadoIdempotente<CuentaPorCobrarCreadaResponse> resultado =
+                servicio.crearCuentaPorCobrar(clave, peticion);
+
+        assertThat(resultado.repetida()).isFalse();
+        assertThat(resultado.cuerpo().facturaId()).isEqualTo("FAC-2026-000999");
+        verify(repositorio, times(2)).save(any(CuentaCorrienteDelCliente.class));
     }
 
     @Test
