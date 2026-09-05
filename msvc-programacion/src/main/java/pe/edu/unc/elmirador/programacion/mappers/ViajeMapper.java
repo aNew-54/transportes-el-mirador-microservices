@@ -96,7 +96,10 @@ public final class ViajeMapper {
                 parada.secuencia(),
                 parada.tipo(),
                 parada.ordenDeServicioId(),
-                parada.ubicacion(),
+                parada.ubicacion() == null ? null : parada.ubicacion().direccion(),
+                parada.ubicacion() == null ? null : parada.ubicacion().distrito(),
+                parada.ubicacion() == null ? null : parada.ubicacion().referencia(),
+                parada.ubicacion() == null ? null : parada.ubicacion().contacto(),
                 parada.horaEstimada()
         );
     }

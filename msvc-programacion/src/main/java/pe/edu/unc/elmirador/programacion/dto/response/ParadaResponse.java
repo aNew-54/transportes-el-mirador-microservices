@@ -6,6 +6,9 @@ public record ParadaResponse(
         Integer secuencia,
         String tipo,
         String ordenDeServicioId,
-        String ubicacion,
+        String ubicacionDireccion,
+        String ubicacionDistrito,
+        String ubicacionReferencia,
+        String ubicacionContacto,
         OffsetDateTime horaEstimada
 ) {}

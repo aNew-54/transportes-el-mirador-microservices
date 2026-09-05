@@ -26,21 +26,41 @@ public class HojaDeRuta {
             @AttributeOverride(name = "secuencia", column = @Column(name = "secuencia", nullable = false)),
             @AttributeOverride(name = "tipo", column = @Column(name = "tipo", length = 20, nullable = false)),
             @AttributeOverride(name = "ordenDeServicioId", column = @Column(name = "orden_de_servicio_id", length = 40, nullable = false)),
-            @AttributeOverride(name = "ubicacion", column = @Column(name = "ubicacion", length = 300)),
+            // Embebido anidado dentro de una @ElementCollection: se direcciona con la ruta con punto.
+            @AttributeOverride(name = "ubicacion.direccion", column = @Column(name = "ubicacion_direccion", length = 300)),
+            @AttributeOverride(name = "ubicacion.distrito", column = @Column(name = "ubicacion_distrito", length = 100)),
+            @AttributeOverride(name = "ubicacion.referencia", column = @Column(name = "ubicacion_referencia", length = 200)),
+            @AttributeOverride(name = "ubicacion.contacto", column = @Column(name = "ubicacion_contacto", length = 50)),
             @AttributeOverride(name = "horaEstimada", column = @Column(name = "hora_estimada"))
     })
     @OrderBy("secuencia ASC")
     private List<Parada> paradas = new ArrayList<>();
+
+    // Instrucciones de la programacion para quien ejecuta. Opcional: la mayoria de los viajes no
+    // necesita ninguna, y exigirla obligaria a rellenarla con algo.
+    @Column(name = "hoja_observaciones", length = 500)
+    private String observaciones;
 
     /** Exigido por JPA. No usar: no valida nada. */
     protected HojaDeRuta() {
     }
 
     public HojaDeRuta(List<Parada> paradas) {
+        this(paradas, null);
+    }
+
+    public HojaDeRuta(List<Parada> paradas, String observaciones) {
         if (paradas == null) {
             throw new IllegalArgumentException("La lista de paradas es obligatoria");
         }
         this.paradas.addAll(paradas);
+        this.observaciones = (observaciones == null || observaciones.isBlank())
+                ? null
+                : observaciones.trim();
+    }
+
+    public String observaciones() {
+        return observaciones;
     }
 
     public static HojaDeRuta de(Parada... paradas) {

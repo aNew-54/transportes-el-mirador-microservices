@@ -191,6 +191,20 @@ public class Viaje {
         return hojaDeRuta;
     }
 
+    /**
+     * Hoja de ruta ejecutable del viaje. Contrato 4.
+     *
+     * <p>Un viaje en PLANIFICADO o CANCELADO no la tiene: la emite la programacion. La regla vive aqui
+     * y no en el controlador, que no decide nada.
+     */
+    public HojaDeRuta hojaDeRutaEjecutable() {
+        if (this.estado == EstadoDeViaje.PLANIFICADO || this.estado == EstadoDeViaje.CANCELADO || this.hojaDeRuta == null) {
+            throw new TransicionDeViajeInvalidaException(
+                    "El viaje " + this.id + " esta en " + this.estado + " y aun no tiene hoja de ruta ejecutable");
+        }
+        return this.hojaDeRuta;
+    }
+
     public List<String> ordenIds() {
         return List.copyOf(ordenIds);
     }
