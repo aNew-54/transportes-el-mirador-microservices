@@ -15,6 +15,7 @@ import pe.edu.unc.elmirador.ejecucion.dto.request.CerrarEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ConformidadRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.CrearEjecucionRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.RegistrarCheckListRequest;
+import pe.edu.unc.elmirador.ejecucion.dto.request.RegistrarEsperaRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.RegistrarIncidenciaRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.ReportarHitoRequest;
 import pe.edu.unc.elmirador.ejecucion.dto.request.TransbordoRequest;
@@ -82,6 +83,14 @@ public class EjecucionDeViajeController {
         // La doc dice que POST devuelve 201
         EjecucionDeViajeResponse respuesta = servicio.registrarConformidad(viajeId, secuencia, peticion);
         return ResponseEntity.created(URI.create("/api/v1/ejecuciones/" + viajeId)).body(respuesta);
+    }
+
+    @PostMapping("/{viajeId}/paradas/{secuencia}/espera")
+    public ResponseEntity<EjecucionDeViajeResponse> registrarEspera(
+            @PathVariable String viajeId,
+            @PathVariable int secuencia,
+            @Valid @RequestBody RegistrarEsperaRequest peticion) {
+        return ResponseEntity.ok(servicio.registrarEspera(viajeId, secuencia, peticion));
     }
 
     @PostMapping("/{viajeId}/cerrar")

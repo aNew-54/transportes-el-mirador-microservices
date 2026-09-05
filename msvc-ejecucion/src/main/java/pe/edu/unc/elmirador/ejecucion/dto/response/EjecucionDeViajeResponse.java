@@ -8,6 +8,8 @@ import pe.edu.unc.elmirador.ejecucion.models.vo.EstadoDeEjecucion;
 public record EjecucionDeViajeResponse(
         String viajeId,
         String unidadEjecutoraId,
+        List<String> conductorIds,
+        Integer kilometrajeFinal,
         EstadoDeEjecucion estado,
         CheckListResponse checkList,
         List<ParadaResponse> paradas,
