@@ -195,3 +195,14 @@ suite en verde:
 
 El tercero es el que mas dice. No hacia falta ningun contrato para arreglarlo: las liquidaciones son
 del propio contexto y el metodo de repositorio que las cuenta existia desde `S2`. Nadie lo llamaba.
+
+**El defecto que ninguna prueba de modulo podia ver.** Al encadenar la orden con la factura salio que
+`CuentaCorrienteDelCliente` no la construia nadie en produccion: solo la fabricaban a mano seis
+ficheros de prueba. Los dos contratos que Cobranza publica resolvian la cuenta con un `orElseThrow`,
+asi que el 10 respondia `404` a toda factura y el 11 a toda consulta de credito. **Ningun cliente
+podia pedir una orden a credito ni entrar al ledger**, y las 109 pruebas del modulo seguian en verde.
+
+Es el unico defecto del proyecto que no se ve dentro de un modulo ni en un contrato aislado. Una
+prueba de stub responde lo que el contrato dice; una prueba de dominio parte del estado que le
+convenga. Ninguna de las dos pregunta quien crea el primer objeto. Solo recorrer el camino entero lo
+pregunta, y por eso el hito de flujo vertical no era un adorno.
