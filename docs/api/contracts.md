@@ -381,11 +381,19 @@ Respuesta `200`:
   "fechaDeCambio": "2026-08-28T09:00:00-05:00",
   "diasDeAtrasoMaximo": 43,
   "cuentasVencidas": 2,
-  "deudaTotal": { "monto": "5420.30", "moneda": "PEN" }
+  "deudaPorMoneda": [ { "monto": "5420.30", "moneda": "PEN" }, { "monto": "800.00", "moneda": "USD" } ]
 }
 ```
 
 `situacion` ∈ `VIGENTE` · `SUSPENDIDO`.
+
+**Corrección sobre la versión anterior del contrato**, que traía un único `deudaTotal`. Un cliente puede
+deber flete local en soles y flete de exportación en dólares a la vez, y un único total obligaría a
+convertir a un tipo de cambio que Cobranza no conoce. `CuentaCorrienteDelCliente.deudaTotal(moneda)`
+exige la moneda justamente para que nadie la adivine, así que el contrato lleva un importe por cada
+moneda con deuda viva, y la lista va vacía cuando el cliente no debe nada.
+
+Lo que sostiene CLI-01 y ORD-02 es `situacion`; la deuda es informativa.
 
 **Comportamiento ante indisponibilidad — decisión explícita:** si Cobranza no responde, Comercial **rechaza**
 la orden a crédito con `503` y un `problem+json` que indica que el estado crediticio no pudo verificarse. No

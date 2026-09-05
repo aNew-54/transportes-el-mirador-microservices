@@ -582,7 +582,116 @@ La prueba que no puede faltar es la del **mapa de códigos**: por cada excepció
 que la provoca a través del endpoint y afirma el código de la tabla. Es lo que impide que un `422` se
 degrade a `500` cuando alguien añada una excepción.
 
-## 9. Medición
+## 9. Receta de `S4-api-interna`
+
+`S4` publica los endpoints que consumen los otros contextos. La fuente de verdad no es la spec del
+servicio: es [`docs/api/contracts.md`](../api/contracts.md), y **hay que tenerla delante mientras se
+escribe**. El primer intento de esta capa se hizo sin ella —cuatro agentes adelantaron `/internal/v1`
+durante `S3`— y ninguno de los cuatro dio con la forma del contrato: uno devolvía la orden entera como
+«snapshot facturable» y otro decidía la regla dentro del controlador. Se retiraron los cuatro.
+
+`S4` es sólo el lado **proveedor**. Los clientes Feign son de `S5`.
+
+### Un controlador aparte, siempre
+
+`controllers/<Agregado>InternalController`, con `@RequestMapping("/internal/v1")`. Nunca mezclado con
+el controlador público: son dos audiencias, dos contratos y dos ritmos de cambio. El manejador de
+errores es el mismo; no hace falta uno propio.
+
+### El nombre de los campos lo pone el contrato, no el dominio
+
+El JSON del contrato es lo que se implementa, letra por letra. Si el contrato dice `ordenId` y el
+agregado se llama `OrdenDeServicio` con `id`, el DTO expone `ordenId`. Si dice
+`{ "monto": "1250.00", "moneda": "PEN" }`, el importe viaja así y no como dos campos sueltos. Un DTO
+interno **no se reutiliza** del paquete `dto/response` de `S3`: aquel sirve a otra audiencia y cambiarlo
+por conveniencia rompería la API pública.
+
+Van en `dto/internal/request` y `dto/internal/response`.
+
+### `elegible: false` no es un error
+
+Los contratos 2 y 3 devuelven `200` con `elegible: false` y la lista de motivos. Un `404` o un `422` ahí
+obligaría al consumidor a interpretar un error como una respuesta de negocio, que es justo lo que la
+regla 5 prohíbe. Los motivos son los códigos exactos que el contrato enumera, y salen de
+`motivosDeNoElegibilidad(...)` en el agregado: el controlador no clasifica nada.
+
+### La idempotencia es del slice, no de cada endpoint
+
+Los `POST` de los contratos 5, 6, 7, 8 y 10 llevan `Idempotency-Key`. Un reintento con la misma clave
+**devuelve el resultado original y no repite el efecto**. Es la única pieza de `S4` que no es mecánica,
+así que se resuelve una vez y se copia.
+
+Una tabla por módulo que reciba `POST` idempotentes:
+
+```sql
+CREATE TABLE peticiones_idempotentes (
+    clave         VARCHAR(200) NOT NULL,
+    recurso_id    VARCHAR(40)  NOT NULL,
+    registrada_en DATETIME(6)  NOT NULL,
+    CONSTRAINT pk_peticiones_idempotentes PRIMARY KEY (clave)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+```
+
+Y un tipo que dice si la petición era nueva, porque el código HTTP depende de ello —el contrato 10
+distingue `201` de `200`:
+
+```java
+/** Resultado de una operacion idempotente. {@code repetida} distingue el 201 del 200. */
+public record ResultadoIdempotente<T>(T cuerpo, boolean repetida) {
+}
+```
+
+El servicio de aplicación resuelve el reintento **antes** de tocar el agregado:
+
+```java
+@Transactional
+public ResultadoIdempotente<HorasResponse> registrarHoras(String conductorId, String clave, HorasRequest peticion) {
+    Optional<PeticionIdempotente> yaVista = idempotencia.findById(clave);
+    if (yaVista.isPresent()) {
+        return new ResultadoIdempotente<>(horas(yaVista.get().getRecursoId()), true);
+    }
+    Conductor conductor = buscar(conductorId);
+    conductor.acumularHoras(peticion.horas(), peticion.desde().toLocalDate());
+    repositorio.save(conductor);
+    idempotencia.save(new PeticionIdempotente(clave, conductorId, OffsetDateTime.now(reloj)));
+    return new ResultadoIdempotente<>(..., false);
+}
+```
+
+Dos detalles que parecen menores y no lo son:
+
+- **La clave la construye el consumidor**, con la forma que el contrato fija (`<viajeId>:km-final`,
+  `<viajeId>:<conductorId>:horas`, `<facturaId>`). El proveedor la guarda tal cual y no la interpreta.
+- **La cabecera es obligatoria en esos cinco endpoints.** Sin ella, `400`: aceptar la petición sin clave
+  convierte un reintento de red en un doble efecto, y ese es exactamente el fallo que el contrato pide
+  evitar. `@RequestHeader("Idempotency-Key")` sin `required = false`.
+
+La escritura y el registro de la clave van en **la misma transacción**. Si se guardan por separado, un
+fallo entre las dos deja el efecto aplicado y la clave sin registrar, y el reintento lo duplica.
+
+### El `409` de un contrato es del dominio, no del controlador
+
+Los contratos 5 y 6 devuelven `409` cuando el kilometraje retrocede (UNI-03) o las horas superan el
+máximo (CON-02). Esas excepciones ya existen y ya están mapeadas en `ManejadorDeErrores` desde `S3`.
+No se comprueba nada en el controlador: se llama al agregado y se deja subir.
+
+El contrato 4 devuelve `409` para un viaje en `Planificado` o `Cancelado`, y el contrato 1 para una orden
+no confirmada. Esa decisión pertenece al agregado. Si el agregado no la expone, se le añade un método
+—**no** un `if` en el controlador.
+
+### Las pruebas de este slice
+
+- **`<Agregado>InternalControllerTest`** — `@WebMvcTest`, servicio con `@MockitoBean`. Una prueba por
+  fila de la tabla de estados del contrato, y **una que compara el JSON con el ejemplo de
+  `contracts.md`** campo a campo: es lo único que demuestra que el proveedor cumple la forma pactada.
+- **La prueba de idempotencia** — el mismo `POST` dos veces con la misma clave: el segundo devuelve el
+  código de reintento y el agregado se tocó **una sola vez** (`verify(repositorio, times(1)).save(...)`).
+  Sin esta prueba la idempotencia es una intención.
+- **La prueba de la cabecera ausente** — sin `Idempotency-Key`, `400`.
+
+`S4` no lleva pruebas de cliente: eso es `S5`.
+
+## 10. Medición
 
 Cada delegación deja su consumo en `~/.claude/agy-usage.log` (`AGY_USAGE`). Sirve para saber si delegar
 un tipo de slice compensa. Si un slice necesita más de dos rondas de corrección, deja de compensar: la

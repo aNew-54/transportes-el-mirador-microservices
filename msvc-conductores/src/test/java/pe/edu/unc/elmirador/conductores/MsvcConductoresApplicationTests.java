@@ -8,8 +8,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import pe.edu.unc.elmirador.conductores.controllers.ConductorController;
+import pe.edu.unc.elmirador.conductores.controllers.ConductorInternalController;
 import pe.edu.unc.elmirador.conductores.controllers.ManejadorDeErrores;
 import pe.edu.unc.elmirador.conductores.repositories.ConductorRepository;
+import pe.edu.unc.elmirador.conductores.repositories.PeticionIdempotenteRepository;
+import pe.edu.unc.elmirador.conductores.services.ConductorInternalService;
 import pe.edu.unc.elmirador.conductores.services.ConductorService;
 
 /**
@@ -33,11 +36,20 @@ class MsvcConductoresApplicationTests {
     @MockitoBean
     private ConductorRepository repositorio;
 
+    @MockitoBean
+    private PeticionIdempotenteRepository idempotencia;
+
     @Autowired
     private ConductorController controlador;
 
     @Autowired
+    private ConductorInternalController controladorInterno;
+
+    @Autowired
     private ConductorService servicio;
+
+    @Autowired
+    private ConductorInternalService servicioInterno;
 
     @Autowired
     private ManejadorDeErrores manejadorDeErrores;
@@ -45,7 +57,9 @@ class MsvcConductoresApplicationTests {
     @Test
     void elGrafoDeBeansEstaCompleto() {
         assertThat(controlador).isNotNull();
+        assertThat(controladorInterno).isNotNull();
         assertThat(servicio).isNotNull();
+        assertThat(servicioInterno).isNotNull();
         assertThat(manejadorDeErrores).isNotNull();
     }
 }
