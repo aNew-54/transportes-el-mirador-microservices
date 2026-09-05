@@ -20,9 +20,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import pe.edu.unc.elmirador.cobranza.models.vo.CondicionDeVenta;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.CondicionDePagoRequest;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.CrearCuentaPorCobrarRequest;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.DetraccionRequest;
+import pe.edu.unc.elmirador.cobranza.dto.internal.response.ImporteResponse;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.ImporteRequest;
 import pe.edu.unc.elmirador.cobranza.dto.internal.response.CuentaPorCobrarCreadaResponse;
 import pe.edu.unc.elmirador.cobranza.dto.internal.response.EstadoCrediticioResponse;
@@ -88,7 +90,7 @@ class CobranzaInternalServiceTest {
                 new ImporteRequest("1748.74", "PEN"),
                 OffsetDateTime.now(reloj),
                 OffsetDateTime.now(reloj),
-                new CondicionDePagoRequest("CREDITO", 30)
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
         );
 
         ResultadoIdempotente<CuentaPorCobrarCreadaResponse> resultado = servicio.crearCuentaPorCobrar(clave, peticion);
@@ -112,7 +114,7 @@ class CobranzaInternalServiceTest {
                 new ImporteRequest("1700.00", "PEN"), // Incorrecto
                 OffsetDateTime.now(reloj),
                 OffsetDateTime.now(reloj),
-                new CondicionDePagoRequest("CREDITO", 30)
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
         );
 
         Throwable error = catchThrowable(() -> servicio.crearCuentaPorCobrar(clave, peticion));
@@ -122,9 +124,13 @@ class CobranzaInternalServiceTest {
     }
 
     @Test
-    void crearCuenta_Contado_Ignora() {
+    void crearCuenta_Contado_NaceCancelada() {
         String clave = "FAC-2026-000310";
         when(idempotencia.findById(clave)).thenReturn(Optional.empty());
+
+        CuentaCorrienteDelCliente cuentaCorriente =
+                new CuentaCorrienteDelCliente("CLI-0007", EstadoCrediticio.vigente(hoy));
+        when(repositorio.findByClienteId("CLI-0007")).thenReturn(Optional.of(cuentaCorriente));
 
         CrearCuentaPorCobrarRequest peticion = new CrearCuentaPorCobrarRequest(
                 "FAC-2026-000310",
@@ -135,15 +141,48 @@ class CobranzaInternalServiceTest {
                 new ImporteRequest("1748.74", "PEN"),
                 OffsetDateTime.now(reloj),
                 OffsetDateTime.now(reloj),
-                new CondicionDePagoRequest("CONTADO", 0)
+                new CondicionDePagoRequest(CondicionDeVenta.CONTADO, 0)
         );
 
         ResultadoIdempotente<CuentaPorCobrarCreadaResponse> resultado = servicio.crearCuentaPorCobrar(clave, peticion);
 
+        // El contrato dice que la factura al contado «se registra ya cancelada». Se registra: hay un
+        // recurso de verdad detras del 201, con su identificador y su historia. La version anterior
+        // devolvia "CONTADO-" + UUID sin crear nada, de modo que el 201 apuntaba a la nada.
         assertThat(resultado.repetida()).isFalse();
-        assertThat(resultado.cuerpo().cuentaId()).startsWith("CONTADO-");
+        assertThat(resultado.cuerpo().cuentaId()).doesNotStartWith("CONTADO-");
+        assertThat(cuentaCorriente.cuentas()).hasSize(1);
+        assertThat(cuentaCorriente.cuentas().getFirst().estaCancelada()).isTrue();
+        assertThat(cuentaCorriente.cuentas().getFirst().saldo().esCero()).isTrue();
+        verify(repositorio, times(1)).save(cuentaCorriente);
         verify(idempotencia, times(1)).save(any());
-        verify(repositorio, never()).save(any());
+    }
+
+    @Test
+    void crearCuenta_ACredito_NaceViva() {
+        String clave = "FAC-2026-000311";
+        when(idempotencia.findById(clave)).thenReturn(Optional.empty());
+
+        CuentaCorrienteDelCliente cuentaCorriente =
+                new CuentaCorrienteDelCliente("CLI-0007", EstadoCrediticio.vigente(hoy));
+        when(repositorio.findByClienteId("CLI-0007")).thenReturn(Optional.of(cuentaCorriente));
+
+        CrearCuentaPorCobrarRequest peticion = new CrearCuentaPorCobrarRequest(
+                "FAC-2026-000311",
+                "F001-00000311",
+                "CLI-0007",
+                new ImporteRequest("1821.60", "PEN"),
+                new DetraccionRequest(BigDecimal.valueOf(4), "72.86", "PEN", "00-123-456789"),
+                new ImporteRequest("1748.74", "PEN"),
+                OffsetDateTime.now(reloj),
+                OffsetDateTime.now(reloj),
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
+        );
+
+        servicio.crearCuentaPorCobrar(clave, peticion);
+
+        assertThat(cuentaCorriente.cuentas().getFirst().estaCancelada()).isFalse();
+        assertThat(cuentaCorriente.cuentas().getFirst().saldo().monto()).isEqualByComparingTo("1748.74");
     }
 
     @Test
@@ -163,7 +202,7 @@ class CobranzaInternalServiceTest {
                 new ImporteRequest("1748.74", "PEN"),
                 OffsetDateTime.now(reloj),
                 OffsetDateTime.now(reloj),
-                new CondicionDePagoRequest("CREDITO", 30)
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
         );
 
         ResultadoIdempotente<CuentaPorCobrarCreadaResponse> resultado = servicio.crearCuentaPorCobrar(clave, peticion);

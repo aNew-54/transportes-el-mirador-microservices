@@ -16,14 +16,16 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import pe.edu.unc.elmirador.cobranza.models.vo.CondicionDeVenta;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.CondicionDePagoRequest;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.CrearCuentaPorCobrarRequest;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.DetraccionRequest;
+import pe.edu.unc.elmirador.cobranza.dto.internal.response.ImporteResponse;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.ImporteRequest;
 import pe.edu.unc.elmirador.cobranza.dto.internal.response.CuentaPorCobrarCreadaResponse;
 import pe.edu.unc.elmirador.cobranza.dto.internal.response.EstadoCrediticioResponse;
@@ -54,8 +56,8 @@ class CobranzaInternalControllerTest {
                 43,
                 2,
                 List.of(
-                        new ImporteRequest("5420.30", "PEN"),
-                        new ImporteRequest("800.00", "USD")
+                        new ImporteResponse("5420.30", "PEN"),
+                        new ImporteResponse("800.00", "USD")
                 )
         );
 
@@ -96,7 +98,7 @@ class CobranzaInternalControllerTest {
                 new ImporteRequest("1748.74", "PEN"),
                 OffsetDateTime.parse("2026-09-10T16:30:00-05:00"),
                 OffsetDateTime.parse("2026-10-10T23:59:59-05:00"),
-                new CondicionDePagoRequest("CREDITO", 30)
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
         );
 
         ResultadoIdempotente<CuentaPorCobrarCreadaResponse> resultado = new ResultadoIdempotente<>(
@@ -124,7 +126,7 @@ class CobranzaInternalControllerTest {
                 new ImporteRequest("1748.74", "PEN"),
                 OffsetDateTime.parse("2026-09-10T16:30:00-05:00"),
                 OffsetDateTime.parse("2026-10-10T23:59:59-05:00"),
-                new CondicionDePagoRequest("CREDITO", 30)
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
         );
 
         ResultadoIdempotente<CuentaPorCobrarCreadaResponse> resultado = new ResultadoIdempotente<>(
@@ -150,7 +152,7 @@ class CobranzaInternalControllerTest {
                 new ImporteRequest("1748.74", "PEN"),
                 OffsetDateTime.parse("2026-09-10T16:30:00-05:00"),
                 OffsetDateTime.parse("2026-10-10T23:59:59-05:00"),
-                new CondicionDePagoRequest("CREDITO", 30)
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
         );
 
         mvc.perform(post("/internal/v1/cuentas-por-cobrar")
@@ -170,7 +172,7 @@ class CobranzaInternalControllerTest {
                 new ImporteRequest("1700.00", "PEN"),
                 OffsetDateTime.parse("2026-09-10T16:30:00-05:00"),
                 OffsetDateTime.parse("2026-10-10T23:59:59-05:00"),
-                new CondicionDePagoRequest("CREDITO", 30)
+                new CondicionDePagoRequest(CondicionDeVenta.CREDITO, 30)
         );
 
         when(servicio.crearCuentaPorCobrar(eq("FAC-2026-000310"), any()))

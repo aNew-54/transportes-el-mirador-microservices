@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.unc.elmirador.cobranza.dto.internal.request.CrearCuentaPorCobrarRequest;
-import pe.edu.unc.elmirador.cobranza.dto.internal.request.ImporteRequest;
+import pe.edu.unc.elmirador.cobranza.dto.internal.response.ImporteResponse;
 import pe.edu.unc.elmirador.cobranza.dto.internal.response.CuentaPorCobrarCreadaResponse;
 import pe.edu.unc.elmirador.cobranza.dto.internal.response.EstadoCrediticioResponse;
 import pe.edu.unc.elmirador.cobranza.dto.response.ResultadoIdempotente;
@@ -58,17 +58,14 @@ public class CobranzaInternalService {
             );
         }
 
-        if (!"CREDITO".equalsIgnoreCase(peticion.condicionDePago().modalidad())) {
-            String pseudoId = "CONTADO-" + UUID.randomUUID().toString();
-            idempotencia.save(new PeticionIdempotente(clave, pseudoId, OffsetDateTime.now(reloj)));
-            return new ResultadoIdempotente<>(new CuentaPorCobrarCreadaResponse(peticion.facturaId(), pseudoId), false);
-        }
-
         CuentaCorrienteDelCliente cuentaCorriente = repositorio.findByClienteId(peticion.clienteId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("cliente", peticion.clienteId()));
 
+        // Contado o credito lo decide el agregado: una factura al contado nace ya cancelada. Aqui solo
+        // se le pasa lo que el contrato manda. La version anterior devolvia un id inventado
+        // ("CONTADO-" + UUID) sin crear nada, de modo que el 201 apuntaba a un recurso inexistente.
         String nuevaCuentaId = UUID.randomUUID().toString();
-        CuentaPorCobrar cuenta = new CuentaPorCobrar(
+        CuentaPorCobrar cuenta = CuentaPorCobrar.registrar(
                 nuevaCuentaId,
                 peticion.clienteId(),
                 peticion.facturaId(),
@@ -76,7 +73,8 @@ public class CobranzaInternalService {
                 total,
                 detraccion,
                 montoNeto,
-                peticion.fechaDeVencimiento().toLocalDate()
+                peticion.fechaDeVencimiento().toLocalDate(),
+                peticion.condicionDePago().modalidad()
         );
 
         cuentaCorriente.registrarCuenta(cuenta);
@@ -91,10 +89,10 @@ public class CobranzaInternalService {
         CuentaCorrienteDelCliente cuenta = repositorio.findByClienteId(clienteId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("cliente", clienteId));
 
-        List<ImporteRequest> deudaPorMoneda = new ArrayList<>();
+        List<ImporteResponse> deudaPorMoneda = new ArrayList<>();
         for (String moneda : cuenta.monedasConDeuda()) {
             Dinero deuda = cuenta.deudaTotal(moneda);
-            deudaPorMoneda.add(new ImporteRequest(deuda.monto().toString(), moneda));
+            deudaPorMoneda.add(new ImporteResponse(deuda.monto().toPlainString(), moneda));
         }
 
         LocalDate hoy = LocalDate.now(reloj);

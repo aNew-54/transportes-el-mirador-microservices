@@ -14,6 +14,7 @@ import pe.edu.unc.elmirador.cobranza.exceptions.ImportesInconsistentesException;
 import pe.edu.unc.elmirador.cobranza.exceptions.MonedaIncompatibleException;
 import pe.edu.unc.elmirador.cobranza.exceptions.SaldoInsuficienteException;
 import pe.edu.unc.elmirador.cobranza.models.vo.DiasDeAtraso;
+import pe.edu.unc.elmirador.cobranza.models.vo.CondicionDeVenta;
 import pe.edu.unc.elmirador.cobranza.models.vo.Dinero;
 import pe.edu.unc.elmirador.cobranza.models.vo.EstadoDeDocumento;
 
@@ -179,6 +180,41 @@ public class CuentaPorCobrar {
             total != null ? Dinero.cero(total.codigoMoneda()) : null,
             false
         );
+    }
+
+    /**
+     * Registra la cuenta que llega por el contrato 10.
+     *
+     * <p>El contrato dice que «sólo las facturas a crédito entran a la cartera; las de contado se
+     * cobran contra entrega y se registran ya canceladas». Esa regla vive aquí y no en el servicio de
+     * aplicación: decidir en qué estado nace un agregado es del agregado.
+     *
+     * <p>Una cuenta al contado nace con el neto ya aplicado y, si tenía detracción, con el depósito
+     * hecho, que es lo que {@link #estaCancelada()} exige por CCC-03. Nace cancelada de verdad: hay un
+     * recurso detrás, con su identificador y su historia, y no un acuse de recibo disfrazado.
+     */
+    public static CuentaPorCobrar registrar(
+        String id,
+        String clienteId,
+        String facturaId,
+        String documentoId,
+        Dinero total,
+        Dinero detraccion,
+        Dinero montoNeto,
+        LocalDate fechaDeVencimiento,
+        CondicionDeVenta condicion
+    ) {
+        if (condicion == null) {
+            throw new IllegalArgumentException("La condicion de venta es obligatoria");
+        }
+        if (condicion == CondicionDeVenta.CREDITO) {
+            return new CuentaPorCobrar(
+                id, clienteId, facturaId, documentoId, total, detraccion, montoNeto, fechaDeVencimiento);
+        }
+        return new CuentaPorCobrar(
+            id, clienteId, facturaId, documentoId, total, detraccion, montoNeto, fechaDeVencimiento,
+            montoNeto,
+            detraccion != null && !detraccion.esCero());
     }
 
     public String id() {
