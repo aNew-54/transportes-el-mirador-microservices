@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -219,7 +220,37 @@ class EjecucionDeViajeServiceTest {
                 .map(RecordComponent::getName)
                 .anyMatch(nombre -> nombre.toLowerCase().contains("liquidacion"));
                 
-        assertThat(tieneCampoLiquidacion).isFalse();
+        assertThat(tieneCampoLiquidacion)
+                .as("[LIQ-04] Si el campo vuelve al DTO, la invariante deja de poder fallar")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("[LIQ-04] cerrar le pregunta al repositorio de liquidaciones, no al cuerpo")
+    void cerrarConsultaElRepositorioDeLiquidaciones() {
+        EjecucionDeViaje ejecucion = ejecucionEntregadaDeUnaParada();
+
+        when(repository.findById("v-1")).thenReturn(Optional.of(ejecucion));
+        when(liquidaciones.findByViajeIdAndEstadoNot("v-1", EstadoDeLiquidacion.APROBADA)).thenReturn(List.of());
+
+        service.cerrar("v-1", new CerrarEjecucionRequest(100, List.of(
+                new HorasDeConductorRequest("c-1", 8.0, OffsetDateTime.now(clock), OffsetDateTime.now(clock))),
+                List.of()));
+
+        // Que el DTO ya no lleve el booleano no basta: sin esta llamada el servicio podria estar
+        // asumiendo que nunca hay pendientes, que es el mismo defecto con otra cara.
+        verify(liquidaciones).findByViajeIdAndEstadoNot("v-1", EstadoDeLiquidacion.APROBADA);
+    }
+
+    private EjecucionDeViaje ejecucionEntregadaDeUnaParada() {
+        EjecucionDeViaje ejecucion = new EjecucionDeViaje("v-1", "u-1", List.of("c-1"),
+                List.of(new Parada(1, "os-1", "Dir 1")));
+        ejecucion.registrarCheckList(new ResultadoDeCheckList(true, List.of(), OffsetDateTime.now(clock)));
+        ejecucion.iniciar(OffsetDateTime.now(clock));
+        ejecucion.registrarConformidad(1, new ConformidadDeEntrega("conf-1", "os-1",
+                EstadoConformidad.FIRMADA, "Juan", OffsetDateTime.now(clock), ""));
+        ejecucion.marcarEntregada(OffsetDateTime.now(clock));
+        return ejecucion;
     }
 
     @Test
@@ -327,8 +358,7 @@ class EjecucionDeViajeServiceTest {
         assertThat(esperaCaptor.getValue().viajeId()).isEqualTo("v-1");
         
         ArgumentCaptor<ConformidadPeticion> confCaptor = ArgumentCaptor.forClass(ConformidadPeticion.class);
-        verify(facturacionGateway).registrarConformidad(confCaptor.capture());
-        verify(facturacionGateway).registrarConformidad(confCaptor.capture());
+        verify(facturacionGateway, times(2)).registrarConformidad(confCaptor.capture());
         assertThat(confCaptor.getAllValues()).hasSize(2);
     }
 
@@ -383,8 +413,7 @@ class EjecucionDeViajeServiceTest {
         service.cerrar("v-1", request);
         
         ArgumentCaptor<ConformidadPeticion> confCaptor = ArgumentCaptor.forClass(ConformidadPeticion.class);
-        verify(facturacionGateway).registrarConformidad(confCaptor.capture());
-        verify(facturacionGateway).registrarConformidad(confCaptor.capture());
+        verify(facturacionGateway, times(2)).registrarConformidad(confCaptor.capture());
         
         List<ConformidadPeticion> peticiones = confCaptor.getAllValues();
         ConformidadPeticion p1 = peticiones.stream().filter(p -> p.ordenDeServicioId().equals("os-1")).findFirst().get();
@@ -419,8 +448,7 @@ class EjecucionDeViajeServiceTest {
         service.cerrar("v-1", request);
         
         ArgumentCaptor<ConformidadPeticion> confCaptor = ArgumentCaptor.forClass(ConformidadPeticion.class);
-        verify(facturacionGateway).registrarConformidad(confCaptor.capture());
-        verify(facturacionGateway).registrarConformidad(confCaptor.capture());
+        verify(facturacionGateway, times(2)).registrarConformidad(confCaptor.capture());
         
         for (ConformidadPeticion p : confCaptor.getAllValues()) {
             assertThat(p.incidenciasSinResolver()).containsExactly("inc-1");
@@ -438,7 +466,9 @@ class EjecucionDeViajeServiceTest {
         
         when(repository.findById("v-1")).thenReturn(Optional.of(ejecucion));
         when(liquidaciones.findByViajeIdAndEstadoNot("v-1", EstadoDeLiquidacion.APROBADA)).thenReturn(List.of());
-        when(facturacionGateway.registrarConformidad(any())).thenThrow(new FacturacionIntegrationException("Error"));
+        // registrarConformidad devuelve void: with when(...) no compila.
+        org.mockito.Mockito.doThrow(new FacturacionIntegrationException("Facturacion no respondio"))
+                .when(facturacionGateway).registrarConformidad(any());
         
         CerrarEjecucionRequest request = new CerrarEjecucionRequest(100, List.of(
             new HorasDeConductorRequest("c-1", 8.0, OffsetDateTime.now(clock), OffsetDateTime.now(clock))
