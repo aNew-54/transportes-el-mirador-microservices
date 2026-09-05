@@ -34,7 +34,26 @@ llamada entre servicios está permitida.
 5. Un fallo remoto se traduce a una excepción de integración propia del consumidor
    (`<Contexto>IntegrationException`). **Nunca se convierte en `404` ni se interpreta como «no existe».**
 6. Los `POST` de reporte (contratos 5 a 8) son idempotentes por `Idempotency-Key`. Un reintento con la misma
-   clave devuelve `200` con el resultado original, no duplica el efecto.
+   clave devuelve `200` con el resultado original, no duplica el efecto. **La cabecera es obligatoria en
+   los siete endpoints**, y su formato lo fija esta tabla:
+
+   | Endpoint | Clave |
+   |---|---|
+   | `POST /unidades/{id}/kilometraje` | `<viajeId>:km-final` |
+   | `POST /unidades/{id}/fallas` | `<viajeId>:falla:<fallaId>` |
+   | `POST /conductores/{id}/horas-conduccion` | `<viajeId>:<conductorId>:horas` |
+   | `POST /conductores/{id}/incidencias` | `<viajeId>:<conductorId>:incidencia:<incidenciaId>` |
+   | `POST /ordenes/{id}/diferencias-de-carga` | `<viajeId>:<ordenId>:diferencia` |
+   | `POST /ordenes/{id}/esperas` | `<viajeId>:<ordenId>:espera:<punto>` |
+   | `POST /conformidades` | `<viajeId>:<ordenId>:conformidad` |
+
+   Las cuatro que llevan un identificador o un punto se anaden aqui: el documento sólo escribia tres,
+   y los siete proveedores exigen la cabecera desde `S4`. El criterio es que **la clave nombra el
+   hecho, no el momento de enviarlo**. El kilometraje final y la conformidad son únicos por viaje, así
+   que el par ya los identifica; una falla o una incidencia pueden repetirse dentro del mismo viaje y
+   necesitan el identificador que Ejecución les dio; una espera se repite por punto, y el punto la
+   nombra. Una clave con la hora de envío o un `UUID` aleatorio convierte el reintento en un hecho
+   nuevo, que es justo lo que la idempotencia existe para impedir.
 7. El consumidor sólo persiste el identificador del recurso remoto. Nunca su representación completa como
    entidad propia, salvo los *snapshots* explícitos (contrato 9), que son inmutables por diseño.
 
