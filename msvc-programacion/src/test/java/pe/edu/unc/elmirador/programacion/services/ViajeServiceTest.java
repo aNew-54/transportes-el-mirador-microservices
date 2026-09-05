@@ -26,6 +26,9 @@ import pe.edu.unc.elmirador.programacion.models.vo.TipoDeCarga;
 import pe.edu.unc.elmirador.programacion.repositories.AgendaDeConductorRepository;
 import pe.edu.unc.elmirador.programacion.repositories.AgendaDeUnidadRepository;
 import pe.edu.unc.elmirador.programacion.repositories.ViajeRepository;
+import pe.edu.unc.elmirador.programacion.clients.ComercialGateway;
+import pe.edu.unc.elmirador.programacion.clients.UnidadesGateway;
+import pe.edu.unc.elmirador.programacion.clients.ConductoresGateway;
 
 class ViajeServiceTest {
 
@@ -39,7 +42,10 @@ class ViajeServiceTest {
         viajeRepository = mock(ViajeRepository.class);
         agendaDeUnidadRepository = mock(AgendaDeUnidadRepository.class);
         agendaDeConductorRepository = mock(AgendaDeConductorRepository.class);
-        servicio = new ViajeService(viajeRepository, agendaDeUnidadRepository, agendaDeConductorRepository);
+        ComercialGateway comercialGateway = mock(ComercialGateway.class);
+        UnidadesGateway unidadesGateway = mock(UnidadesGateway.class);
+        ConductoresGateway conductoresGateway = mock(ConductoresGateway.class);
+        servicio = new ViajeService(viajeRepository, agendaDeUnidadRepository, agendaDeConductorRepository, comercialGateway, unidadesGateway, conductoresGateway);
 
         when(viajeRepository.save(any(Viaje.class))).thenAnswer(inv -> inv.getArgument(0));
     }

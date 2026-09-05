@@ -36,6 +36,9 @@ import pe.edu.unc.elmirador.programacion.models.vo.VentanaDeTiempo;
 import pe.edu.unc.elmirador.programacion.repositories.AgendaDeConductorRepository;
 import pe.edu.unc.elmirador.programacion.repositories.AgendaDeUnidadRepository;
 import pe.edu.unc.elmirador.programacion.repositories.ViajeRepository;
+import pe.edu.unc.elmirador.programacion.clients.ComercialGateway;
+import pe.edu.unc.elmirador.programacion.clients.UnidadesGateway;
+import pe.edu.unc.elmirador.programacion.clients.ConductoresGateway;
 
 @Service
 public class ViajeService {
@@ -44,12 +47,22 @@ public class ViajeService {
     private final AgendaDeUnidadRepository agendaDeUnidadRepository;
     private final AgendaDeConductorRepository agendaDeConductorRepository;
 
+    private final ComercialGateway comercialGateway;
+    private final UnidadesGateway unidadesGateway;
+    private final ConductoresGateway conductoresGateway;
+
     public ViajeService(ViajeRepository viajeRepository,
                         AgendaDeUnidadRepository agendaDeUnidadRepository,
-                        AgendaDeConductorRepository agendaDeConductorRepository) {
+                        AgendaDeConductorRepository agendaDeConductorRepository,
+                        ComercialGateway comercialGateway,
+                        UnidadesGateway unidadesGateway,
+                        ConductoresGateway conductoresGateway) {
         this.viajeRepository = viajeRepository;
         this.agendaDeUnidadRepository = agendaDeUnidadRepository;
         this.agendaDeConductorRepository = agendaDeConductorRepository;
+        this.comercialGateway = comercialGateway;
+        this.unidadesGateway = unidadesGateway;
+        this.conductoresGateway = conductoresGateway;
     }
 
     @Transactional(readOnly = true)
