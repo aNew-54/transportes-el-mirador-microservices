@@ -141,6 +141,12 @@ public class Viaje {
         return new Viaje(id, ruta, ventana, cargaConsolidada, ordenIds);
     }
 
+    /**
+     * Un objeto de valor que posee una coleccion nunca vuelve nulo de la base: Hibernate instancia
+     * la coleccion vacia, asi que el embebido deja de parecer ausente. Aqui se normaliza al cargar,
+     * en un solo sitio: un viaje sin hoja de ruta y sin recursos asignados vuelve a ser null, que
+     * es lo que VIA-01 comprueba en confirmarProgramacion.
+     */
     @PostLoad
     protected void postLoad() {
         if (this.hojaDeRuta != null && this.hojaDeRuta.paradas().isEmpty()) {
@@ -174,11 +180,6 @@ public class Viaje {
     }
 
     public AsignacionDeRecursos asignacionDeRecursos() {
-        if (asignacionDeRecursos != null
-                && asignacionDeRecursos.unidadId() == null
-                && asignacionDeRecursos.conductorIds().isEmpty()) {
-            return null;
-        }
         return asignacionDeRecursos;
     }
 
@@ -187,9 +188,6 @@ public class Viaje {
     }
 
     public HojaDeRuta hojaDeRuta() {
-        if (hojaDeRuta != null && hojaDeRuta.paradas().isEmpty()) {
-            return null;
-        }
         return hojaDeRuta;
     }
 
