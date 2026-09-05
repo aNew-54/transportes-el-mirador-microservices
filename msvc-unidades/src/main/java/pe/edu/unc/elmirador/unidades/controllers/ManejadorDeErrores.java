@@ -19,6 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import pe.edu.unc.elmirador.unidades.exceptions.ConflictoDeRecursoException;
 import pe.edu.unc.elmirador.unidades.exceptions.DominioUnidadesException;
+import pe.edu.unc.elmirador.unidades.exceptions.KilometrajeRetrocedeException;
 import pe.edu.unc.elmirador.unidades.exceptions.OrdenCerradaException;
 import pe.edu.unc.elmirador.unidades.exceptions.PlacaInvalidaException;
 import pe.edu.unc.elmirador.unidades.exceptions.ReactivacionInvalidaException;
@@ -70,6 +71,16 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ReactivacionInvalidaException.class)
     public ProblemDetail reactivacionInvalida(ReactivacionInvalidaException ex) {
         return problema(HttpStatus.CONFLICT, "reactivacion-invalida", ex.getMessage());
+    }
+
+    /**
+     * UNI-03. El contrato 5 lo fija como {@code 409}, y por eso deja de caer en el {@code 422} por
+     * defecto: un reporte de kilometraje que llega tarde —despues de otro de un viaje posterior— trae
+     * una lectura que ya quedo atras. El estado se movio, no el dato esta mal escrito.
+     */
+    @ExceptionHandler(KilometrajeRetrocedeException.class)
+    public ProblemDetail kilometrajeRetrocede(KilometrajeRetrocedeException ex) {
+        return problema(HttpStatus.CONFLICT, "kilometraje-retrocede", ex.getMessage());
     }
 
     @ExceptionHandler(PlacaInvalidaException.class)

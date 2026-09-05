@@ -38,6 +38,9 @@ class MsvcUnidadesApplicationTests {
     @MockitoBean
     private RepuestoRepository repuestoRepository;
 
+    @MockitoBean
+    private pe.edu.unc.elmirador.unidades.repositories.PeticionIdempotenteRepository peticionIdempotenteRepository;
+
     @Autowired
     private UnidadController unidadController;
 
@@ -62,6 +65,12 @@ class MsvcUnidadesApplicationTests {
     @Autowired
     private ManejadorDeErrores manejadorDeErrores;
 
+    @Autowired
+    private pe.edu.unc.elmirador.unidades.controllers.UnidadInternalController unidadInternalController;
+
+    @Autowired
+    private pe.edu.unc.elmirador.unidades.services.UnidadInternalService unidadInternalService;
+
     @Test
     void elGrafoDeBeansEstaCompleto() {
         assertThat(unidadController).isNotNull();
@@ -72,5 +81,7 @@ class MsvcUnidadesApplicationTests {
         assertThat(ordenService).isNotNull();
         assertThat(repuestoService).isNotNull();
         assertThat(manejadorDeErrores).isNotNull();
+        assertThat(unidadInternalController).isNotNull();
+        assertThat(unidadInternalService).isNotNull();
     }
 }
