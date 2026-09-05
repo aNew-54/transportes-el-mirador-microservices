@@ -28,7 +28,7 @@ public class ComercialGateway {
                     "Comercial no respondio al consultar el snapshot de la orden " + ordenId, fallo);
         } catch (FeignException fallo) {
             throw new ComercialIntegrationException(
-                    "Comercial respondio " + fallo.status() + " al consultar el snapshot de la orden " + ordenId, fallo);
+                    "Comercial respondio " + fallo.status() + " al consultar el snapshot de la orden " + ordenId + ": " + fallo.contentUTF8(), fallo);
         }
         return traducir(ordenId, remoto);
     }

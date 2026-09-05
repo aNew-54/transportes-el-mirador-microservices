@@ -26,7 +26,7 @@ public class ComercialGateway {
         } catch (RetryableException fallo) {
             throw new ComercialIntegrationException("Comercial no respondio al consultar la orden " + ordenId, fallo);
         } catch (FeignException fallo) {
-            throw new ComercialIntegrationException("Comercial respondio " + fallo.status() + " al consultar la orden " + ordenId, fallo);
+            throw new ComercialIntegrationException("Comercial respondio " + fallo.status() + " al consultar la orden " + ordenId + ": " + fallo.contentUTF8(), fallo);
         }
         return traducir(ordenId, remoto);
     }

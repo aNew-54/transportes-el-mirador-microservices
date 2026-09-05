@@ -28,6 +28,16 @@ echo ""
 
 ULTIMA="$RESPUESTAS/ultima.json"
 
+# Identificadores unicos por ejecucion. El script corre contra el MySQL de `docker compose`, que
+# conserva lo de la pasada anterior: con literales fijos, la segunda ejecucion muere en el 409 del
+# RUC repetido. Se generan aqui, no dentro de cada paso, porque varios pasos comparten el mismo.
+SUFIJO=$(python3 -c "import random; print(f'{random.randrange(10**8):08d}')")
+RUC="20${SUFIJO}9"
+PLACA=$(python3 -c "import random,string; print(''.join(random.choices(string.ascii_uppercase,k=3))+'-'+f'{random.randrange(1000):03d}')")
+LICENCIA_1="Q${SUFIJO}"
+LICENCIA_2="R${SUFIJO}"
+VIAJE_ID="VIA-${SUFIJO}"
+
 paso() {
     descripcion="$1"; metodo="$2"; url="$3"; cuerpo="$4"; esperado="$5"
 
@@ -60,7 +70,7 @@ id_de() {
 }
 
 # 1. Comercial: Registrar cliente
-paso "Registrar cliente" "POST" "$COMERCIAL_URL/api/v1/clientes" '{"ruc":"20123456789","razonSocial":"Cliente Humo","modalidadDePago":"CREDITO","plazoEnDias":30}' "201"
+paso "Registrar cliente" "POST" "$COMERCIAL_URL/api/v1/clientes" "{\"ruc\":\"$RUC\",\"razonSocial\":\"Cliente Humo $SUFIJO\",\"modalidadDePago\":\"CREDITO\",\"plazoEnDias\":30}" "201"
 CLIENTE_ID=$(id_de id)
 
 # 2. Comercial: Registrar contrato marco
@@ -68,16 +78,22 @@ paso "Registrar contrato marco" "POST" "$COMERCIAL_URL/api/v1/contratos-marco" "
 CONTRATO_ID=$(id_de id)
 
 # 3. Unidades: Registrar unidad y SOAT (documento)
-paso "Registrar unidad" "POST" "$UNIDADES_URL/api/v1/unidades" '{"placa":"A1B-234","tipo":"FURGON","pesoMaximoKg":15000,"volumenMaximoM3":30.0,"kilometraje":0,"intervaloMantenimiento":"ACEITE_Y_FILTROS"}' "201"
+paso "Registrar unidad" "POST" "$UNIDADES_URL/api/v1/unidades" "{\"placa\":\"$PLACA\",\"tipo\":\"FURGON\",\"pesoMaximoKg\":15000,\"volumenMaximoM3\":30.0,\"kilometraje\":0,\"intervaloMantenimiento\":\"ACEITE_Y_FILTROS\"}" "201"
 UNIDAD_ID=$(id_de id)
-paso "Documento SOAT" "POST" "$UNIDADES_URL/api/v1/unidades/$UNIDAD_ID/documentos" '{"tipoDocumento":"SOAT","desde":"2020-01-01","hasta":"2030-01-01","numero":"12345"}' "201"
+# Una unidad no es elegible con solo el SOAT: la evaluacion documental exige tambien revision
+# tecnica, permiso MTC y habilitacion vehicular. Con uno solo, el contrato 2 responde elegible=false
+# con tres DOCUMENTO_VENCIDO y el viaje no se puede asignar.
+for TIPO_DOC in SOAT REVISION_TECNICA PERMISO_MTC HABILITACION_VEHICULAR; do
+    paso "Documento $TIPO_DOC" "POST" "$UNIDADES_URL/api/v1/unidades/$UNIDAD_ID/documentos" \
+        "{\"tipoDocumento\":\"$TIPO_DOC\",\"desde\":\"2020-01-01\",\"hasta\":\"2030-01-01\",\"numero\":\"$TIPO_DOC-$SUFIJO\"}" "201"
+done
 
 # 3. Conductores: Registrar conductores e inducciones (para cliente)
-paso "Registrar conductor 1" "POST" "$CONDUCTORES_URL/api/v1/conductores" '{"nombreCompleto":"Juan Perez","numeroDeLicencia":"Q12345678","categoriaDeLicencia":"A_IIIC","licenciaDesde":"2020-01-01","licenciaHasta":"2030-01-01"}' "201"
+paso "Registrar conductor 1" "POST" "$CONDUCTORES_URL/api/v1/conductores" "{\"nombreCompleto\":\"Juan Perez\",\"numeroDeLicencia\":\"$LICENCIA_1\",\"categoriaDeLicencia\":\"A_IIIC\",\"licenciaDesde\":\"2020-01-01\",\"licenciaHasta\":\"2030-01-01\"}" "201"
 COND1_ID=$(id_de id)
 paso "Induccion cond1" "POST" "$CONDUCTORES_URL/api/v1/conductores/$COND1_ID/inducciones" "{\"clienteId\":\"$CLIENTE_ID\",\"vigenteDesde\":\"2020-01-01\",\"vigenteHasta\":\"2030-01-01\"}" "201"
 
-paso "Registrar conductor 2" "POST" "$CONDUCTORES_URL/api/v1/conductores" '{"nombreCompleto":"Pedro Perez","numeroDeLicencia":"Q87654321","categoriaDeLicencia":"A_IIIC","licenciaDesde":"2020-01-01","licenciaHasta":"2030-01-01"}' "201"
+paso "Registrar conductor 2" "POST" "$CONDUCTORES_URL/api/v1/conductores" "{\"nombreCompleto\":\"Pedro Perez\",\"numeroDeLicencia\":\"$LICENCIA_2\",\"categoriaDeLicencia\":\"A_IIIC\",\"licenciaDesde\":\"2020-01-01\",\"licenciaHasta\":\"2030-01-01\"}" "201"
 COND2_ID=$(id_de id)
 paso "Induccion cond2" "POST" "$CONDUCTORES_URL/api/v1/conductores/$COND2_ID/inducciones" "{\"clienteId\":\"$CLIENTE_ID\",\"vigenteDesde\":\"2020-01-01\",\"vigenteHasta\":\"2030-01-01\"}" "201"
 
@@ -95,7 +111,6 @@ paso "Confirmar orden" "POST" "$COMERCIAL_URL/api/v1/ordenes/$ORDEN_ID/confirmar
 # Como el flujo sólo define una orden de carga en el paso 4, la agregamos directo en "planificar" y 
 # usamos "asignarRecursos" (que llama al contrato 1 internamente para verificar al cliente y unidad requerida),
 # evitando consolidar la misma orden por segunda vez, lo que duplicaría el volumen.
-VIAJE_ID="VIA-1000"
 paso "Planificar viaje" "POST" "$PROGRAMACION_URL/api/v1/viajes" "{\"id\":\"$VIAJE_ID\",\"ruta\":{\"origen\":\"Lima\",\"destino\":\"Piura\",\"corredor\":\"Norte\"},\"ventana\":{\"desde\":\"2026-10-10T08:00:00-05:00\",\"hasta\":\"2026-10-10T18:00:00-05:00\"},\"cargaInicial\":{\"ordenDeServicioId\":\"$ORDEN_ID\",\"pesoKg\":10000,\"volumenM3\":25.0,\"tipo\":\"GENERAL\",\"secuenciaDeDescarga\":1}}" "201"
 
 paso "Asignar recursos" "POST" "$PROGRAMACION_URL/api/v1/viajes/$VIAJE_ID/recursos" "{\"unidadId\":\"$UNIDAD_ID\",\"conductorIds\":[\"$COND1_ID\",\"$COND2_ID\"],\"conRelevo\":true}" "200"

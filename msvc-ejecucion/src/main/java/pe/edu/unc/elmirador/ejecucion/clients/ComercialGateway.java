@@ -26,7 +26,7 @@ public class ComercialGateway {
                     "Comercial no respondio al reportar diferencia de carga para la orden " + ordenId, fallo);
         } catch (FeignException fallo) {
             throw new ComercialIntegrationException(
-                    "Comercial respondio " + fallo.status() + " al reportar diferencia de carga para la orden " + ordenId, fallo);
+                    "Comercial respondio " + fallo.status() + " al reportar diferencia de carga para la orden " + ordenId + ": " + fallo.contentUTF8(), fallo);
         }
     }
 
@@ -39,7 +39,7 @@ public class ComercialGateway {
                     "Comercial no respondio al reportar espera para la orden " + ordenId, fallo);
         } catch (FeignException fallo) {
             throw new ComercialIntegrationException(
-                    "Comercial respondio " + fallo.status() + " al reportar espera para la orden " + ordenId, fallo);
+                    "Comercial respondio " + fallo.status() + " al reportar espera para la orden " + ordenId + ": " + fallo.contentUTF8(), fallo);
         }
     }
 

@@ -48,7 +48,7 @@ public class CobranzaGateway {
             // Comercial discrepan sobre que clientes hay.
             throw new CobranzaIntegrationException(
                     "Cobranza respondio " + fallo.status() + " al consultar el estado crediticio del cliente "
-                            + clienteId, fallo);
+                            + clienteId + ": " + fallo.contentUTF8(), fallo);
         }
         return traducir(clienteId, remoto);
     }

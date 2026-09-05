@@ -27,7 +27,7 @@ public class ProgramacionGateway {
                     "Programacion no respondio al consultar la hoja de ruta del viaje " + viajeId, fallo);
         } catch (FeignException fallo) {
             throw new ProgramacionIntegrationException(
-                    "Programacion respondio " + fallo.status() + " al consultar la hoja de ruta del viaje " + viajeId, fallo);
+                    "Programacion respondio " + fallo.status() + " al consultar la hoja de ruta del viaje " + viajeId + ": " + fallo.contentUTF8(), fallo);
         }
         
         if (remoto == null || remoto.viajeId() == null || remoto.estado() == null
