@@ -72,6 +72,11 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
         return problema(HttpStatus.CONFLICT, "reactivacion-invalida", ex.getMessage());
     }
 
+    @ExceptionHandler(pe.edu.unc.elmirador.unidades.exceptions.KilometrajeRetrocedeException.class)
+    public ProblemDetail kilometrajeRetrocede(pe.edu.unc.elmirador.unidades.exceptions.KilometrajeRetrocedeException ex) {
+        return problema(HttpStatus.CONFLICT, "kilometraje-retrocede", ex.getMessage());
+    }
+
     @ExceptionHandler(PlacaInvalidaException.class)
     public ProblemDetail placaInvalida(PlacaInvalidaException ex) {
         return problema(HttpStatus.BAD_REQUEST, "placa-invalida", ex.getMessage());
