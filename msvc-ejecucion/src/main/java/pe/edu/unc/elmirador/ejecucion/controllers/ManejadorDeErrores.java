@@ -29,6 +29,11 @@ import pe.edu.unc.elmirador.ejecucion.exceptions.LiquidacionPendienteException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.MonedaIncompatibleException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.RecursoNoEncontradoException;
 import pe.edu.unc.elmirador.ejecucion.exceptions.TransicionDeEjecucionInvalidaException;
+import pe.edu.unc.elmirador.ejecucion.exceptions.ProgramacionIntegrationException;
+import pe.edu.unc.elmirador.ejecucion.exceptions.UnidadesIntegrationException;
+import pe.edu.unc.elmirador.ejecucion.exceptions.ConductoresIntegrationException;
+import pe.edu.unc.elmirador.ejecucion.exceptions.ComercialIntegrationException;
+import pe.edu.unc.elmirador.ejecucion.exceptions.FacturacionIntegrationException;
 
 /**
  * El unico punto del modulo que conoce codigos HTTP.
@@ -115,6 +120,31 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DominioEjecucionException.class)
     public ProblemDetail invarianteViolada(DominioEjecucionException ex) {
         return problema(HttpStatus.UNPROCESSABLE_ENTITY, "invariante-violada", ex.getMessage());
+    }
+
+    @ExceptionHandler(ProgramacionIntegrationException.class)
+    public ProblemDetail falloProgramacion(ProgramacionIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "programacion-integration-error", ex.getMessage());
+    }
+
+    @ExceptionHandler(UnidadesIntegrationException.class)
+    public ProblemDetail falloUnidades(UnidadesIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "unidades-integration-error", ex.getMessage());
+    }
+
+    @ExceptionHandler(ConductoresIntegrationException.class)
+    public ProblemDetail falloConductores(ConductoresIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "conductores-integration-error", ex.getMessage());
+    }
+
+    @ExceptionHandler(ComercialIntegrationException.class)
+    public ProblemDetail falloComercial(ComercialIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "comercial-integration-error", ex.getMessage());
+    }
+
+    @ExceptionHandler(FacturacionIntegrationException.class)
+    public ProblemDetail falloFacturacion(FacturacionIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "facturacion-integration-error", ex.getMessage());
     }
 
     private ProblemDetail problema(HttpStatus estado, String slug, String detalle) {
