@@ -16,7 +16,6 @@ import jakarta.validation.Valid;
 import pe.edu.unc.elmirador.facturacion.dto.request.AbrirFacturaRequest;
 import pe.edu.unc.elmirador.facturacion.dto.request.EmitirFacturaRequest;
 import pe.edu.unc.elmirador.facturacion.dto.request.EmitirFalsoFleteRequest;
-import pe.edu.unc.elmirador.facturacion.dto.request.RegistrarConformidadRequest;
 import pe.edu.unc.elmirador.facturacion.dto.response.FacturaResponse;
 import pe.edu.unc.elmirador.facturacion.models.vo.EstadoDeFactura;
 import pe.edu.unc.elmirador.facturacion.services.FacturaService;
@@ -68,10 +67,4 @@ public class FacturaController {
         return ResponseEntity.created(URI.create("/api/v1/facturas/" + creada.id())).body(creada);
     }
 
-    @PostMapping("/internal/v1/conformidades")
-    public ResponseEntity<Void> registrarConformidad(
-            @Valid @RequestBody RegistrarConformidadRequest peticion) {
-        servicio.registrarConformidad(peticion);
-        return ResponseEntity.ok().build();
-    }
 }

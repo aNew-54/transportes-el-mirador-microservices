@@ -121,24 +121,6 @@ public class FacturaService {
         return FacturaMapper.aRespuesta(repositorio.save(factura));
     }
 
-    @Transactional
-    public void registrarConformidad(RegistrarConformidadRequest req) {
-        Factura factura = repositorio.findByOrdenDeServicioId(req.ordenDeServicioId())
-            .orElseThrow(() -> new RecursoNoEncontradoException("factura por orden", req.ordenDeServicioId()));
-        
-        for (LineaDeFacturaRequest lineaReq : req.conceptos()) {
-            factura.agregarLinea(new LineaDeFactura(
-                UUID.randomUUID().toString(),
-                req.ordenDeServicioId(),
-                lineaReq.concepto(),
-                lineaReq.descripcion(),
-                new Dinero(lineaReq.importeMonto(), factura.snapshotComercial().codigoMoneda())
-            ));
-        }
-
-        factura.registrarConformidad(new Conformidad(req.registrada(), req.incidenciasSinResolver(), req.recibidaEn()));
-        repositorio.save(factura);
-    }
 
     private Factura buscar(String id) {
         return repositorio.findById(id).orElseThrow(() -> new RecursoNoEncontradoException("factura", id));
