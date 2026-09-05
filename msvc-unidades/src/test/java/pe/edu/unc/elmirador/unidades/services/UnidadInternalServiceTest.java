@@ -33,6 +33,7 @@ import pe.edu.unc.elmirador.unidades.models.entity.PeticionIdempotente;
 import pe.edu.unc.elmirador.unidades.models.entity.Unidad;
 import pe.edu.unc.elmirador.unidades.models.vo.Capacidad;
 import pe.edu.unc.elmirador.unidades.models.vo.EstadoOperativo;
+import pe.edu.unc.elmirador.unidades.models.vo.IntervaloDeMantenimiento;
 import pe.edu.unc.elmirador.unidades.models.vo.Kilometraje;
 import pe.edu.unc.elmirador.unidades.models.vo.Placa;
 import pe.edu.unc.elmirador.unidades.models.vo.ProgramaDeMantenimiento;
@@ -67,7 +68,10 @@ class UnidadInternalServiceTest {
                 new Capacidad(10000, new BigDecimal("32.00")),
                 new Kilometraje(180000),
                 EstadoOperativo.operativa(),
-                ProgramaDeMantenimiento.of(new Kilometraje(180000), "10000"),
+                new ProgramaDeMantenimiento(
+                        new Kilometraje(180000),
+                        new Kilometraje(190000),
+                        IntervaloDeMantenimiento.ACEITE_Y_FILTROS),
                 List.of()
         );
     }
@@ -83,7 +87,7 @@ class UnidadInternalServiceTest {
                 OffsetDateTime.now(relojFijo),
                 5000,
                 new BigDecimal("10.0"),
-                TipoDeCarga.ALIMENTARIA
+                TipoDeCarga.GENERAL
         );
 
         assertThat(response.unidadId()).isEqualTo("UNI-004");

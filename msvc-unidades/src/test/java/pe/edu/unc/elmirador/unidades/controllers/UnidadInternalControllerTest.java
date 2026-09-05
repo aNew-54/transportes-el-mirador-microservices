@@ -15,7 +15,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -61,7 +61,7 @@ class UnidadInternalControllerTest {
                         .param("hasta", "2026-09-10T18:00:00-05:00")
                         .param("pesoKg", "10000")
                         .param("volumenM3", "32.0")
-                        .param("tipoCargaRequerido", "ALIMENTARIA"))
+                        .param("tipoCargaRequerido", "GENERAL"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
                         {

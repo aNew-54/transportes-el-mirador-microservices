@@ -281,7 +281,7 @@ la más específica.
 | `PlacaInvalidaException` | `400` | El objeto de valor rechaza el formato de la placa. |
 | `OrdenCerradaException` | `409` | OMT-01. Cerrada es inmutable. |
 | `ReactivacionInvalidaException` | `409` | UNI-01 y UNI-02. Con el documento renovado o el mantenimiento hecho, la misma petición vale. |
-| `KilometrajeRetrocedeException` | `422` | UNI-03. El kilometraje del cuerpo es menor que el registrado. |
+| `KilometrajeRetrocedeException` | `409` | UNI-03. Lo fija el contrato 5, y `S4` lo movio del `422`: un reporte que llega tarde trae una lectura que ya quedo atras. El estado se movio, no el dato esta mal escrito. |
 | `KilometrajeDeAtencionInvalidoException` | `422` | OMT-02. |
 | `ExistenciasNegativasException` | `422` | REP-01. El movimiento dejaría el stock por debajo de cero. |
 | `MonedaIncompatibleException` | `422` | Dos importes de distinta moneda en la misma operación. |
