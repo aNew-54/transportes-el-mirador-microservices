@@ -143,4 +143,34 @@ class EjecucionConformidadesTest {
 
         assertThat(ejecucion.getEstado()).isEqualTo(EstadoDeEjecucion.EN_RUTA);
     }
+
+    @Test
+    @DisplayName("[EJV-04] registrarEspera sobre una ejecucion CERRADA lanza EjecucionEntregadaException")
+    void registrarEsperaSobreEjecucionCerrada() {
+        ConformidadDeEntrega conf1 = new ConformidadDeEntrega("CONF-01", "ORD-101", EstadoConformidad.FIRMADA, "Receptor 1", T14_00, "OK");
+        ConformidadDeEntrega conf2 = new ConformidadDeEntrega("CONF-02", "ORD-102", EstadoConformidad.FIRMADA, "Receptor 2", T14_00, "OK");
+        ConformidadDeEntrega conf3 = new ConformidadDeEntrega("CONF-03", "ORD-103", EstadoConformidad.FIRMADA, "Receptor 3", T14_00, "OK");
+        ejecucion.registrarConformidad(1, conf1);
+        ejecucion.registrarConformidad(2, conf2);
+        ejecucion.registrarConformidad(3, conf3);
+        ejecucion.marcarEntregada(T14_00);
+        ejecucion.cerrar(1000, false, java.util.Set.of("CON-001"), java.util.Set.of());
+
+        pe.edu.unc.elmirador.ejecucion.models.vo.EsperaFacturable espera = 
+                new pe.edu.unc.elmirador.ejecucion.models.vo.EsperaFacturable(T08_00, T14_00, 2);
+
+        assertThatThrownBy(() -> ejecucion.registrarEspera(1, espera))
+                .isInstanceOf(pe.edu.unc.elmirador.ejecucion.exceptions.EjecucionEntregadaException.class);
+    }
+
+    @Test
+    @DisplayName("registrarEspera sobre una parada inexistente lanza IllegalArgumentException")
+    void registrarEsperaSobreParadaInexistente() {
+        pe.edu.unc.elmirador.ejecucion.models.vo.EsperaFacturable espera = 
+                new pe.edu.unc.elmirador.ejecucion.models.vo.EsperaFacturable(T08_00, T14_00, 2);
+
+        assertThatThrownBy(() -> ejecucion.registrarEspera(999, espera))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
 }
