@@ -27,6 +27,9 @@ import pe.edu.unc.elmirador.programacion.exceptions.RecursoNoEncontradoException
 import pe.edu.unc.elmirador.programacion.exceptions.ReservaSolapadaException;
 import pe.edu.unc.elmirador.programacion.exceptions.TransicionDeViajeInvalidaException;
 import pe.edu.unc.elmirador.programacion.exceptions.ViajeDespachadoException;
+import pe.edu.unc.elmirador.programacion.exceptions.ComercialIntegrationException;
+import pe.edu.unc.elmirador.programacion.exceptions.UnidadesIntegrationException;
+import pe.edu.unc.elmirador.programacion.exceptions.ConductoresIntegrationException;
 
 @RestControllerAdvice
 public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
@@ -114,6 +117,21 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     @ExceptionHandler(CargaIncompatibleException.class)
     public ProblemDetail cargaIncompatible(CargaIncompatibleException ex) {
         return problema(HttpStatus.UNPROCESSABLE_ENTITY, "carga-incompatible", ex.getMessage());
+    }
+
+    @ExceptionHandler(ComercialIntegrationException.class)
+    public ProblemDetail comercialCaido(ComercialIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "comercial-caido", ex.getMessage());
+    }
+
+    @ExceptionHandler(UnidadesIntegrationException.class)
+    public ProblemDetail unidadesCaido(UnidadesIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "unidades-caido", ex.getMessage());
+    }
+
+    @ExceptionHandler(ConductoresIntegrationException.class)
+    public ProblemDetail conductoresCaido(ConductoresIntegrationException ex) {
+        return problema(HttpStatus.SERVICE_UNAVAILABLE, "conductores-caido", ex.getMessage());
     }
 
     @ExceptionHandler(DominioProgramacionException.class)

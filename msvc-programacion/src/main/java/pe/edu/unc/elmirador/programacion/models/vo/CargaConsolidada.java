@@ -79,6 +79,31 @@ public class CargaConsolidada {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    /**
+     * El tipo que manda al pedirle elegibilidad a una unidad por el contrato 2.
+     *
+     * <p>Es el mas restrictivo de los que van a bordo, no el primero ni el mas frecuente. Si viaja
+     * una maquinaria pesada, la unidad tiene que poder con maquinaria pesada aunque el resto sea
+     * carga general: quien decide es la carga que menos admite compartir, que es lo mismo que dice
+     * VIA-05 desde el otro lado.
+     */
+    public TipoDeCarga tipoDominante() {
+        if (cargas.isEmpty()) {
+            throw new IllegalStateException("Una carga consolidada vacia no tiene tipo dominante");
+        }
+        for (Carga carga : cargas) {
+            if (carga.tipo() == TipoDeCarga.MAQUINARIA_PESADA) {
+                return TipoDeCarga.MAQUINARIA_PESADA;
+            }
+        }
+        for (Carga carga : cargas) {
+            if (carga.tipo() == TipoDeCarga.PALETIZADA) {
+                return TipoDeCarga.PALETIZADA;
+            }
+        }
+        return TipoDeCarga.GENERAL;
+    }
+
     public boolean cabeEn(Capacidad capacidad) {
         if (capacidad == null) {
             throw new IllegalArgumentException("La capacidad es obligatoria");
