@@ -8,7 +8,7 @@ public record Parada(
         int secuencia,
         String tipo,
         String ordenDeServicioId,
-        String ubicacion,
+        Ubicacion ubicacion,
         OffsetDateTime horaEstimada) {
 
     public Parada {
@@ -23,7 +23,6 @@ public record Parada(
         }
         tipo = tipo.trim().toUpperCase();
         ordenDeServicioId = ordenDeServicioId.trim();
-        ubicacion = (ubicacion != null) ? ubicacion.trim() : "";
     }
 
     /** Tipos que publica el contrato 4. No se inventan otros aqui. */
@@ -35,7 +34,11 @@ public record Parada(
         return DESCARGA.equals(this.tipo);
     }
 
+    /**
+     * Parada sin ubicacion ni hora, para cuando el viaje aun se esta planificando. La hoja de ruta
+     * ejecutable —la que publica el contrato 4— se emite despues, ya con las dos cosas.
+     */
     public static Parada de(int secuencia, String tipo, String ordenDeServicioId) {
-        return new Parada(secuencia, tipo, ordenDeServicioId, "", null);
+        return new Parada(secuencia, tipo, ordenDeServicioId, null, null);
     }
 }

@@ -34,6 +34,7 @@ import pe.edu.unc.elmirador.programacion.models.vo.EstadoDeReserva;
 import pe.edu.unc.elmirador.programacion.models.vo.EstadoDeViaje;
 import pe.edu.unc.elmirador.programacion.models.vo.HojaDeRuta;
 import pe.edu.unc.elmirador.programacion.models.vo.Parada;
+import pe.edu.unc.elmirador.programacion.models.vo.Ubicacion;
 import pe.edu.unc.elmirador.programacion.models.vo.Ruta;
 import pe.edu.unc.elmirador.programacion.models.vo.TipoDeCarga;
 import pe.edu.unc.elmirador.programacion.models.vo.VentanaDeTiempo;
@@ -138,10 +139,10 @@ class PersistenciaProgramacionIT {
         viaje.asignarRecursos(AsignacionDeRecursos.de("UNI-001", "CON-001"));
 
         HojaDeRuta hoja = HojaDeRuta.de(
-                new Parada(1, Parada.CARGA, "ORD-001", "Almacen Cajamarca", OffsetDateTime.of(2026, 9, 10, 7, 0, 0, 0, LIMA)),
-                new Parada(2, Parada.DESCARGA, "ORD-001", "Almacen Chepen", OffsetDateTime.of(2026, 9, 10, 11, 0, 0, 0, LIMA)),
-                new Parada(3, Parada.DESCARGA, "ORD-002", "Almacen Pacasmayo", OffsetDateTime.of(2026, 9, 10, 13, 0, 0, 0, LIMA)),
-                new Parada(4, Parada.DESCARGA, "ORD-003", "Almacen Trujillo", OffsetDateTime.of(2026, 9, 10, 16, 0, 0, 0, LIMA))
+                new Parada(1, Parada.CARGA, "ORD-001", Ubicacion.de("Almacen Cajamarca"), OffsetDateTime.of(2026, 9, 10, 7, 0, 0, 0, LIMA)),
+                new Parada(2, Parada.DESCARGA, "ORD-001", Ubicacion.de("Almacen Chepen"), OffsetDateTime.of(2026, 9, 10, 11, 0, 0, 0, LIMA)),
+                new Parada(3, Parada.DESCARGA, "ORD-002", Ubicacion.de("Almacen Pacasmayo"), OffsetDateTime.of(2026, 9, 10, 13, 0, 0, 0, LIMA)),
+                new Parada(4, Parada.DESCARGA, "ORD-003", Ubicacion.de("Almacen Trujillo"), OffsetDateTime.of(2026, 9, 10, 16, 0, 0, 0, LIMA))
         );
         viaje.confirmarProgramacion(hoja);
 

@@ -51,6 +51,12 @@ class MsvcProgramacionApplicationTests {
     @Autowired
     private ManejadorDeErrores manejadorDeErrores;
 
+    @Autowired
+    private pe.edu.unc.elmirador.programacion.controllers.ViajeInternalController viajeInternalController;
+
+    @Autowired
+    private pe.edu.unc.elmirador.programacion.services.ViajeInternalService viajeInternalService;
+
     @Test
     void elGrafoDeBeansEstaCompleto() {
         assertThat(viajeController).isNotNull();
@@ -58,5 +64,7 @@ class MsvcProgramacionApplicationTests {
         assertThat(viajeService).isNotNull();
         assertThat(agendaService).isNotNull();
         assertThat(manejadorDeErrores).isNotNull();
+        assertThat(viajeInternalController).isNotNull();
+        assertThat(viajeInternalService).isNotNull();
     }
 }

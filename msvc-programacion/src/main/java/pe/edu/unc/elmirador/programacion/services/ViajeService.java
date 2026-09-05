@@ -27,6 +27,8 @@ import pe.edu.unc.elmirador.programacion.models.vo.Capacidad;
 import pe.edu.unc.elmirador.programacion.models.vo.Carga;
 import pe.edu.unc.elmirador.programacion.models.vo.ClausulaDeConsolidacion;
 import pe.edu.unc.elmirador.programacion.models.vo.ElegibilidadDeRecurso;
+import pe.edu.unc.elmirador.programacion.dto.request.UbicacionRequest;
+import pe.edu.unc.elmirador.programacion.models.vo.Ubicacion;
 import pe.edu.unc.elmirador.programacion.models.vo.HojaDeRuta;
 import pe.edu.unc.elmirador.programacion.models.vo.Parada;
 import pe.edu.unc.elmirador.programacion.models.vo.Ruta;
@@ -135,7 +137,7 @@ public class ViajeService {
         List<Parada> paradas = peticion.hojaDeRuta().stream()
                 .map(this::toParada)
                 .toList();
-        HojaDeRuta hojaDeRuta = new HojaDeRuta(paradas);
+        HojaDeRuta hojaDeRuta = new HojaDeRuta(paradas, peticion.observaciones());
 
         viaje.confirmarProgramacion(hojaDeRuta);
         
@@ -233,12 +235,18 @@ public class ViajeService {
         return new ElegibilidadDeRecurso(peticion.elegible(), peticion.motivos());
     }
 
+    /** Sin ubicacion la parada se guarda sin ella: la hoja de ruta ejecutable se emite despues. */
+    private static Ubicacion aUbicacion(UbicacionRequest peticion) {
+        return peticion == null ? null : new Ubicacion(
+                peticion.direccion(), peticion.distrito(), peticion.referencia(), peticion.contacto());
+    }
+
     private Parada toParada(ParadaRequest peticion) {
         return new Parada(
                 peticion.secuencia(),
                 peticion.tipo(),
                 peticion.ordenDeServicioId(),
-                peticion.ubicacion(),
+                aUbicacion(peticion.ubicacion()),
                 peticion.horaEstimada()
         );
     }

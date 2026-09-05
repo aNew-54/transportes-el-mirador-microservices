@@ -29,6 +29,7 @@ import pe.edu.unc.elmirador.programacion.dto.request.ClausulaDeConsolidacionRequ
 import pe.edu.unc.elmirador.programacion.dto.request.ConsolidarOrdenRequest;
 import pe.edu.unc.elmirador.programacion.dto.request.ElegibilidadDeRecursoRequest;
 import pe.edu.unc.elmirador.programacion.dto.request.ParadaRequest;
+import pe.edu.unc.elmirador.programacion.dto.request.UbicacionRequest;
 import pe.edu.unc.elmirador.programacion.dto.request.PlanificarViajeRequest;
 import pe.edu.unc.elmirador.programacion.dto.request.ProgramarViajeRequest;
 import pe.edu.unc.elmirador.programacion.dto.request.RutaRequest;
@@ -224,7 +225,10 @@ class ViajeControllerTest {
         when(servicio.programar(eq("v-1"), any())).thenReturn(viajePlanificado());
 
         ProgramarViajeRequest req = new ProgramarViajeRequest(
-                List.of(new ParadaRequest(1, "CARGA", "ord-1", "Almacen", OffsetDateTime.now()))
+                List.of(new ParadaRequest(1, "CARGA", "ord-1",
+                        new UbicacionRequest("Jr. Ayacucho 450", "Cajamarca", "Almacen 2", "+51 976 000 111"),
+                        OffsetDateTime.now())),
+                "Coordinar con almacen del cliente antes de las 07:00."
         );
 
         mockMvc.perform(post("/api/v1/viajes/v-1/programar")
@@ -239,7 +243,10 @@ class ViajeControllerTest {
         when(servicio.programar(eq("v-1"), any())).thenThrow(new AsignacionIncompletaException("VIA-01"));
 
         ProgramarViajeRequest req = new ProgramarViajeRequest(
-                List.of(new ParadaRequest(1, "CARGA", "ord-1", "Almacen", OffsetDateTime.now()))
+                List.of(new ParadaRequest(1, "CARGA", "ord-1",
+                        new UbicacionRequest("Jr. Ayacucho 450", "Cajamarca", "Almacen 2", "+51 976 000 111"),
+                        OffsetDateTime.now())),
+                "Coordinar con almacen del cliente antes de las 07:00."
         );
 
         mockMvc.perform(post("/api/v1/viajes/v-1/programar")
