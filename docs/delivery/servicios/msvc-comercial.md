@@ -79,6 +79,7 @@ para sostener VIA-04. Vigencia de un año con revisión semestral.
 | `POST` | `/ordenes/{id}/cancelar` | Cancela; genera falso flete si ya se despachó | `200` `409` |
 | `POST` | `/contratos-marco` | Registra un contrato marco | `201` `400` |
 | `POST` | `/tarifarios` | Publica un tarifario y vence el anterior | `201` `409` (TAR-01) |
+| `GET` | `/ordenes/{id}` | Consulta una orden | `200` `404` |
 
 ## API interna `/internal/v1`
 
@@ -339,6 +340,15 @@ bajo la clave `errores`.
 Uno por raíz de agregado, con el nombre del agregado: ClienteService, CotizacionService, OrdenDeServicioService, ContratoMarcoService, TarifarioService.
 Ninguno decide reglas: cargan, llaman al método del agregado y guardan. Las dos únicas comprobaciones
 admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
+
+### Dos correcciones de `S3`
+
+- **`GET /ordenes/{id}` faltaba en la tabla.** Un recurso que la API deja crear se puede leer; el hueco
+  era del documento.
+- **`POST /ordenes` exige ahora `contratoId` y `tipoUnidad`.** El precio sale de
+  `ContratoMarco.tarifaPara(ruta, tipoUnidad, fecha)`, que además sostiene CTM-01: fuera de vigencia
+  devuelve vacío, y un vacío es un `404` explícito —ese contrato no pone precio a esa ruta—. Sin esos
+  dos campos no hay de dónde sacar el importe, y la primera versión del slice se lo inventaba.
 
 ### El `404` que las tablas de arriba no escriben
 

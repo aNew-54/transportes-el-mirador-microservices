@@ -69,7 +69,9 @@ Intervalos del negocio: 10 000 km (aceite y filtros), 20 000 km (revisión mayor
 | `GET` | `/unidades/{id}` | Consulta la hoja de vida | `200` `404` |
 | `GET` | `/unidades` | Lista con filtro por estado operativo | `200` |
 | `POST` | `/unidades/{id}/documentos` | Registra o renueva un documento | `201` `400` |
-| `POST` | `/unidades/{id}/estado` | Cambia el estado operativo con motivo | `200` `409` |
+| `POST` | `/unidades/{id}/inoperativa` | Saca la unidad de servicio con motivo | `200` `400` `404` |
+| `POST` | `/unidades/{id}/taller` | Manda la unidad al taller con motivo | `200` `400` `404` |
+| `POST` | `/unidades/{id}/reactivar` | Vuelve a operativa | `200` `404` `409` (UNI-01, UNI-02) |
 | `POST` | `/ordenes-mantenimiento` | Abre una orden de taller | `201` `422` (OMT-02) |
 | `POST` | `/ordenes-mantenimiento/{id}/trabajos` | Registra un trabajo | `201` `409` (OMT-01) |
 | `POST` | `/ordenes-mantenimiento/{id}/cerrar` | Cierra la orden y actualiza el programa | `200` `409` |
@@ -293,6 +295,14 @@ bajo la clave `errores`.
 Uno por raíz de agregado, con el nombre del agregado: UnidadService, OrdenDeMantenimientoService, RepuestoService.
 Ninguno decide reglas: cargan, llaman al método del agregado y guardan. Las dos únicas comprobaciones
 admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
+
+### `/estado` se partió en tres rutas
+
+La tabla de `S1` traía un único `POST /unidades/{id}/estado` con la situación en el cuerpo. Servirlo
+obliga a despachar sobre ese campo dentro del servicio de aplicación, y un `if` de negocio en un
+servicio es un defecto: la regla de a qué estado se puede pasar vive en el agregado. Tres rutas, cero
+ramas. `reactivar` es además el único camino de `S3` hasta UNI-01 y UNI-02, y por tanto hasta el `409`
+del contexto.
 
 ### El `404` que las tablas de arriba no escriben
 
