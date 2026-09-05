@@ -1,6 +1,8 @@
 package pe.edu.unc.elmirador.programacion.models.vo;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.math.BigDecimal;
 
 @Embeddable
@@ -8,6 +10,7 @@ public record Carga(
         String ordenDeServicioId,
         int pesoKg,
         BigDecimal volumenM3,
+        @Enumerated(EnumType.STRING)
         TipoDeCarga tipo,
         int secuenciaDeDescarga) {
 

@@ -111,7 +111,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 |---|---|---|---|
 | `S1a-dominio-base` | AGU-01, AGU-02, AGC-01, AGC-02, VIA-01, VIA-07 | agy `flash` | **done** |
 | `S1b-consolidacion` | VIA-02, VIA-03, VIA-04, VIA-05, VIA-06 | **Claude** | **done** |
-| `S2-persistencia` | — | agy `flash` | pendiente |
+| `S2-persistencia` | — | agy `flash` | **done** |
 | `S3-api-publica` | — | agy `flash` | pendiente |
 | `S4-api-interna` | contrato 4 | agy `flash` | pendiente |
 | `S5-clientes` | contratos 1, 2, 3 | agy `flash` | pendiente |

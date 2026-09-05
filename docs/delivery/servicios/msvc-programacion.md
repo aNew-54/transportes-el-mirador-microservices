@@ -318,3 +318,19 @@ Dos decisiones de diseño:
 
 `consolidarOrden` evalúa VIA-07 → VIA-04 → VIA-03 → VIA-05 → VIA-02 y **muta al final**. La prueba
 `elRechazoNoMutaNada` comprueba que un rechazo por capacidad no deja la orden a medio registrar.
+
+### Notas de `S2-persistencia`
+
+Los cinco objetos de valor con colección —`CargaConsolidada`, `HojaDeRuta`, `ClausulaDeConsolidacion`,
+`ElegibilidadDeRecurso` y `AsignacionDeRecursos`— pasan a clase inmutable. Aquí **sí** son
+`@ElementCollection`, y funciona, porque cada uno se embebe **una sola vez** en `Viaje`. En
+`msvc-comercial` no se pudo, porque allí la misma `Tarifa` se embebe tres veces.
+
+**Un objeto de valor con colección nunca vuelve nulo de la base.** Hibernate instancia la colección
+vacía, así que el embebido deja de parecer ausente: un viaje sin hoja de ruta volvía con una `HojaDeRuta`
+de cero paradas en vez de `null`, y **VIA-01** se evalúa contra ese `null`. Se normaliza al cargar con
+`@PostLoad`, **en un solo sitio**: la versión entregada duplicaba la misma condición en los accesores, y
+dos copias de una condición derivan.
+
+Las agendas llevan índice por recurso y ventana (`ix_reservas_unidades_solape`), que es lo que hará
+eficiente la comprobación de **AGU-01** y **AGC-01** cuando `S3` la consulte.
