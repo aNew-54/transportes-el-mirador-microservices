@@ -300,6 +300,19 @@ Caused by: java.lang.IllegalArgumentException:
 Y no se arregla tolerando el nulo: los componentes de un `record` son `final`, así que Hibernate no
 podría rellenar la lista nunca. Quedaría vacía en silencio, que es peor que fallar.
 
+**Y la `@ElementCollection` sólo sirve si ese objeto de valor se embebe UNA VEZ por entidad.** Si el
+mismo VO aparece dos o tres veces —`Tarifa` en la cotización, en la orden y en su falso flete—, las tres
+colecciones caen en la misma tabla por defecto y **Hibernate no deja redirigirla**: el
+`@AssociationOverride` con `joinTable` se ignora en silencio. En ese caso la colección va a **una columna
+serializada con un `AttributeConverter`**, como `RecargosConverter` en `msvc-comercial`. Es aceptable
+porque esos elementos son parte del valor y nunca se consultan por separado.
+
+Un aviso más, que costó dos vueltas: **un objeto de valor con colección nunca vuelve nulo de la base.**
+Hibernate instancia la colección vacía, así que el embebido deja de parecer ausente. Si la ausencia
+significa algo —un viaje sin hoja de ruta, una orden sin falso flete—, hay que normalizarla: con
+`@PostLoad` en la entidad, o haciendo que el convertidor propague el `NULL` en vez de devolver lista
+vacía. En un solo sitio, nunca en dos.
+
 **Ese objeto de valor pasa a ser clase inmutable**, que es la otra forma que admite la regla 12: campos
 privados no `final`, constructor `protected` sin argumentos para JPA, accesores con el mismo nombre que
 tendrían los componentes del record, la colección expuesta como copia y `equals`/`hashCode` por valor.
