@@ -1,13 +1,19 @@
 package pe.edu.unc.elmirador.comercial.models.vo;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import pe.edu.unc.elmirador.comercial.exceptions.CondicionDePagoInconsistenteException;
 
 /**
  * Objeto de valor inmutable que representa la condicion de pago de un servicio.
  */
 @Embeddable
-public record CondicionDePago(ModalidadDePago modalidad, int plazoEnDias) {
+public record CondicionDePago(
+    @Enumerated(EnumType.STRING)
+    ModalidadDePago modalidad,
+    int plazoEnDias
+) {
 
     public CondicionDePago {
         if (modalidad == null) {

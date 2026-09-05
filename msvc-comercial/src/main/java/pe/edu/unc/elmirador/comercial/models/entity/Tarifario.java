@@ -1,6 +1,20 @@
 package pe.edu.unc.elmirador.comercial.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import pe.edu.unc.elmirador.comercial.exceptions.TarifarioVigenteDuplicadoException;
@@ -14,12 +28,35 @@ import pe.edu.unc.elmirador.comercial.models.vo.TipoDeUnidad;
  * Raiz del agregado Tarifario.
  * Sostiene la invariante TAR-01.
  */
+@Entity
+@Table(name = "tarifarios")
 public class Tarifario {
 
-    private final String id;
-    private final PeriodoDeVigencia vigencia;
-    private final List<PrecioDeTarifario> precios;
-    private final List<Recargo> recargosEstandar;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "desde", column = @Column(name = "vigencia_desde", nullable = false)),
+        @AttributeOverride(name = "hasta", column = @Column(name = "vigencia_hasta", nullable = false))
+    })
+    private PeriodoDeVigencia vigencia;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "tarifario_id", nullable = false)
+    private List<PrecioDeTarifario> precios = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+        name = "tarifario_recargos",
+        joinColumns = @JoinColumn(name = "tarifario_id", nullable = false)
+    )
+    private List<Recargo> recargosEstandar = new ArrayList<>();
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Tarifario() {
+    }
 
     public Tarifario(
         String id,
@@ -41,8 +78,8 @@ public class Tarifario {
         }
         this.id = id.trim();
         this.vigencia = vigencia;
-        this.precios = List.copyOf(precios);
-        this.recargosEstandar = List.copyOf(recargosEstandar);
+        this.precios.addAll(precios);
+        this.recargosEstandar.addAll(recargosEstandar);
     }
 
     public String id() {

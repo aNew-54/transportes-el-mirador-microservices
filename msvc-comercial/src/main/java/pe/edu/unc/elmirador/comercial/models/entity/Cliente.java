@@ -1,5 +1,12 @@
 package pe.edu.unc.elmirador.comercial.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import pe.edu.unc.elmirador.comercial.models.vo.CondicionDePago;
 import pe.edu.unc.elmirador.comercial.models.vo.EstadoCrediticio;
 import pe.edu.unc.elmirador.comercial.models.vo.RazonSocial;
@@ -9,13 +16,39 @@ import pe.edu.unc.elmirador.comercial.models.vo.Ruc;
  * Raiz del agregado Cliente.
  * Sostiene la invariante CLI-01.
  */
+@Entity
+@Table(name = "clientes")
 public class Cliente {
 
-    private final String id;
-    private final Ruc ruc;
-    private final RazonSocial razonSocial;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "ruc", length = 11, nullable = false))
+    private Ruc ruc;
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "razon_social", length = 200, nullable = false))
+    private RazonSocial razonSocial;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "modalidad", column = @Column(name = "condicion_habitual_modalidad", length = 10, nullable = false)),
+        @AttributeOverride(name = "plazoEnDias", column = @Column(name = "condicion_habitual_plazo_dias", nullable = false))
+    })
     private CondicionDePago condicionHabitual;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "situacion", column = @Column(name = "estado_crediticio_situacion", length = 20, nullable = false)),
+        @AttributeOverride(name = "fechaDeCambio", column = @Column(name = "estado_crediticio_fecha_cambio", nullable = false))
+    })
     private EstadoCrediticio estadoCrediticio;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Cliente() {
+    }
 
     public Cliente(
         String id,

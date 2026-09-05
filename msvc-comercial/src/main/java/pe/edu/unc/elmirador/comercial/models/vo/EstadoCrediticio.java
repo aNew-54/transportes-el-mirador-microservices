@@ -1,6 +1,8 @@
 package pe.edu.unc.elmirador.comercial.models.vo;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.time.LocalDate;
 
 /**
@@ -8,7 +10,11 @@ import java.time.LocalDate;
  * Sostiene CLI-01 y ORD-02. No es la fuente de verdad.
  */
 @Embeddable
-public record EstadoCrediticio(SituacionCrediticia situacion, LocalDate fechaDeCambio) {
+public record EstadoCrediticio(
+    @Enumerated(EnumType.STRING)
+    SituacionCrediticia situacion,
+    LocalDate fechaDeCambio
+) {
 
     public EstadoCrediticio {
         if (situacion == null) {

@@ -1,5 +1,15 @@
 package pe.edu.unc.elmirador.comercial.models.entity;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import pe.edu.unc.elmirador.comercial.exceptions.CotizacionVencidaException;
 import pe.edu.unc.elmirador.comercial.exceptions.DominioComercialException;
@@ -14,17 +24,64 @@ import pe.edu.unc.elmirador.comercial.models.vo.Tarifa;
  * Raiz del agregado Cotizacion.
  * Sostiene la invariante COT-01 y valida vigencia de 7 dias calendario en emitir.
  */
+@Entity
+@Table(name = "cotizaciones")
 public class Cotizacion {
 
-    private final String id;
-    private final String clienteId;
-    private final String tarifarioId;
-    private final Carga carga;
-    private final Ruta ruta;
-    private final Tarifa tarifa;
-    private final PeriodoDeVigencia vigencia;
+    @Id
+    @Column(name = "id", length = 40, nullable = false)
+    private String id;
+
+    @Column(name = "cliente_id", length = 40, nullable = false)
+    private String clienteId;
+
+    @Column(name = "tarifario_id", length = 40, nullable = false)
+    private String tarifarioId;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "pesoKg", column = @Column(name = "carga_peso_kg", nullable = false)),
+        @AttributeOverride(name = "volumenM3", column = @Column(name = "carga_volumen_m3", precision = 10, scale = 2, nullable = false)),
+        @AttributeOverride(name = "tipo", column = @Column(name = "carga_tipo", length = 30, nullable = false))
+    })
+    private Carga carga;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "origen", column = @Column(name = "ruta_origen", length = 100, nullable = false)),
+        @AttributeOverride(name = "destino", column = @Column(name = "ruta_destino", length = 100, nullable = false)),
+        @AttributeOverride(name = "corredor", column = @Column(name = "ruta_corredor", length = 100, nullable = false))
+    })
+    private Ruta ruta;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "base.monto", column = @Column(name = "tarifa_base_monto", precision = 15, scale = 2, nullable = false)),
+        @AttributeOverride(name = "base.codigoMoneda", column = @Column(name = "tarifa_base_moneda", length = 3, nullable = false)),
+        @AttributeOverride(name = "descuento.porcentaje", column = @Column(name = "tarifa_descuento_porcentaje", precision = 5, scale = 2)),
+        @AttributeOverride(name = "descuento.autorizadoPor", column = @Column(name = "tarifa_descuento_autorizado_por", length = 100)),
+        @AttributeOverride(name = "recargos", column = @Column(name = "tarifa_recargos", length = 500, nullable = false))
+    })
+    private Tarifa tarifa;
+
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "desde", column = @Column(name = "vigencia_desde", nullable = false)),
+        @AttributeOverride(name = "hasta", column = @Column(name = "vigencia_hasta", nullable = false))
+    })
+    private PeriodoDeVigencia vigencia;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 20, nullable = false)
     private EstadoDeCotizacion estado;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "motivo_de_rechazo", length = 20)
     private MotivoDeRechazo motivoDeRechazo;
+
+    /** Exigido por JPA. No usar: no valida ninguna invariante. */
+    protected Cotizacion() {
+    }
 
     public Cotizacion(
         String id,
