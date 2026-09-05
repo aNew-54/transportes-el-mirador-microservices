@@ -19,7 +19,7 @@ import pe.edu.unc.elmirador.unidades.models.vo.TipoDeDocumento;
 public class DocumentoVehicular {
 
     @Id
-    @Column(name = "id", length = 40, nullable = false)
+    @Column(name = "id", length = 80, nullable = false)
     private String id;
 
     @Enumerated(EnumType.STRING)

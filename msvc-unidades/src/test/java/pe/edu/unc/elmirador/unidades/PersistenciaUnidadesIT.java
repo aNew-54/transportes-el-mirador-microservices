@@ -119,6 +119,30 @@ class PersistenciaUnidadesIT {
     }
 
     @Test
+    void elIdDerivadoDelDocumentoCabeCuandoLaUnidadTieneUnUuidPorId() {
+        // El id de un DocumentoVehicular es `<unidadId>-<TIPO>`, y el de una unidad es un UUID de 36
+        // caracteres: el derivado llega a 67. La columna tenia 40, asi que en produccion ninguna
+        // unidad podia registrar un documento y por tanto ninguna llegaba a ser elegible. Las demas
+        // pruebas no lo veian porque construyen los documentos con ids cortos puestos a mano
+        // ("DOC-SOAT") en vez de pasar por el metodo que los deriva, y usan "UNI-900" como unidad.
+        String unidadId = java.util.UUID.randomUUID().toString();
+        Unidad unidad = unidadDePrueba(unidadId, "XYZ-987");
+        unidad.registrarDocumento(
+                TipoDeDocumento.SOAT,
+                new PeriodoDeVigencia(LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1)),
+                "SOAT-12345",
+                LocalDate.of(2026, 6, 1));
+
+        unidadRepository.saveAndFlush(unidad);
+        entityManager.clear();
+
+        Unidad leida = unidadRepository.findById(unidadId).orElseThrow();
+        assertThat(leida.getDocumentos())
+                .extracting(d -> d.getId())
+                .contains(unidadId + "-SOAT");
+    }
+
+    @Test
     void guardaYReleeElAgregadoUnidadConSusCuatroDocumentosYObjetosDeValor() {
         unidadRepository.saveAndFlush(unidadDePrueba("UNI-900", "ABC-123"));
         entityManager.clear();

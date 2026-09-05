@@ -1,71 +1,89 @@
 #!/usr/bin/env bash
+#
+# Flujo vertical: una orden a credito que llega hasta la cuenta por cobrar, atravesando los siete
+# contextos y once contratos de integracion.
+#
+# Levanta los siete el mismo, con el arranque compartido de lib/servicios.sh, y los para al salir.
+# No hace falta nada mas que un MySQL de `docker compose up -d` y los jar de `./mvnw clean verify`.
+#
+# Se para en el primer paso que falle y escupe el cuerpo entero de la respuesta: es un problem+json
+# y su `detail` dice exactamente que campo o que invariante lo rechazo. Seguir tras un fallo no
+# tendria sentido, porque cada paso necesita el identificador del anterior.
+
 set -uo pipefail
 
-PORT_OFFSET="${SMOKE_PORT_OFFSET:-10000}"
-export COMERCIAL_URL="http://localhost:$((8010 + PORT_OFFSET))"
-export PROGRAMACION_URL="http://localhost:$((8020 + PORT_OFFSET))"
-export EJECUCION_URL="http://localhost:$((8030 + PORT_OFFSET))"
-export UNIDADES_URL="http://localhost:$((8040 + PORT_OFFSET))"
-export CONDUCTORES_URL="http://localhost:$((8050 + PORT_OFFSET))"
-export FACTURACION_URL="http://localhost:$((8060 + PORT_OFFSET))"
-export COBRANZA_URL="http://localhost:$((8070 + PORT_OFFSET))"
+cd "$(dirname "$0")/.."
+. "scripts/lib/servicios.sh"
+
+RESPUESTAS=$(mktemp -d)
+
+limpiar() {
+    detener_servicios
+    rm -rf "$RESPUESTAS"
+}
+trap limpiar EXIT INT TERM
+
+arrancar_servicios || exit 1
+echo ""
+
+ULTIMA="$RESPUESTAS/ultima.json"
 
 paso() {
-    local desc="$1"
-    local method="$2"
-    local url="$3"
-    local body="$4"
-    local expected="$5"
-    local tmp_body=$(mktemp)
-    
-    if [ "$body" != "null" ]; then
-        http_code=$(curl -s -X "$method" "$url" -H "Content-Type: application/json" -d "$body" -w "%{http_code}" -o "$tmp_body")
+    descripcion="$1"; metodo="$2"; url="$3"; cuerpo="$4"; esperado="$5"
+
+    if [ "$cuerpo" != "null" ]; then
+        estado=$(curl -s -X "$metodo" "$url" -H "Content-Type: application/json" \
+            -d "$cuerpo" -w "%{http_code}" -o "$ULTIMA")
     else
-        http_code=$(curl -s -X "$method" "$url" -w "%{http_code}" -o "$tmp_body")
+        estado=$(curl -s -X "$metodo" "$url" -w "%{http_code}" -o "$ULTIMA")
     fi
-    
-    if [ $? -ne 0 ] || [ -z "$http_code" ] || [ "$http_code" = "000" ]; then
-        echo "Error de conexion: hay que levantar los servicios con docker compose up -d"
+
+    if [ -z "$estado" ] || [ "$estado" = "000" ]; then
+        echo "  FALLO  $descripcion: sin respuesta de $url" >&2
         exit 1
     fi
 
-    if [ "$http_code" != "$expected" ]; then
-        echo "$desc"
-        echo "Estado recibido: $http_code"
-        echo "Estado esperado: $expected"
-        cat "$tmp_body"
-        echo ""
+    if [ "$estado" != "$esperado" ]; then
+        echo "" >&2
+        echo "  FALLO  $descripcion" >&2
+        echo "         $metodo $url" >&2
+        echo "         recibido $estado, esperado $esperado" >&2
+        echo "         $(cat "$ULTIMA")" >&2
         exit 1
     fi
-    echo "  ok  $desc"
-    cat "$tmp_body" > .latest_response.json
+    echo "  ok     $descripcion"
+}
+
+# El id del recurso que acaba de crear el paso anterior.
+id_de() {
+    python3 -c "import sys, json; print(json.load(sys.stdin)['$1'])" < "$ULTIMA"
 }
 
 # 1. Comercial: Registrar cliente
 paso "Registrar cliente" "POST" "$COMERCIAL_URL/api/v1/clientes" '{"ruc":"20123456789","razonSocial":"Cliente Humo","modalidadDePago":"CREDITO","plazoEnDias":30}' "201"
-CLIENTE_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" < .latest_response.json)
+CLIENTE_ID=$(id_de id)
 
 # 2. Comercial: Registrar contrato marco
 paso "Registrar contrato marco" "POST" "$COMERCIAL_URL/api/v1/contratos-marco" "{\"clienteId\":\"$CLIENTE_ID\",\"vigenteDesde\":\"2020-01-01\",\"vigenteHasta\":\"2030-12-31\",\"tiempoLibreHoras\":2,\"consolidacionPermitida\":true,\"consolidacionRestricciones\":[],\"tarifasPactadas\":[{\"rutaOrigen\":\"Lima\",\"rutaDestino\":\"Piura\",\"rutaCorredor\":\"Norte\",\"tipoUnidad\":\"FURGON\",\"precioMonto\":1500,\"precioMoneda\":\"PEN\"}]}" "201"
-CONTRATO_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" < .latest_response.json)
+CONTRATO_ID=$(id_de id)
 
 # 3. Unidades: Registrar unidad y SOAT (documento)
 paso "Registrar unidad" "POST" "$UNIDADES_URL/api/v1/unidades" '{"placa":"A1B-234","tipo":"FURGON","pesoMaximoKg":15000,"volumenMaximoM3":30.0,"kilometraje":0,"intervaloMantenimiento":"ACEITE_Y_FILTROS"}' "201"
-UNIDAD_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" < .latest_response.json)
+UNIDAD_ID=$(id_de id)
 paso "Documento SOAT" "POST" "$UNIDADES_URL/api/v1/unidades/$UNIDAD_ID/documentos" '{"tipoDocumento":"SOAT","desde":"2020-01-01","hasta":"2030-01-01","numero":"12345"}' "201"
 
 # 3. Conductores: Registrar conductores e inducciones (para cliente)
 paso "Registrar conductor 1" "POST" "$CONDUCTORES_URL/api/v1/conductores" '{"nombreCompleto":"Juan Perez","numeroDeLicencia":"Q12345678","categoriaDeLicencia":"A_IIIC","licenciaDesde":"2020-01-01","licenciaHasta":"2030-01-01"}' "201"
-COND1_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" < .latest_response.json)
+COND1_ID=$(id_de id)
 paso "Induccion cond1" "POST" "$CONDUCTORES_URL/api/v1/conductores/$COND1_ID/inducciones" "{\"clienteId\":\"$CLIENTE_ID\",\"vigenteDesde\":\"2020-01-01\",\"vigenteHasta\":\"2030-01-01\"}" "201"
 
 paso "Registrar conductor 2" "POST" "$CONDUCTORES_URL/api/v1/conductores" '{"nombreCompleto":"Pedro Perez","numeroDeLicencia":"Q87654321","categoriaDeLicencia":"A_IIIC","licenciaDesde":"2020-01-01","licenciaHasta":"2030-01-01"}' "201"
-COND2_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" < .latest_response.json)
+COND2_ID=$(id_de id)
 paso "Induccion cond2" "POST" "$CONDUCTORES_URL/api/v1/conductores/$COND2_ID/inducciones" "{\"clienteId\":\"$CLIENTE_ID\",\"vigenteDesde\":\"2020-01-01\",\"vigenteHasta\":\"2030-01-01\"}" "201"
 
 # 4. Comercial: Crear orden de servicio a CREDITO
 paso "Crear orden" "POST" "$COMERCIAL_URL/api/v1/ordenes" "{\"clienteId\":\"$CLIENTE_ID\",\"contratoId\":\"$CONTRATO_ID\",\"tipoUnidad\":\"FURGON\",\"cargaPesoKg\":10000,\"cargaVolumenM3\":25.0,\"cargaTipo\":\"GENERAL\",\"rutaOrigen\":\"Lima\",\"rutaDestino\":\"Piura\",\"rutaCorredor\":\"Norte\",\"cargaEmbalaje\":\"CAJAS\",\"cargaNaturaleza\":\"SECA\",\"rutaDistanciaKm\":1000,\"ventanaInicio\":\"2026-10-10T08:00:00-05:00\",\"ventanaFin\":\"2026-10-10T18:00:00-05:00\",\"modalidadDePago\":\"CREDITO\",\"plazoEnDias\":30}" "201"
-ORDEN_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" < .latest_response.json)
+ORDEN_ID=$(id_de id)
 
 # 5. Comercial: Confirmar orden
 paso "Confirmar orden" "POST" "$COMERCIAL_URL/api/v1/ordenes/$ORDEN_ID/confirmar" "null" "200"
@@ -96,15 +114,17 @@ paso "Cerrar ejecucion" "POST" "$EJECUCION_URL/api/v1/ejecuciones/$VIAJE_ID/cerr
 
 # 8. Facturacion: factura y emision
 paso "Abrir factura" "POST" "$FACTURACION_URL/api/v1/facturas" "{\"ordenDeServicioId\":\"$ORDEN_ID\",\"clienteId\":\"$CLIENTE_ID\",\"snapshot\":{\"tarifaMonto\":1500.00,\"codigoMoneda\":\"PEN\",\"obtenidoEn\":\"2026-10-10T18:00:00-05:00\"},\"detraccion\":{\"porcentaje\":0,\"monto\":0,\"cuentaBancaria\":\"\"}}" "201"
-FACTURA_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" < .latest_response.json)
+FACTURA_ID=$(id_de id)
 paso "Emitir factura" "POST" "$FACTURACION_URL/api/v1/facturas/$FACTURA_ID/emitir" "{\"serie\":\"F001\",\"correlativo\":1}" "200"
 
 # 9. Cobranza: comprobar cuenta corriente
 paso "Consultar cuenta corriente" "GET" "$COBRANZA_URL/api/v1/cuentas-corrientes/$CLIENTE_ID" "null" "200"
-DEUDA_COUNT=$(python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data.get('deudaPorMoneda', [])))" < .latest_response.json)
+DEUDA_COUNT=$(python3 -c "import sys, json; print(len(json.load(sys.stdin).get('deudaPorMoneda', [])))" < "$ULTIMA")
 if [ "$DEUDA_COUNT" -eq 0 ]; then
-    echo "Fallo: la cuenta corriente tiene deuda 0"
+    echo "" >&2
+    echo "  FALLO  La cuenta corriente no tiene deuda: la factura no llego al ledger" >&2
     exit 1
 fi
 
+echo ""
 echo "Flujo vertical completo: la orden llego hasta la cuenta por cobrar."
