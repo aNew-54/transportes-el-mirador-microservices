@@ -81,6 +81,12 @@ public class Conductor {
     @JoinColumn(name = "conductor_id", nullable = false)
     private List<Induccion> inducciones = new ArrayList<>();
 
+    // Las incidencias llegan por el contrato 6 y forman parte del legajo. No sostienen ninguna
+    // invariante: se acumulan y se consultan.
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "conductor_id", nullable = false)
+    private List<Incidencia> incidencias = new ArrayList<>();
+
     /** Exigido por JPA. No usar: no valida ninguna invariante. */
     protected Conductor() {
     }
@@ -245,6 +251,18 @@ public class Conductor {
         this.inducciones.add(induccion);
     }
 
+    /**
+     * Registra una incidencia de ruta. Llega por el contrato 6, que Ejecucion empuja al cerrar el
+     * viaje. No cambia la habilitacion: si una incidencia debe suspender al conductor, eso lo decide
+     * quien lo suspende, y lo hace con {@link #suspender(String)}. Registrar no es sancionar.
+     */
+    public void registrarIncidencia(Incidencia incidencia) {
+        if (incidencia == null) {
+            throw new IllegalArgumentException("La incidencia no puede ser nula");
+        }
+        this.incidencias.add(incidencia);
+    }
+
     public void suspender(String motivo) {
         if (motivo == null || motivo.isBlank()) {
             throw new IllegalArgumentException("El motivo de suspension no puede ser nulo ni vacio");
@@ -299,6 +317,10 @@ public class Conductor {
 
     public EstadoDeHabilitacion getEstado() {
         return estado;
+    }
+
+    public List<Incidencia> getIncidencias() {
+        return Collections.unmodifiableList(incidencias);
     }
 
     public List<Induccion> getInducciones() {

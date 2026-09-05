@@ -19,6 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import pe.edu.unc.elmirador.conductores.exceptions.ConflictoDeRecursoException;
 import pe.edu.unc.elmirador.conductores.exceptions.DominioConductoresException;
+import pe.edu.unc.elmirador.conductores.exceptions.HorasExcedidasException;
 import pe.edu.unc.elmirador.conductores.exceptions.NumeroDeLicenciaInvalidoException;
 import pe.edu.unc.elmirador.conductores.exceptions.RecursoNoEncontradoException;
 import pe.edu.unc.elmirador.conductores.exceptions.RehabilitacionInvalidaException;
@@ -82,6 +83,18 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RehabilitacionInvalidaException.class)
     public ProblemDetail rehabilitacionInvalida(RehabilitacionInvalidaException ex) {
         return problema(HttpStatus.CONFLICT, "rehabilitacion-invalida", ex.getMessage());
+    }
+
+    /**
+     * CON-02. El contrato 6 lo fija como {@code 409}, y es lo correcto: la ventana de computo es de un
+     * dia, asi que el mismo reporte cabe manana o despues de un descanso. Es «ahora no», no «asi no».
+     *
+     * <p>Hasta {@code S4} caia en el {@code 422} por defecto, porque ningun endpoint de {@code S3}
+     * llegaba a lanzarla y nadie lo habia notado.
+     */
+    @ExceptionHandler(HorasExcedidasException.class)
+    public ProblemDetail horasExcedidas(HorasExcedidasException ex) {
+        return problema(HttpStatus.CONFLICT, "horas-excedidas", ex.getMessage());
     }
 
     /** El objeto de valor rechaza el formato del dato: es un fallo de entrada, no de invariante. */

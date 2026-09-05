@@ -34,7 +34,7 @@ import pe.edu.unc.elmirador.conductores.dto.response.ConductorResponse;
 import pe.edu.unc.elmirador.conductores.dto.response.HorasResponse;
 import pe.edu.unc.elmirador.conductores.dto.response.InduccionResponse;
 import pe.edu.unc.elmirador.conductores.exceptions.ConflictoDeRecursoException;
-import pe.edu.unc.elmirador.conductores.exceptions.HorasExcedidasException;
+import pe.edu.unc.elmirador.conductores.exceptions.DominioConductoresException;
 import pe.edu.unc.elmirador.conductores.exceptions.NumeroDeLicenciaInvalidoException;
 import pe.edu.unc.elmirador.conductores.exceptions.RecursoNoEncontradoException;
 import pe.edu.unc.elmirador.conductores.exceptions.RehabilitacionInvalidaException;
@@ -331,18 +331,21 @@ class ConductorControllerTest {
 
     /**
      * El comodin del manejador: cualquier {@code DominioConductoresException} que nadie liste arriba
-     * es {@code 422}, nunca {@code 500}. Se prueba contra el manejador directamente porque ningun
-     * endpoint de {@code S3} lanza CON-02: las horas entran por el contrato 6, que es de {@code S4}.
+     * es {@code 422}, nunca {@code 500}. Se prueba contra el manejador directamente porque todas las
+     * excepciones con nombre del contexto estan declaradas una a una.
+     *
+     * <p>Este ejemplo era {@code HorasExcedidasException} hasta que {@code S4} destapo que el contrato
+     * 6 la fija en {@code 409}. Ahora esta declarada, y el comodin se prueba con la raiz del dominio.
      */
     @Test
     @DisplayName("una invariante rota que nadie declaro sigue siendo 422 y no 500")
     void comodinEs422() {
         ProblemDetail problema = new ManejadorDeErrores()
-                .invarianteViolada(new HorasExcedidasException("Las horas acumuladas superan el maximo"));
+                .invarianteViolada(new DominioConductoresException("Una regla nueva que nadie declaro"));
 
         assertThat(problema.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY.value());
         assertThat(problema.getType())
                 .hasToString("https://elmirador.unc.edu.pe/problems/invariante-violada");
-        assertThat(problema.getDetail()).isEqualTo("Las horas acumuladas superan el maximo");
+        assertThat(problema.getDetail()).isEqualTo("Una regla nueva que nadie declaro");
     }
 }

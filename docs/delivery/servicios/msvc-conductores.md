@@ -248,3 +248,51 @@ Otras dos correcciones menores:
 **Decisión de agy que se acepta:** inducción ausente e inducción vencida emiten el mismo motivo
 `INDUCCION_VENCIDA:<clienteId>`. El contrato 3 no define `INDUCCION_AUSENTE` y el enum de motivos es
 normativo; inventar un código habría roto al consumidor.
+
+
+## Slice `S4-api-interna` — decisiones de diseño
+
+Publica los contratos **3** y **6** de [`../../api/contracts.md`](../../api/contracts.md). La receta común
+está en [§9 del método de trabajo](../README.md#9-receta-de-s4-api-interna), y este módulo es el de
+referencia.
+
+### CON-02 es `409`, no `422`
+
+El contrato 6 lo fija así, y es lo correcto. La ventana de cómputo dura un día, de modo que el mismo
+reporte cabe mañana o después de un descanso: es «ahora no», no «así no».
+
+Hasta `S4` caía en el `422` por defecto del manejador y nadie lo había notado, porque ningún endpoint de
+`S3` llegaba a lanzar `HorasExcedidasException`. La prueba del comodín usaba justamente esa excepción
+como ejemplo; ahora usa la raíz del dominio.
+
+### El dominio que faltaba
+
+El contrato 6 reporta incidencias y el agregado no tenía dónde ponerlas. `Incidencia` es entidad hija de
+`Conductor`, igual que `Induccion`.
+
+| Campo | Decisión |
+|---|---|
+| `tipo` | Texto, no enumerado. El contrato sólo muestra `DOCUMENTARIA` de ejemplo y no enumera el resto; inventar aquí el catálogo sería codificar una regla que el diseño no ha fijado |
+| `atribuible` | Lo decide Ejecución, que es quien vio lo que pasó. Conductores lo registra y no lo reevalúa |
+| `registradaEn` | Es cuando Conductores **recibe** el reporte, no cuando la incidencia ocurrió: el contrato no envía esa fecha. El nombre lo dice para que nadie la lea como lo que no es |
+
+`registrarIncidencia` no cambia la habilitación. Registrar no es sancionar: si una incidencia debe
+suspender al conductor, eso lo decide quien lo suspende, con `suspender(motivo)`.
+
+### Dos detalles de forma que el contrato fija y el dominio no
+
+- **`categoriaLicencia` viaja con guion** — `A-IIIB`—, y el enumerado la lleva con guion bajo por la
+  regla 13. La conversión vive en el servicio de integración, en un solo sitio.
+- **`atribuible` es `Boolean`, no `boolean`.** Con el primitivo, un cuerpo que omita el campo llegaría
+  como `false` y la incidencia constaría como no atribuible sin que nadie lo haya dicho. Con el objeto,
+  `@NotNull` lo convierte en el `400` que es. Es el defecto D4 —nada de valores por defecto silenciosos—
+  en su versión de frontera HTTP.
+
+### La ventana se convierte a horas; las horas reales las mide Ejecución
+
+El contrato 3 manda `desde` y `hasta`; el agregado pide `horasRequeridas`. La conversión es de unidades
+y vive en el servicio.
+
+Lo que **no** se hace es recalcular las horas del contrato 6 a partir de su ventana: son dos cosas
+distintas —el tramo pudo tener paradas—, y recalcularlas sería reinterpretar un dato del que Ejecución
+es dueña.
