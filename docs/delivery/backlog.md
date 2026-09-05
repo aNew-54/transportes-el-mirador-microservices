@@ -97,7 +97,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
 | `S4-api-interna` | contrato 8 | **done** |
-| `S5-clientes` | contratos 9 → Comercial, 10 → Cobranza | pendiente |
+| `S5-clientes` | contratos 9 → Comercial, 10 → Cobranza | **done** |
 
 ---
 
@@ -114,7 +114,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S2-persistencia` | — | agy `flash` | **done** |
 | `S3-api-publica` | — | agy `flash` | **done** |
 | `S4-api-interna` | contrato 4 | agy `flash` | **done** |
-| `S5-clientes` | contratos 1, 2, 3 | agy `flash` | pendiente |
+| `S5-clientes` | contratos 1, 2, 3 | agy `pro` + Claude | **done** |
 
 ---
 
@@ -127,7 +127,7 @@ ser un trámite y pasa a ser el control de calidad principal.
 | `S1-dominio` | EJV-01…05, LIQ-01…04 | **done** |
 | `S2-persistencia` | — | **done** |
 | `S3-api-publica` | — | **done** |
-| `S5-clientes` | contratos 4, 5, 6, 7, 8 | pendiente |
+| `S5-clientes` | contratos 4, 5, 6, 7, 8 | **done** |
 
 Ejecución no tiene `S4`: no publica endpoints de integración.
 
@@ -140,7 +140,7 @@ Ejecución no tiene `S4`: no publica endpoints de integración.
 | Reactor verde | `./mvnw clean verify` | **done** |
 | Los siete arrancan | `./scripts/smoke-test.sh` | **done** |
 | 48 invariantes cubiertas | Todas con prueba en verde | **done** |
-| 11 contratos implementados | Con prueba de cliente y de proveedor | proveedor **done** · cliente en `S5` |
+| 11 contratos implementados | Con prueba de cliente y de proveedor | **done** |
 | Flujo vertical | Orden → viaje → ejecución → factura → cobranza, de extremo a extremo | pendiente |
 
 ## Progreso
@@ -151,24 +151,29 @@ su propia fila y no toca esta tabla: si dos ramas incrementan el mismo número, 
 
 | | Hecho | Total | |
 |---|---:|---:|---|
-| Slices | 29 | 32 | 91 % |
+| Slices | **32** | 32 | **100 %** |
 | Invariantes cubiertas | **48** | 48 | 100 % |
 | Contratos con proveedor listo | **11** | 11 | 100 % |
-| Contratos con cliente Feign | 1 | 11 | 9 % |
-| Servicios terminados | 4 | 7 | 57 % |
+| Contratos con cliente Feign | **11** | 11 | **100 %** |
+| Servicios terminados | **7** | 7 | **100 %** |
 
 Un servicio esta terminado cuando no le queda ningun slice. Unidades, Conductores y Cobranza lo estan:
 la regla 10 no les da flecha saliente, asi que su ultimo slice es `S4` y no tienen `S5` que esperar.
 Los cuatro restantes estan al completo salvo sus clientes Feign.
 
-Los cuatro slices que faltan son todos `S5` y suman los once clientes. No estan repartidos a partes iguales:
+Los 32 slices estan integrados y los once contratos tienen cliente y proveedor, cada uno con su prueba
+de gateway y su prueba de stub contra el JSON de `contracts.md`.
 
-| Modulo | Contratos que consume | Clientes |
-|---|---|---:|
-| `msvc-ejecucion` | 4, 5, 6, 7, 8 | 5 |
-| `msvc-programacion` | 1, 2, 3 | 3 |
-| `msvc-facturacion` | 9, 10 | 2 |
-| `msvc-comercial` | 11 | ~~1~~ **done** |
+**Una distincion que el contador no hace y hay que decir en voz alta:** de los once clientes, siete los
+llama un servicio de aplicacion y cuatro todavia no. Los cuatro son los reportes de Ejecucion
+—contratos 5, 6, 7 y 8—, que son empujes al cerrar el viaje y necesitan datos que el agregado aun no
+lleva: el odometro final, las horas por conductor, los conceptos facturables. Estan escritos, probados
+y con sus claves de idempotencia; les falta quien los invoque, y eso es el hito de flujo vertical.
 
-Medido en clientes y no en slices, `S5` esta al 9 %: Comercial ya lo tiene y quedan los ocho de
-Ejecucion, Programacion y Facturacion.
+| Contrato | Consumidor | Cliente | ¿Lo llama alguien? |
+|---|---|---|---|
+| 1, 2, 3 | Programación | sí | sí — `ViajeService` |
+| 4 | Ejecución | sí | sí — `EjecucionDeViajeService` |
+| 5, 6, 7, 8 | Ejecución | sí | **todavía no** |
+| 9, 10 | Facturación | sí | sí — `FacturaService` |
+| 11 | Comercial | sí | sí — `OrdenDeServicioService` |

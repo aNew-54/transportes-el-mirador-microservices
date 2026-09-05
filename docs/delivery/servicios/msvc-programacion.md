@@ -376,3 +376,49 @@ admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
 Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
 de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
 `S1` y omiten ese caso; el código no lo omite.
+
+## Slice `S5-clientes` — decisiones de diseño
+
+Tres clientes, y el slice que más cambió la API pública del Core. No por los clientes en sí, sino por
+lo que se vio al conectarlos.
+
+### Dos invariantes se comprobaban contra datos del solicitante
+
+| Operación | Qué traía la petición | Qué decide ese dato |
+|---|---|---|
+| `consolidarOrden` | la cláusula del contrato marco | **VIA-04**, si se puede consolidar |
+| `asignarRecursos` | la elegibilidad de unidad y conductores | si los recursos se pueden reservar |
+
+En los dos casos quien pedía la operación aportaba también el dato que la autoriza. Enviar una cláusula
+permisiva bastaba para que VIA-04 no pudiera fallar nunca. Ahora la orden entera la trae el contrato 1
+y las elegibilidades los contratos 2 y 3.
+
+Lo que sí sigue viniendo de la petición, y es correcto:
+
+- **`secuenciaDeDescarga`** — dónde va esta orden en la estiba. Comercial no sabe con qué otras órdenes
+  va a compartir plataforma; `CargaConsolidada` ordena por este campo.
+- **`capacidadDeLaUnidad`** — hace falta antes de que haya unidad asignada, porque consolidar precede a
+  asignar en el ciclo de vida del viaje.
+
+### Dos defectos del gateway que ninguna prueba veía
+
+**El `TipoDeCarga` se deducía de prefijos de texto.** `"PALLETS"` en el embalaje daba `PALETIZADA`,
+`"MAQUINARIA"` en la naturaleza daba `MAQUINARIA_PESADA`, y todo lo demás caía en `GENERAL`. VIA-05 se
+decide con ese campo y la maquinaria pesada es la única que no comparte plataforma con nada: una
+naturaleza escrita de otra forma la convertía en carga general consolidable con cualquier cosa. El
+contrato 1 publica ahora el tipo. Es el mismo defecto que CTM-02 tuvo en `S1`.
+
+**La `Carga` se montaba con `secuenciaDeDescarga = 1` fija**, así que todas las órdenes de un viaje
+consolidado empataban en el primer puesto de la estiba.
+
+### `CargaConsolidada.tipoDominante()`
+
+El tipo que se le pregunta a Unidades por el contrato 2 es **el más restrictivo de los que van a
+bordo**, no el primero ni el más frecuente. Si viaja una maquinaria pesada, la unidad tiene que poder
+con maquinaria pesada aunque el resto sea carga general. Es VIA-05 vista desde el otro lado.
+
+### Pruebas exigidas por este slice
+
+Además de los tres `GatewayTest` y los tres `ClientStubTest`, tres en `ViajeServiceTest`: que la
+cláusula consultada manda, que los dos proveedores se consultan de verdad, y que con Unidades caída no
+se reserva nada. Sin la última, «no se supone elegible lo que no se pudo comprobar» es una frase.

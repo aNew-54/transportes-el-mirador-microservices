@@ -264,3 +264,42 @@ admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
 Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
 de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
 `S1` y omiten ese caso; el código no lo omite.
+
+## Slice `S5-clientes` — decisiones de diseño
+
+### Contrato 9 — el snapshot deja de venir en la petición
+
+`abrirFactura` recibía la tarifa y la moneda en el cuerpo, así que quien abría la factura declaraba el
+precio. Ahora sale del contrato 9. Es el mismo defecto que Programación tenía con la cláusula del
+contrato marco y Ejecución con la hoja de ruta: los tres módulos recibían de quien llamaba un hecho que
+pertenece a otro contexto.
+
+El snapshot se guarda, y eso es deliberado: es la excepción explícita a la regla 7 de `contracts.md`.
+Una factura emitida tiene que poder explicarse a sí misma años después sin volver a preguntarle nada a
+nadie.
+
+### Contrato 10 — la clave de idempotencia es el identificador de la factura
+
+Determinista, no un `UUID`. Un reintento con clave nueva crearía una segunda cuenta por cobrar para la
+misma factura, que es justo lo que la idempotencia existe para impedir. El proveedor devuelve `201` la
+primera vez y `200` en el reintento: las dos son éxito.
+
+### El `CONTADO` por defecto que se quitó
+
+`SnapshotComercial` ganó la condición de pago —bien, el contrato 10 la necesita— con un constructor en
+cascada que rellenaba `"CONTADO", 0` para no romper las pruebas existentes. Sólo las facturas a crédito
+entran a la cartera de Cobranza: una factura a crédito construida por ese constructor se habría
+registrado como contado y **nunca habría llegado a la cartera**. Nadie la habría reclamado.
+
+El constructor se fue, las siete llamadas de prueba dicen ahora qué condición tienen, y la modalidad se
+valida contra sus dos únicos valores. La migración `V3` tenía el mismo `DEFAULT 'CONTADO'`: se mantiene
+para que el `ALTER` pueda rellenar filas ya escritas y se retira acto seguido.
+
+### Una decisión de frontera transaccional que queda anotada
+
+`cobranzaGateway.crearCuentaPorCobrar` se llama dentro de la transacción de `emitir`. Si Cobranza no
+responde, la emisión revierte y la factura no se emite. Es conservador y es seguro —no quedan facturas
+emitidas sin su cuenta por cobrar— pero significa que Cobranza caída bloquea la facturación.
+
+La alternativa, emitir y encolar el envío, necesita un *outbox* y es una decisión de arquitectura, no
+un ajuste de `S5`. Se deja escrito aquí para que sea una decisión y no un descuido.

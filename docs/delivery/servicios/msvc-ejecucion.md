@@ -334,3 +334,53 @@ admitidas son la existencia (`404`) y la unicidad contra el repositorio (`409`).
 Toda ruta con `{id}` puede devolver `404`, se diga o no en la columna de códigos: pedir un subrecurso
 de un agregado que no existe no es un `400`. Las tablas de la API de este documento se escribieron en
 `S1` y omiten ese caso; el código no lo omite.
+
+## Slice `S5-clientes` — decisiones de diseño
+
+Cinco clientes, uno de consulta y cuatro de reporte. Sólo el de consulta quedó conectado, y está dicho
+por qué.
+
+### Contrato 4 — la hoja de ruta
+
+`crear` recibía la unidad ejecutora y la lista de paradas en el cuerpo de la petición. Las dos son de
+la hoja de ruta, que es de Programación: quien abría la ejecución podía declarar una unidad distinta de
+la programada y unas paradas que nadie había planificado, y Ejecución habría seguido esa versión. Es el
+mismo defecto que Programación tenía con la cláusula y Facturación con el snapshot.
+
+La petición se queda con el identificador del viaje. Si Programación no responde, la ejecución no se
+abre: ejecutar un viaje contra una hoja de ruta que nadie ha confirmado es peor que no ejecutarlo.
+
+`ProgramacionGateway` devolvía el DTO remoto tal cual, con lo que la forma de Programación llegaba al
+servicio de aplicación y la barrera anticorrupción no barría nada. Ahora traduce a `HojaDeRutaDeViaje`,
+se queda con la dirección de cada parada —lo único que la parada de Ejecución usa hoy— y rechaza una
+hoja sin paradas.
+
+### Contratos 5 a 8 — escritos, probados y todavía sin llamar
+
+Los cuatro son empujes al cerrar el viaje, y necesitan datos que el agregado aún no lleva: el odómetro
+final, las horas por conductor, los conceptos facturables. Cablearlos no es una línea más en `cerrar`:
+es el hito de flujo vertical del backlog.
+
+Lo que sí está: los gateways, los DTO de petición, las siete claves de idempotencia y sus pruebas.
+
+### Las siete claves de idempotencia
+
+Coinciden con la tabla de la regla común 6 de `contracts.md`. El criterio es que **la clave nombra el
+hecho, no el momento de enviarlo**:
+
+| Endpoint | Clave |
+|---|---|
+| `kilometraje` | `<viajeId>:km-final` |
+| `fallas` | `<viajeId>:falla:<fallaId>` |
+| `horas-conduccion` | `<viajeId>:<conductorId>:horas` |
+| `incidencias` | `<viajeId>:<conductorId>:incidencia:<incidenciaId>` |
+| `diferencias-de-carga` | `<viajeId>:<ordenId>:diferencia` |
+| `esperas` | `<viajeId>:<ordenId>:espera:<punto>` |
+| `conformidades` | `<viajeId>:<ordenId>:conformidad` |
+
+El kilometraje final y la conformidad son únicos por viaje, así que el par ya los identifica. Una falla
+o una incidencia pueden repetirse dentro del mismo viaje y necesitan su identificador. Una espera se
+repite por punto, y el punto la nombra. Un `UUID` aleatorio convertiría el reintento en un hecho nuevo.
+
+Los `ClientStubTest` comprueban que la cabecera llega con el valor esperado y devuelven `400` si no
+llega: es lo único que demuestra que el cliente la envía.
